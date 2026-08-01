@@ -19,7 +19,7 @@ public class Startup
     private readonly IConfiguration _configuration;
     
     public Startup(IConfiguration configuration) {
-        this._configuration = configuration;
+        _configuration = configuration;
     }
 
     public void ConfigureServices(IServiceCollection services)
@@ -57,8 +57,8 @@ public class Startup
                 options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
             });
         
-        //services.ConfigureAuthentication(configuration);
-        //services.AddAuthorization();
+        services.ConfigureAuthentication(_configuration);
+        services.AddAuthorization();
         //services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         //services.AddHealthChecks(_configuration);
@@ -86,13 +86,14 @@ public class Startup
                         $"/swagger/{description.GroupName}/swagger.json"));
                 }
             })
+            //.UseCors(x => x.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod())
             .UseRouting()
-            //.UseProductVersion("/api/version")
+            .UseAuthentication()
+            .UseAuthorization()
             .UseEndpoints(endpoints =>
             {
-                endpoints
-                    .MapControllers()
-                    .RequireAuthorization();
+                endpoints.MapControllers();
+                //.RequireAuthorization();
             });
     }
 }
