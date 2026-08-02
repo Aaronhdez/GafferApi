@@ -1,0 +1,29 @@
+﻿using Asp.Versioning;
+using Asp.Versioning.Conventions;
+using Gaffer.Api.Controllers;
+using Gaffer.Api.Versioning;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Gaffer.Api.Startups;
+
+public static class VersioningStartup {
+    public static IServiceCollection ConfigureVersioning(this IServiceCollection services) {
+        var apiVersionsDefinition = new GafferApiVersioningDefinition();
+        services.AddSingleton(apiVersionsDefinition);
+        services.AddApiVersioning(options => {
+                options.DefaultApiVersion = new ApiVersion(ApiVersioning.Current, 0);
+                options.AssumeDefaultVersionWhenUnspecified = true;
+                options.ReportApiVersions = true;
+            })
+            .AddMvc(options => {
+                var apiVersionsDefinition = new GafferApiVersioningDefinition();
+                options.Conventions.Controller<DummyController>().HasApiVersions(apiVersionsDefinition.Versions);
+            })
+            .AddApiExplorer(options => {
+                options.GroupNameFormat = "'v'VVV";
+                options.SubstituteApiVersionInUrl = true;
+            });
+        return services;
+    }
+}
+

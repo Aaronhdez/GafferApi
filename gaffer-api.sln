@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gaffer.Api", "Gaffer.Api\Gaffer.Api.csproj", "{5063B765-FA11-44D6-B36F-B1AA31BA0C49}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gaffer.Api.Client", "Gaffer.Api.Client\Gaffer.Api.Client.csproj", "{38F23ABD-9AC6-4461-A9F7-EEE471296352}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,11 @@ Global
 		{5063B765-FA11-44D6-B36F-B1AA31BA0C49}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5063B765-FA11-44D6-B36F-B1AA31BA0C49}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5063B765-FA11-44D6-B36F-B1AA31BA0C49}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38F23ABD-9AC6-4461-A9F7-EEE471296352}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38F23ABD-9AC6-4461-A9F7-EEE471296352}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38F23ABD-9AC6-4461-A9F7-EEE471296352}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38F23ABD-9AC6-4461-A9F7-EEE471296352}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection
 EndGlobal

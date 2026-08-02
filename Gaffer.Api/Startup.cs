@@ -17,32 +17,18 @@ namespace Gaffer.Api;
 public class Startup
 {
     private readonly IConfiguration _configuration;
-    
-    public Startup(IConfiguration configuration) {
+
+    public Startup(IConfiguration configuration)
+    {
         _configuration = configuration;
     }
 
     public void ConfigureServices(IServiceCollection services)
     {
-        if (services == null)
-            throw new ArgumentNullException(nameof(services));
-
+        if (services == null) throw new ArgumentNullException(nameof(services));
         services.ConfigureLogging(_configuration, Program.ProductContext);
         services.ConfigureOptions(_configuration, Program.ProductContext.StartupSettingsFileName);
-        services.AddApiVersioning(options =>
-            {
-                options.DefaultApiVersion = new ApiVersion(1, 0);
-                options.AssumeDefaultVersionWhenUnspecified = true;
-                options.ReportApiVersions = true;
-            })
-            .AddApiExplorer(options =>
-            {
-                options.GroupNameFormat = "'v'VVV";
-                options.SubstituteApiVersionInUrl = true;
-            });
-
         services.AddMemoryCache();
-
         services.AddMvcCore()
             .AddMvcOptions(options =>
                 options.Filters.Add(new ProducesAttribute("application/json"))
@@ -56,10 +42,10 @@ public class Startup
             {
                 options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
             });
-        
+
         services.ConfigureAuthentication(_configuration);
         services.AddAuthorization();
-        //services.ConfigureVersioning();
+        services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         //services.AddHealthChecks(_configuration);
         //services.ConfigureSherlock(configuration);
@@ -67,10 +53,10 @@ public class Startup
         //services.ConfigureServices(configuration);
         //services.ConfigureClients(configuration);
         //services.AddHttpFilteringModelBinder();
-        
     }
-    
-    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider) {
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)
+    {
         if (env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
         }
