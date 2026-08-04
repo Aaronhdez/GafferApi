@@ -14,20 +14,13 @@ using NSwag.AspNetCore;
 
 namespace Gaffer.Api;
 
-public class Startup
+public class Startup(IConfiguration configuration)
 {
-    private readonly IConfiguration _configuration;
-
-    public Startup(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
-
     public void ConfigureServices(IServiceCollection services)
     {
-        if (services == null) throw new ArgumentNullException(nameof(services));
-        services.ConfigureLogging(_configuration, Program.ProductContext);
-        services.ConfigureOptions(_configuration, Program.ProductContext.StartupSettingsFileName);
+        ArgumentNullException.ThrowIfNull(services);
+        services.ConfigureLogging(configuration, Program.ProductContext);
+        services.ConfigureOptions(configuration, Program.ProductContext.StartupSettingsFileName);
         services.AddMemoryCache();
         services.AddMvcCore()
             .AddMvcOptions(options =>
@@ -43,13 +36,13 @@ public class Startup
                 options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
             });
 
-        services.ConfigureAuthentication(_configuration);
+        services.ConfigureAuthentication(configuration);
         services.AddAuthorization();
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
+        services.ConfigureDatabase(configuration);
         //services.AddHealthChecks(_configuration);
         //services.ConfigureSherlock(configuration);
-        //services.ConfigureDatabase(configuration);
         //services.ConfigureServices(configuration);
         //services.ConfigureClients(configuration);
         //services.AddHttpFilteringModelBinder();
@@ -72,7 +65,6 @@ public class Startup
                         $"/swagger/{description.GroupName}/swagger.json"));
                 }
             })
-            //.UseCors(x => x.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod())
             .UseRouting()
             .UseAuthentication()
             .UseAuthorization()
