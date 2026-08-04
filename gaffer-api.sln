@@ -6,8 +6,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gaffer.Api.Client", "Gaffer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gaffer.Api.Migrations", "Gaffer.Api.Migrations\Gaffer.Api.Migrations.csproj", "{D71BC291-FB55-4485-939C-06AB9087AA72}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Gaffer.Api.Infrastructure", "Gaffer.Api.Infrastructure\Gaffer.Api.Infrastructure.csproj", "{6B1B2F72-ABC4-4784-B3E0-F26B3F2D30B7}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -26,10 +24,6 @@ Global
 		{D71BC291-FB55-4485-939C-06AB9087AA72}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D71BC291-FB55-4485-939C-06AB9087AA72}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D71BC291-FB55-4485-939C-06AB9087AA72}.Release|Any CPU.Build.0 = Release|Any CPU
-		{6B1B2F72-ABC4-4784-B3E0-F26B3F2D30B7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{6B1B2F72-ABC4-4784-B3E0-F26B3F2D30B7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{6B1B2F72-ABC4-4784-B3E0-F26B3F2D30B7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{6B1B2F72-ABC4-4784-B3E0-F26B3F2D30B7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

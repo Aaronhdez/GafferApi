@@ -1,6 +1,4 @@
-﻿using Gaffer.Api.Infrastructure;
-using Gaffer.Api.Infrastructure.Databases;
-using Microsoft.Data.SqlClient;
+﻿using Gaffer.Api.Shared.ConnectionProviders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,7 +6,7 @@ namespace Gaffer.Api.Startups;
 
 public class DatabaseConfig {
     public bool Enabled { get; set; }
-    public string ConnectionString { get; set; }
+    public string? ConnectionString { get; set; }
 }
 
 public static class DatabaseStartup

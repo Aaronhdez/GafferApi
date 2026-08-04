@@ -69,7 +69,7 @@
         <None Include="nswag.json" />
     </ItemGroup>
     <ItemGroup>
-      <ProjectReference Include="..\Gaffer.Api.Infrastructure\Gaffer.Api.Infrastructure.csproj" />
+      <Folder Include="Shared\" />
     </ItemGroup>
     <Target Name="NSwag" BeforeTargets="AfterBuild" Condition="'$(Configuration)' != 'Debug' And '$(OS)' == 'Windows_NT'">
         <Exec ConsoleToMSBuild="true" ContinueOnError="true" Command="$(NSwagExe_Net90) run nswag.json /variables:Configuration=$(Configuration)">

@@ -1,4 +1,4 @@
-namespace Gaffer.Api.Infrastructure.Databases;
+namespace Gaffer.Api.Shared.ConnectionProviders;
 
 public interface IDatabaseConnectionProvider
 {

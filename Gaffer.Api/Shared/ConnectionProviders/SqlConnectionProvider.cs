@@ -1,6 +1,6 @@
 using MySqlConnector;
 
-namespace Gaffer.Api.Infrastructure.Databases;
+namespace Gaffer.Api.Shared.ConnectionProviders;
 
 public class SqlConnectionProvider : IDatabaseConnectionProvider
 {
