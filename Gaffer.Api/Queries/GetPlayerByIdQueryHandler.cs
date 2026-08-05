@@ -6,11 +6,9 @@ namespace Gaffer.Api.Queries;
 public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository)
     : IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>
 {
-    private readonly IPlayerRepository _playerRepository = playerRepository;
-
     public async Task<GetPlayerByIdResponse> Handle(GetPlayerByIdQuery query, CancellationToken cancellationToken)
     {
-        var player = await _playerRepository.Get(query.Id);
+        var player = await playerRepository.Get(query.Id);
         return new GetPlayerByIdResponse
         {
             Id = player.Id,
