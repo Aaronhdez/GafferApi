@@ -2,6 +2,7 @@
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Namotion.Reflection;
 
 namespace Gaffer.Api.Controllers;
 
@@ -16,7 +17,8 @@ public class PlayerController(
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
-        throw new NotImplementedException();
+        var player = await _getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
+        return new GetPlayerResponse(player.Id, player.FirstName, player.LastName, player.SecondLastName, player.BirthDate, player.Gender);
     }
 
     [HttpPost("")]

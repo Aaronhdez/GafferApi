@@ -1,6 +1,8 @@
 ﻿using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Shared;
 using NSubstitute;
+using NuGet.Protocol.Core.Types;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;
 
@@ -20,6 +22,8 @@ public class PlayerControllerShould
     public async Task CallAQueryToGetAPlayerById()
     {
         var newGuid = Guid.NewGuid();
+        _getPlayerByIdQueryHandler.Handle(Arg.Is<GetPlayerByIdQuery>(query => query.Id == newGuid),  
+                Arg.Any<CancellationToken>()).Returns(new GetPlayerByIdResponse { Id = newGuid });
         
         await _controller.GetBy(newGuid);
         

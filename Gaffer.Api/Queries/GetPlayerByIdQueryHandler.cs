@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Shared.Repositories;
+﻿using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Queries;
 
@@ -16,6 +17,12 @@ public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository) : IQu
 
 public class GetPlayerByIdResponse
 {
+    public Guid Id { get; set; }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public string? SecondLastName { get; set; }
+    public DateTime BirthDate { get; set; }
+    public Gender Gender { get; set; }
 }
 
 public record GetPlayerByIdQuery(Guid Id) : IQuery<GetPlayerByIdResponse> {
