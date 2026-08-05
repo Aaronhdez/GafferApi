@@ -11,7 +11,16 @@ public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository) : IQu
     
     public async Task<GetPlayerByIdResponse> Handle(GetPlayerByIdQuery query, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var player = await _playerRepository.Get(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+        return new GetPlayerByIdResponse
+        {
+            Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
+            FirstName = string.Empty,
+            LastName = string.Empty,
+            SecondLastName = null,
+            BirthDate = DateTime.UtcNow,
+            Gender = Gender.OTHER
+        };
     }
 }
 
