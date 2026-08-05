@@ -6,3 +6,5 @@ public interface IPlayerRepository
 {
     Task<Player> Get(Guid newGuid);
 }
+
+public class PlayerNotFoundException(string message) : Exception(message);
