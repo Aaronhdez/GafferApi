@@ -65,7 +65,7 @@ public class DummyPlayerRepositoryShould
     }
 
     [Test]
-    public async Task ReturnPlayerWhenGuid1IsUsedAsQueryItem()
+    public async Task ReturnPlayerWhenGuidIsUsedAsQueryItem()
     {
         var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));

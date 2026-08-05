@@ -13,10 +13,8 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<Player> Get(Guid newGuid)
     {
-        if (players == null) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
-        if (players.Count == 0) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
+        if (players == null || players.Count == 0) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
         var player = players.FirstOrDefault(player => player.Id == newGuid);
-        if (player == null) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
-        return Task.FromResult(player);
+        return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
     }
 }
