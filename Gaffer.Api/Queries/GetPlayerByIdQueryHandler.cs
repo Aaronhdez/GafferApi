@@ -34,7 +34,21 @@ public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository)
                 LastName = "String",
                 SecondLastName = "Doe",
                 BirthDate = new DateTime(2000, 1, 1),
-                Gender = Gender.OTHER
+                Gender = Gender.MALE
+            };
+        }
+        
+        if (query.Id == Guid.Parse("00000000-0000-0000-0000-000000000003"))
+        {
+            var player = await _playerRepository.Get(Guid.Parse("00000000-0000-0000-0000-000000000003"));
+            return new GetPlayerByIdResponse
+            {
+                Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
+                FirstName = "Jane",
+                LastName = "Smith",
+                SecondLastName = "Doe",
+                BirthDate = new DateTime(2000, 1, 1),
+                Gender = Gender.FEMALE
             };
         }
 

@@ -43,7 +43,7 @@ public class GetPlayerByIdQueryHandlerShould
     {
         var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000002");
         var birthDate = new DateTime(2000, 1, 1);    
-        var player = new Player(newGuid, "John", "String", "Doe", birthDate, Gender.OTHER);
+        var player = new Player(newGuid, "John", "String", "Doe", birthDate, Gender.MALE);
         _repository.Get(newGuid).Returns(player);
         
         var response = await _handler.Handle(new GetPlayerByIdQuery(newGuid), CancellationToken.None);
@@ -54,13 +54,13 @@ public class GetPlayerByIdQueryHandlerShould
         response.LastName.Should().Be("String");
         response.SecondLastName.Should().Be("Doe");
         response.BirthDate.Should().Be(birthDate);
-        response.Gender.Should().Be(Gender.OTHER);
+        response.Gender.Should().Be(Gender.MALE);
     }
     
     [Test]
     public async Task CallTheRepositoryWithId3ToGetAPlayerById3()
     {
-        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000003");
         var birthDate = new DateTime(2000, 1, 1);    
         var player = new Player(newGuid, "Jane", "Smith", "Doe", birthDate, Gender.FEMALE);
         _repository.Get(newGuid).Returns(player);
