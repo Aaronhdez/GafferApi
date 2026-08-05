@@ -12,6 +12,12 @@ public class GetPlayerByIdQueryHandlerShould
 {
     private GetPlayerByIdQueryHandler _handler;
     private IPlayerRepository _repository;
+    private const string FirstName = "John";
+    private const string LastName = "Doe";
+    private const string? SecondLastName = "Doe";
+    private const Gender Gender = Shared.Gender.MALE;
+    private readonly Guid _newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+    private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
 
     [SetUp]
     public void Setup()
@@ -23,23 +29,17 @@ public class GetPlayerByIdQueryHandlerShould
     [Test]
     public async Task CallTheRepositoryWithIdToGetAPlayerByItsId()
     {
-        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        var birthDate = new DateTime(2000, 1, 1);
-        var firstName = "John";
-        var lastName = "Doe";
-        string? secondLastName = "Doe";
-        const Gender gender = Gender.MALE;
-        var player = new Player(newGuid, firstName, lastName, secondLastName, birthDate, gender);
-        _repository.Get(newGuid).Returns(player);
-        
-        var response = await _handler.Handle(new GetPlayerByIdQuery(newGuid), CancellationToken.None);
-        
-        await _repository.Received(1).Get(newGuid);
-        response.Id.Should().Be(newGuid);
-        response.FirstName.Should().Be(firstName);
-        response.LastName.Should().Be(lastName);
-        response.SecondLastName.Should().Be(secondLastName);
-        response.Birthdate.Should().Be(birthDate);
-        response.Gender.Should().Be(gender);
+        var player = new Player(_newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _repository.Get(_newGuid).Returns(player);
+
+        var response = await _handler.Handle(new GetPlayerByIdQuery(_newGuid), CancellationToken.None);
+
+        await _repository.Received(1).Get(_newGuid);
+        response.Id.Should().Be(_newGuid);
+        response.FirstName.Should().Be(FirstName);
+        response.LastName.Should().Be(LastName);
+        response.SecondLastName.Should().Be(SecondLastName);
+        response.Birthdate.Should().Be(_birthDate);
+        response.Gender.Should().Be(Gender);
     }
 }
