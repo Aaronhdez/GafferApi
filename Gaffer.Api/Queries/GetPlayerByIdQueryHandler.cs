@@ -10,49 +10,16 @@ public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository)
 
     public async Task<GetPlayerByIdResponse> Handle(GetPlayerByIdQuery query, CancellationToken cancellationToken)
     {
-        if (query.Id == Guid.Parse("00000000-0000-0000-0000-000000000001"))
+        var player = await _playerRepository.Get(query.Id);
+        return new GetPlayerByIdResponse
         {
-            var player = await _playerRepository.Get(Guid.Parse("00000000-0000-0000-0000-000000000001"));
-            return new GetPlayerByIdResponse
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
-                FirstName = string.Empty,
-                LastName = string.Empty,
-                SecondLastName = null,
-                BirthDate = new DateTime(2000, 1, 1),
-                Gender = Gender.OTHER
-            };
-        }
-        
-        if (query.Id == Guid.Parse("00000000-0000-0000-0000-000000000002"))
-        {
-            var player = await _playerRepository.Get(Guid.Parse("00000000-0000-0000-0000-000000000002"));
-            return new GetPlayerByIdResponse
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000002"),
-                FirstName = "John",
-                LastName = "String",
-                SecondLastName = "Doe",
-                BirthDate = new DateTime(2000, 1, 1),
-                Gender = Gender.MALE
-            };
-        }
-        
-        if (query.Id == Guid.Parse("00000000-0000-0000-0000-000000000003"))
-        {
-            var player = await _playerRepository.Get(Guid.Parse("00000000-0000-0000-0000-000000000003"));
-            return new GetPlayerByIdResponse
-            {
-                Id = Guid.Parse("00000000-0000-0000-0000-000000000003"),
-                FirstName = "Jane",
-                LastName = "Smith",
-                SecondLastName = "Doe",
-                BirthDate = new DateTime(2000, 1, 1),
-                Gender = Gender.FEMALE
-            };
-        }
-
-        return null;
+            Id = player.Id,
+            FirstName = player.FirstName,
+            LastName = player.LastName,
+            SecondLastName = player.SecondLastName,
+            Birthdate = player.Birthdate,
+            Gender = player.Gender
+        };
     }
 }
 
@@ -62,7 +29,7 @@ public class GetPlayerByIdResponse
     public string FirstName { get; set; }
     public string LastName { get; set; }
     public string? SecondLastName { get; set; }
-    public DateTime BirthDate { get; set; }
+    public DateTime Birthdate { get; set; }
     public Gender Gender { get; set; }
 }
 

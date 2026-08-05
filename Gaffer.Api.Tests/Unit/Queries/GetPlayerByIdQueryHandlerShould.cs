@@ -39,7 +39,7 @@ public class GetPlayerByIdQueryHandlerShould
         response.FirstName.Should().Be(firstName);
         response.LastName.Should().Be(lastName);
         response.SecondLastName.Should().Be(secondLastName);
-        response.BirthDate.Should().Be(birthDate);
+        response.Birthdate.Should().Be(birthDate);
         response.Gender.Should().Be(gender);
     }
 
@@ -58,14 +58,14 @@ public class GetPlayerByIdQueryHandlerShould
         response.Id.Should().Be(newGuid);
         response.FirstName.Should().Be(string.Empty);
         response.LastName.Should().Be(string.Empty);
-        response.BirthDate.Should().Be(birthDate);
+        response.Birthdate.Should().Be(birthDate);
         response.Gender.Should().Be(Gender.OTHER);
     }
     
     [Test]
     public async Task CallTheRepositoryWithId2ToGetAPlayerById2()
     {
-        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         var birthDate = new DateTime(2000, 1, 1);    
         var player = new Player(newGuid, "John", "String", "Doe", birthDate, Gender.MALE);
         _repository.Get(newGuid).Returns(player);
@@ -77,7 +77,7 @@ public class GetPlayerByIdQueryHandlerShould
         response.FirstName.Should().Be("John");
         response.LastName.Should().Be("String");
         response.SecondLastName.Should().Be("Doe");
-        response.BirthDate.Should().Be(birthDate);
+        response.Birthdate.Should().Be(birthDate);
         response.Gender.Should().Be(Gender.MALE);
     }
     
@@ -96,7 +96,7 @@ public class GetPlayerByIdQueryHandlerShould
         response.FirstName.Should().Be("Jane");
         response.LastName.Should().Be("Smith");
         response.SecondLastName.Should().Be("Doe");
-        response.BirthDate.Should().Be(birthDate);
+        response.Birthdate.Should().Be(birthDate);
         response.Gender.Should().Be(Gender.FEMALE);
     }
 }
