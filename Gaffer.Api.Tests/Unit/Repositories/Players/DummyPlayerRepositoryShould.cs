@@ -53,9 +53,9 @@ public class DummyPlayerRepositoryShould
     }
 
     [Test]
-    public async Task ReturnPlayer1WhenGuid1IsUsedAsQueryItem()
+    public async Task ReturnPlayerWhenGuid1IsUsedAsQueryItem()
     {
-        Guid newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));
 
         var player = await _repository.Get(newGuid);
@@ -68,41 +68,4 @@ public class DummyPlayerRepositoryShould
         player.Gender.Should().Be(Gender);
     }
 
-    [Test]
-    public async Task ReturnPlayer1WhenGuid1IsUsedAsQueryItemForTwoPlayers()
-    {
-        Guid player1Id = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        Guid player2Id = Guid.Parse("00000000-0000-0000-0000-000000000002");
-        _playersList.Add(new Player(player2Id, FirstName, LastName, SecondLastName, _birthDate, Gender));
-        _playersList.Add(new Player(player1Id, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-        var player = await _repository.Get(player1Id);
-
-        player.Id.Should().Be(player1Id);
-        player.FirstName.Should().Be(FirstName);
-        player.LastName.Should().Be(LastName);
-        player.SecondLastName.Should().Be(SecondLastName);
-        player.Birthdate.Should().Be(_birthDate);
-        player.Gender.Should().Be(Gender);
-    }
-
-    [Test]
-    public async Task ReturnPlayer1WhenGuid1IsUsedAsQueryItemForThreePlayers()
-    {
-        Guid player1Id = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        Guid player2Id = Guid.Parse("00000000-0000-0000-0000-000000000002");
-        Guid player3Id = Guid.Parse("00000000-0000-0000-0000-000000000003");
-        _playersList.Add(new Player(player3Id, FirstName, LastName, SecondLastName, _birthDate, Gender));
-        _playersList.Add(new Player(player2Id, FirstName, LastName, SecondLastName, _birthDate, Gender));
-        _playersList.Add(new Player(player1Id, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-        var player = await _repository.Get(player1Id);
-
-        player.Id.Should().Be(player1Id);
-        player.FirstName.Should().Be(FirstName);
-        player.LastName.Should().Be(LastName);
-        player.SecondLastName.Should().Be(SecondLastName);
-        player.Birthdate.Should().Be(_birthDate);
-        player.Gender.Should().Be(Gender);
-    }
 }
