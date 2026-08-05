@@ -5,7 +5,7 @@ using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Infrastructure;
 
-public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider, List<Player> players)
+public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider, List<Player>? players)
     : IPlayerRepository
 {
     private List<Player> _players = players;
@@ -13,8 +13,10 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<Player> Get(Guid newGuid)
     {
-        if (players == null || players.Count == 0) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
+        if (DatabaseIsEmpty()) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
         var player = players.FirstOrDefault(player => player.Id == newGuid);
         return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
     }
+
+    private bool DatabaseIsEmpty() => players == null || players.Count == 0;
 }
