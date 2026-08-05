@@ -55,9 +55,8 @@ public class DummyPlayerRepositoryShould
         DateTime birthDate = new DateTime(2000, 1, 1);
         var players = new List<Player>{ new(newGuid, firstName, lastName, secondLastName, birthDate, gender) };
         _repository = new DummyPlayerRepository(_connectionProvider, players);
-        var playerId = Guid.NewGuid();
 
-        var player = await _repository.Get(playerId);
+        var player = await _repository.Get(newGuid);
 
         player.Id.Should().Be(newGuid);
         player.FirstName.Should().Be(firstName);
