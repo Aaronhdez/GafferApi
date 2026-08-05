@@ -14,8 +14,8 @@ namespace Gaffer.Api.Tests.Acceptance.UseCases;
 
 public class GetPlayerInformationFeatureShould
 {
-    private IDatabaseConnectionProvider _dbConnectionProvider;
-    private IPlayerRepository _playerRepository;
+    private IDatabaseConnectionProvider _dummyConnectionProvider;
+    private IPlayerRepository _dummyPlayerRepository;
     private IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private PlayerController _playerController;
     private CreatePlayerCommandHandler _createPlayerCommandHandler;
@@ -25,21 +25,25 @@ public class GetPlayerInformationFeatureShould
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
     private readonly DateTime _birthDate = new(1990, 01, 01);
+    private List<Player> _playersList;
     private const Gender Gender = Shared.Gender.MALE;
     [SetUp]
     public void Setup()
     {
-        _dbConnectionProvider = new DummyConnectionProvider();
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
-        _playerRepository = new DummyPlayerRepository(_dbConnectionProvider, new List<Player> {player});
-        _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_playerRepository);
-        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
+        _dummyConnectionProvider = new DummyConnectionProvider();
+        _playersList = new List<Player>();
+        _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
+        _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
+        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
     }
 
     [Test]
     public async Task GetAPlayerFromRepositoryByUsingItsId()
     {
+        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _playersList.Add(player);
+        
         var response = await _playerController.GetBy(_playerId);
 
         response.Id.Should().Be(_playerId);
