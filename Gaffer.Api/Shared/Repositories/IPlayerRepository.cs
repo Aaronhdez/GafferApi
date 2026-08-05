@@ -4,7 +4,7 @@ namespace Gaffer.Api.Shared.Repositories;
 
 public interface IPlayerRepository
 {
-    Task<Player> Get(Guid newGuid);
+    Task<Player> Get(Guid newGuid, CancellationToken cancellationToken);
 }
 
 public class PlayerNotFoundException(string message) : Exception(message);

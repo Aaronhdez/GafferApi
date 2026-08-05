@@ -7,7 +7,7 @@ namespace Gaffer.Api.Infrastructure;
 public class PlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
 {
     private readonly IDatabaseConnectionProvider _dbConnectionProvider = dbConnectionProvider;
-    public Task<Player> Get(Guid newGuid)
+    public Task<Player> Get(Guid newGuid, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
     }

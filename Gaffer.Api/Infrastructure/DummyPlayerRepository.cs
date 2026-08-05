@@ -11,7 +11,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     private List<Player> _players = players;
     public IDatabaseConnectionProvider DbConnectionProvider { get; } = dbConnectionProvider;
 
-    public Task<Player> Get(Guid newGuid)
+    public Task<Player> Get(Guid newGuid, CancellationToken cancellationToken)
     {
         if (DatabaseIsEmpty()) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
         var player = players.FirstOrDefault(player => player.Id == newGuid);

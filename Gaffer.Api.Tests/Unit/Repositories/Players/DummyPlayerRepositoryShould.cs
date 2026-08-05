@@ -19,10 +19,12 @@ public class DummyPlayerRepositoryShould
     private const Gender Gender = Shared.Gender.MALE;
     private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
     private List<Player> _playersList;
+    private CancellationToken _cancellationToken;
 
     [SetUp]
     public void Setup()
     {
+        _cancellationToken = CancellationToken.None;
         _connectionProvider = Substitute.For<IDatabaseConnectionProvider>();
         _playersList = new List<Player>();
         _repository = new DummyPlayerRepository(_connectionProvider, _playersList);
@@ -35,7 +37,7 @@ public class DummyPlayerRepositoryShould
         _repository = new DummyPlayerRepository(_connectionProvider, null);
         var playerId = Guid.NewGuid();
 
-        var result = async () => await _repository.Get(playerId);
+        var result = async () => await _repository.Get(playerId, _cancellationToken);
 
         await result.Should().ThrowAsync<PlayerNotFoundException>();
     }
@@ -47,7 +49,7 @@ public class DummyPlayerRepositoryShould
         _repository = new DummyPlayerRepository(_connectionProvider, players);
         var playerId = Guid.NewGuid();
 
-        var result = async () => await _repository.Get(playerId);
+        var result = async () => await _repository.Get(playerId, _cancellationToken);
 
         await result.Should().ThrowAsync<PlayerNotFoundException>();
     }
@@ -59,7 +61,7 @@ public class DummyPlayerRepositoryShould
         var playerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
         _playersList.Add(new Player(playerId, FirstName, LastName, SecondLastName, _birthDate, Gender));
 
-        var result = async () => await _repository.Get(otherPlayerId);
+        var result = async () => await _repository.Get(otherPlayerId, _cancellationToken);
 
         await result.Should().ThrowAsync<PlayerNotFoundException>();
     }
@@ -70,7 +72,7 @@ public class DummyPlayerRepositoryShould
         var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
         _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));
 
-        var player = await _repository.Get(newGuid);
+        var player = await _repository.Get(newGuid, _cancellationToken);
 
         player.Id.Should().Be(newGuid);
         player.FirstName.Should().Be(FirstName);
