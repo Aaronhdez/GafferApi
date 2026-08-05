@@ -41,7 +41,7 @@ public class GetPlayerInformationFeatureShould
     public class DummyDatabase : GetPlayerInformationFeatureShould
     {
         [Test]
-        public async Task Dummy_GetAPlayerFromRepositoryByUsingItsId()
+        public async Task GetAPlayerFromRepositoryByUsingItsId()
         {
             var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
             _playersList.Add(player);
@@ -53,6 +53,17 @@ public class GetPlayerInformationFeatureShould
             response.LastName.Should().Be(LastName);
             response.BirthDate.Should().Be(_birthDate);
             response.Gender.Should().Be(Gender);
+        }
+
+        [Test]
+        public void ThrowExceptionIfPlayerDoesNotExist()
+        {
+            var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+            _playersList.Add(player);
+            
+            var result = async () => await _playerController.GetBy(_playerId);
+            
+            result.Should().ThrowAsync<PlayerNotFoundException>();
         }
     }
 
