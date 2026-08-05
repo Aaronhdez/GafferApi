@@ -21,9 +21,21 @@ public class DummyPlayerRepositoryShould
 
 
     [Test]
-    public async Task ThrowExceptionWhenDatabaseIsEmpty()
+    public async Task ThrowExceptionWhenDatabaseIsNull()
     {
         _repository = new DummyPlayerRepository(_connectionProvider, null);
+        var playerId = Guid.NewGuid();
+
+        var result = async () => await _repository.Get(playerId);
+
+        await result.Should().ThrowAsync<PlayerNotFoundException>();
+    }
+
+    [Test]
+    public async Task ThrowExceptionWhenDatabaseIsEmpty()
+    {
+        var players = new List<Player>();
+        _repository = new DummyPlayerRepository(_connectionProvider, players);
         var playerId = Guid.NewGuid();
 
         var result = async () => await _repository.Get(playerId);
