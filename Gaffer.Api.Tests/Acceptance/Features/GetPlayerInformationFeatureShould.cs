@@ -25,6 +25,7 @@ public class GetPlayerInformationFeatureShould
     private readonly DateTime _birthDate = new(1990, 01, 01);
     private List<Player> _playersList;
     private const Gender Gender = Shared.Gender.MALE;
+
     [SetUp]
     public void Setup()
     {
@@ -36,18 +37,29 @@ public class GetPlayerInformationFeatureShould
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
     }
 
-    [Test]
-    public async Task GetAPlayerFromRepositoryByUsingItsId()
+    [TestFixture]
+    public class DummyDatabase : GetPlayerInformationFeatureShould
     {
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
-        _playersList.Add(player);
-        
-        var response = await _playerController.GetBy(_playerId);
+        [Test]
+        public async Task Dummy_GetAPlayerFromRepositoryByUsingItsId()
+        {
+            var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+            _playersList.Add(player);
 
-        response.Id.Should().Be(_playerId);
-        response.FirstName.Should().Be(FirstName);
-        response.LastName.Should().Be(LastName);
-        response.BirthDate.Should().Be(_birthDate);
-        response.Gender.Should().Be(Gender);
+            var response = await _playerController.GetBy(_playerId);
+
+            response.Id.Should().Be(_playerId);
+            response.FirstName.Should().Be(FirstName);
+            response.LastName.Should().Be(LastName);
+            response.BirthDate.Should().Be(_birthDate);
+            response.Gender.Should().Be(Gender);
+        }
+    }
+
+    [Ignore("Not implemented")]
+    [TestFixture]
+    public class MySqlDatabase : GetPlayerInformationFeatureShould
+    {
+        
     }
 }
