@@ -18,7 +18,7 @@ public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository) : IQu
             FirstName = string.Empty,
             LastName = string.Empty,
             SecondLastName = null,
-            BirthDate = DateTime.UtcNow,
+            BirthDate = new DateTime(2000, 1, 1),
             Gender = Gender.OTHER
         };
     }
