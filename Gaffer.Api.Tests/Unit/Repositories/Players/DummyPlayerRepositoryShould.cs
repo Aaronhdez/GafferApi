@@ -91,4 +91,32 @@ public class DummyPlayerRepositoryShould
         player.Birthdate.Should().Be(birthDate);
         player.Gender.Should().Be(gender);
     }
+    
+    [Test]
+    public async Task ReturnPlayer1WhenGuid1IsUsedAsQueryItemForThreePlayers()
+    {
+        const string firstName = "John";
+        const string lastName = "Doe";
+        const string? secondLastName = "Doe";
+        const Gender gender = Gender.MALE;
+        DateTime birthDate = new DateTime(2000, 1, 1);
+        Guid player1Id = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        Guid player2Id = Guid.Parse("00000000-0000-0000-0000-000000000002");
+        Guid player3Id = Guid.Parse("00000000-0000-0000-0000-000000000003");
+        var player1 = new Player(player1Id, firstName, lastName, secondLastName, birthDate, gender);
+        var player2 = new Player(player2Id, firstName, lastName, secondLastName, birthDate, gender);
+        var player3 = new Player(player3Id, firstName, lastName, secondLastName, birthDate, gender);
+        
+        var players = new List<Player> { player2, player3, player1 };
+        _repository = new DummyPlayerRepository(_connectionProvider, players);
+
+        var player = await _repository.Get(player1Id);
+
+        player.Id.Should().Be(player1Id);
+        player.FirstName.Should().Be(firstName);
+        player.LastName.Should().Be(lastName);
+        player.SecondLastName.Should().Be(secondLastName);
+        player.Birthdate.Should().Be(birthDate);
+        player.Gender.Should().Be(gender);
+    }
 }
