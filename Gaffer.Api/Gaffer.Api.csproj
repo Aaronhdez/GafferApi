@@ -68,9 +68,6 @@
         <None Include="bin\Debug\net10.0\appsettings.json" />
         <None Include="nswag.json" />
     </ItemGroup>
-    <ItemGroup>
-      <Folder Include="Shared\" />
-    </ItemGroup>
     <Target Name="NSwag" BeforeTargets="AfterBuild" Condition="'$(Configuration)' != 'Debug' And '$(OS)' == 'Windows_NT'">
         <Exec ConsoleToMSBuild="true" ContinueOnError="true" Command="$(NSwagExe_Net90) run nswag.json /variables:Configuration=$(Configuration)">
             <Output TaskParameter="ExitCode" PropertyName="NSwagExitCode" />
