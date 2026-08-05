@@ -18,11 +18,12 @@ public static class DatabaseStartup
         var infrastructureOptions = configuration.GetSection("DatabaseConfig");
         services.Configure<DatabaseConfig>(infrastructureOptions);
         var dbConfig = infrastructureOptions.Get<DatabaseConfig>();
+        
         if (dbConfig is not { Enabled: true } || string.IsNullOrEmpty(dbConfig.ConnectionString)) {
             AddDummyConnector(services);
             return;
         }
-
+        
         var sqlConnectionProvider = new SqlConnectionProvider(dbConfig.ConnectionString);
         if (!ConnectionIsUp(sqlConnectionProvider)) {
             AddDummyConnector(services);

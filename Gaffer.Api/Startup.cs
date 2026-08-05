@@ -2,6 +2,8 @@
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
+using Gaffer.Api.Commands;
+using Gaffer.Api.Queries;
 using Gaffer.Api.Startups;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -41,6 +43,8 @@ public class Startup(IConfiguration configuration)
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         services.ConfigureDatabase(configuration);
+        services.AddScoped<IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>, GetPlayerByIdQueryHandler>();
+        //services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
         //services.AddHealthChecks(_configuration);
         //services.ConfigureSherlock(configuration);
         //services.ConfigureServices(configuration);
@@ -50,7 +54,8 @@ public class Startup(IConfiguration configuration)
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)
     {
-        if (env.IsDevelopment()) {
+        if (env.IsDevelopment())
+        {
             app.UseDeveloperExceptionPage();
         }
 

@@ -18,7 +18,7 @@ public class PlayerController(
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
         var player = await _getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
-        return new GetPlayerResponse(player.Id, player.FirstName, player.LastName, player.SecondLastName, player.BirthDate, player.Gender);
+        return new GetPlayerResponse(player.Id, player.FirstName, player.LastName, player.SecondLastName, player.Birthdate, player.Gender);
     }
 
     [HttpPost("")]
