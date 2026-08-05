@@ -15,9 +15,13 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         if (players == null) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
         if (players.Count == 0) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
-        if (newGuid == Guid.Parse("00000000-0000-0000-0000-000000000001"))
+        if (players.Count == 1 && newGuid == Guid.Parse("00000000-0000-0000-0000-000000000001"))
         {
             return Task.FromResult(players[0]);
+        }
+        if (players.Count > 1 && newGuid == Guid.Parse("00000000-0000-0000-0000-000000000001"))
+        {
+            return Task.FromResult(players[1]);
         }
 
         throw new NotImplementedException();
