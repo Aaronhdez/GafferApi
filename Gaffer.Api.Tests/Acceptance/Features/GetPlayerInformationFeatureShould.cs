@@ -7,10 +7,8 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
-using MySqlConnector;
-using NSubstitute;
 
-namespace Gaffer.Api.Tests.Acceptance.UseCases;
+namespace Gaffer.Api.Tests.Acceptance.Features;
 
 public class GetPlayerInformationFeatureShould
 {
