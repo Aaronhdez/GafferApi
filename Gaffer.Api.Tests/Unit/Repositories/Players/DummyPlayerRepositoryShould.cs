@@ -148,6 +148,16 @@ public class DummyPlayerRepositoryShould
             result.Should().Contain(player2);
             result.Should().Contain(player3);
         }
+        
+        [Test]
+        public async Task ThrowExceptionWhenDatabaseIsNull()
+        {
+            _repository = new DummyPlayerRepository(_connectionProvider, null);
+            
+            var result = async () => await _repository.Get(new PlayerSearchCriteria(), _cancellationToken);
+
+            await result.Should().ThrowAsync<DatabaseNotReadyException>();
+        }
     }
 
 
