@@ -17,8 +17,7 @@ public class CreatePlayerFeatureShould
     private IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private PlayerController _playerController;
-    
-    private Guid _playerId = Guid.Parse("00000000-0000-0000-0000-000000000000");
+
     private const string FirstName = "John";
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
