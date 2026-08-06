@@ -34,7 +34,7 @@ public class CreatePlayerFeatureShould
         _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
         _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, null);
+        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
     }
 
     [Test]
@@ -42,10 +42,10 @@ public class CreatePlayerFeatureShould
     {
         var createPlayerRequest = new CreatePlayerRequest(FirstName, LastName, SecondLastName, _birthDate, Gender);
 
-        await _playerController.Create(createPlayerRequest);
+        var playerId = await _playerController.Create(createPlayerRequest);
         
-        var response = await _playerController.GetBy(_playerId);
-        response.Id.Should().Be(_playerId);
+        var response = await _playerController.GetBy(playerId);
+        response.Id.Should().Be(playerId);
         response.FirstName.Should().Be(FirstName);
         response.LastName.Should().Be(LastName);
         response.BirthDate.Should().Be(_birthDate);
