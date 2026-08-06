@@ -158,7 +158,7 @@ public class DummyPlayerRepositoryShould
             
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
             
-            result.Count.Should().Be(1);
+            result.Count.Should().Be(2);
             result.First().Id.Should().Be(player1.Id);
             result.First().FirstName.Should().Be(player1.FirstName);
             result.First().LastName.Should().Be(player1.LastName);
