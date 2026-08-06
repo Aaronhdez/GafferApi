@@ -32,7 +32,7 @@ public class DummyPlayerRepositoryShould
 
 
     [TestFixture]
-    public class WhenCreatingAPlayerInDummyRepository : DummyPlayerRepositoryShould
+    public class WhenGettingAPlayerInDummyRepository : DummyPlayerRepositoryShould
     {
         [Test]
         public async Task ThrowExceptionWhenDatabaseIsNull()
@@ -117,6 +117,18 @@ public class DummyPlayerRepositoryShould
             var result = async () => await _repository.Save(player, _cancellationToken);
 
             await result.Should().ThrowAsync<DatabaseNotReadyException>();
+        }
+    }
+
+    [TestFixture]
+    public class WhenGettingPlayersUsingSearchCriteriaInDummyRepository : DummyPlayerRepositoryShould
+    {
+        [Test]
+        public async Task ReturnEmptyListWhenSearchCriteriaAndDatabaseAreBothEmpty()
+        {
+            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            
+            result.Should().BeEmpty();
         }
     }
 
