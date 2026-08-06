@@ -56,6 +56,27 @@ public class PlayerControllerShould
     }
 
     [Test]
+    public async Task CallAQueryToSearchAllPlayersWithIdFilter()
+    {
+        var newGuid = Guid.NewGuid();
+        var guidFilter = new SearchPlayersFilter() { Name = "Id", Value = $"{newGuid}" };
+        var guidQueryFilter = new QueryFilter() { Name = guidFilter.Name, Value = guidFilter.Value };
+        var searchPLayersRequest = new SearchPlayersRequest
+            { Filters = new List<SearchPlayersFilter>() { guidFilter } };
+        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SearchPlayerResult>
+            {
+                new(newGuid, null, null, null, default, Gender.MALE)
+            });
+
+        await _controller.Search(searchPLayersRequest);
+
+        await _searchPlayersQueryHandler.Received(1)
+            .Handle(Arg.Is<SearchPlayersQuery>(spq => spq.Filters.Contains(guidQueryFilter)),
+                Arg.Any<CancellationToken>());
+    }
+
+    [Test]
     public async Task CallACommandToCreateAPlayerById()
     {
         const string firstName = "John";
