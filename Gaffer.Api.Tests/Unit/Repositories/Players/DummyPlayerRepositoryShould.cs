@@ -146,6 +146,31 @@ public class DummyPlayerRepositoryShould
             result.First().SecondLastName.Should().Be(player.SecondLastName);
             result.First().Birthdate.Should().Be(player.Birthdate);
             result.First().Gender.Should().Be(player.Gender);
+        }        
+        
+        [Test]
+        public async Task ReturnTwoPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
+        {
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            _playersList.Add(player1);
+            _playersList.Add(player2);
+            
+            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            
+            result.Count.Should().Be(1);
+            result.First().Id.Should().Be(player1.Id);
+            result.First().FirstName.Should().Be(player1.FirstName);
+            result.First().LastName.Should().Be(player1.LastName);
+            result.First().SecondLastName.Should().Be(player1.SecondLastName);
+            result.First().Birthdate.Should().Be(player1.Birthdate);
+            result.First().Gender.Should().Be(player1.Gender);
+            result.Last().Id.Should().Be(player2.Id);
+            result.Last().FirstName.Should().Be(player2.FirstName);
+            result.Last().LastName.Should().Be(player2.LastName);
+            result.Last().SecondLastName.Should().Be(player2.SecondLastName);
+            result.Last().Birthdate.Should().Be(player2.Birthdate);
+            result.Last().Gender.Should().Be(player2.Gender);
         }
     }
 
