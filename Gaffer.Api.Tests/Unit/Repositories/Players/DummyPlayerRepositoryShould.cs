@@ -42,7 +42,7 @@ public class DummyPlayerRepositoryShould
 
             var result = async () => await _repository.Get(playerId, _cancellationToken);
 
-            await result.Should().ThrowAsync<PlayerNotFoundException>();
+            await result.Should().ThrowAsync<DatabaseNotReadyException>();
         }
 
         [Test]

@@ -13,6 +13,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<Player> Get(Guid newGuid, CancellationToken cancellationToken)
     {
+        if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
         if (DatabaseIsEmpty()) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
         var player = players.FirstOrDefault(player => player.Id == newGuid);
         return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
@@ -20,11 +21,11 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task Save(Player player, CancellationToken cancellationToken)
     {
-        if(DatabaseIsNull()) throw new DatabaseNotReadyException($"Player with id {player.Id} not found");
+        if(DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
         _players.Add(player);
         return Task.CompletedTask;
     }
 
     private bool DatabaseIsNull() => players == null;
-    private bool DatabaseIsEmpty() => DatabaseIsNull() || players.Count == 0;
+    private bool DatabaseIsEmpty() => players.Count == 0;
 }
