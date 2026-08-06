@@ -33,9 +33,20 @@ public class PlayerController(
         return createResult.Id;
     }
 
+    [HttpPost("search")]
     public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request)
     {
-        throw new NotImplementedException();
+        var queryResult = await searchPlayersQueryHandler.Handle(new SearchPlayersQuery(), CancellationToken.None);
+        return queryResult.Select(row => new SearchPlayerResponse
+            {
+                Id = row.Id,
+                FirstName = row.FirstName,
+                LastName = row.LastName,
+                SecondLastName = row.SecondLastName,
+                BirthDate = row.BirthDate,
+                Gender = row.Gender
+            })
+            .ToList();
     }
 }
 
@@ -50,7 +61,7 @@ public class SearchPlayerResponse
     public string LastName;
     public string? SecondLastName;
     public DateTime BirthDate;
-    public Gender Gende;
+    public Gender Gender;
 }
 
 public record CreatePlayerRequest(

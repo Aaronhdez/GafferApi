@@ -53,17 +53,8 @@ public class PlayerControllerShould
                     LastName = null,
                     SecondLastName = null,
                     BirthDate = default,
-                    Gende = Gender.MALE
-                },
-                new SearchPlayerResult
-                {
-                    Id = Guid.NewGuid(),
-                    FirstName = null,
-                    LastName = null,
-                    SecondLastName = null,
-                    BirthDate = default,
-                    Gende = Gender.MALE
-                },
+                    Gender = Gender.MALE
+                }
             });
 
         await _controller.Search(new SearchPlayersRequest());
