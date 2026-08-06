@@ -9,7 +9,12 @@ public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
 {
     public async Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken)
     {
-        var players = await playerRepository.Get(new PlayerSearchCriteria(), cancellationToken);
+        var searchCriteria = new PlayerSearchCriteria();
+        foreach (var queryFilter in query.Filters)
+        {
+            searchCriteria.criteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
+        }
+        var players = await playerRepository.Get(searchCriteria, cancellationToken);
         return players.Select(player
                 => new SearchPlayerResult(player.Id, player.FirstName, player.LastName, player.SecondLastName,
                     player.Birthdate, Gender.MALE))
