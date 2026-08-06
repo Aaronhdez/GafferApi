@@ -12,6 +12,11 @@ public class PlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) 
         throw new NotImplementedException();
     }
 
+    public Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task Save(Player player, CancellationToken cancellationToken)
     {
         throw new NotImplementedException();
