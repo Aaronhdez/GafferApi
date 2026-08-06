@@ -106,6 +106,18 @@ public class DummyPlayerRepositoryShould
             _playersList[0].Birthdate.Should().Be(player.Birthdate);
             _playersList[0].Gender.Should().Be(player.Gender);
         }
+        
+        [Test]
+        public async Task ThrowExceptionWhenDatabaseIsNull()
+        {
+            var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            _repository = new DummyPlayerRepository(_connectionProvider, null);
+            var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+
+            var result = async () => await _repository.Save(player, _cancellationToken);
+
+            await result.Should().ThrowAsync<DatabaseNotReadyException>();
+        }
     }
 
 
