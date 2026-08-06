@@ -21,6 +21,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken)
     {
+        if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
         return Task.FromResult(_players);
     }
 
