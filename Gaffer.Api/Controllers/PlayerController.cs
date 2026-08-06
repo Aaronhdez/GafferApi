@@ -2,6 +2,7 @@
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Internal;
 using Namotion.Reflection;
 
 namespace Gaffer.Api.Controllers;
@@ -12,18 +13,21 @@ public class PlayerController(
     IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> getPlayerByIdQueryHandler,
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler) : ControllerBase
 {
-
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
-        var player = await getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
-        return new GetPlayerResponse(player.Id, player.FirstName, player.LastName, player.SecondLastName, player.Birthdate, player.Gender);
+        var queryResult = await getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
+        return new GetPlayerResponse(queryResult.Id, queryResult.FirstName, queryResult.LastName, queryResult.SecondLastName,
+            queryResult.Birthdate, queryResult.Gender);
     }
 
     [HttpPost("")]
     public async Task<Guid> Create([FromBody] CreatePlayerRequest request)
     {
-        throw new NotImplementedException();
+        var createResult = await createPlayerCommandHandler.Handle(
+            new CreatePlayerCommand(request.FirstName, request.LastName, request.SecondLastName, request.BirthDate,
+                request.Gender), CancellationToken.None);
+        return createResult.Id;
     }
 }
 

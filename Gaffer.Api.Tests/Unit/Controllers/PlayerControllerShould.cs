@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Commands;
+﻿using AwesomeAssertions;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
@@ -25,14 +26,13 @@ public class PlayerControllerShould
     public async Task CallAQueryToGetAPlayerById()
     {
         var newGuid = Guid.NewGuid();
-        _getPlayerByIdQueryHandler.Handle(Arg.Is<GetPlayerByIdQuery>(query => query.Id == newGuid),  
-                Arg.Any<CancellationToken>()).Returns(new GetPlayerByIdResponse { Id = newGuid });
+        _getPlayerByIdQueryHandler.Handle(Arg.Is<GetPlayerByIdQuery>(query => query.Id == newGuid), Arg.Any<CancellationToken>())
+            .Returns(new GetPlayerByIdResponse { Id = newGuid });
         
         await _controller.GetBy(newGuid);
         
         await _getPlayerByIdQueryHandler.Received(1).Handle(
-            Arg.Is<GetPlayerByIdQuery>(query => query != null 
-                                                && query.Id == newGuid), 
+            Arg.Is<GetPlayerByIdQuery>(query => query != null && query.Id == newGuid), 
             Arg.Any<CancellationToken>());
     }
     
@@ -44,23 +44,21 @@ public class PlayerControllerShould
         const string secondLastName = "Doe";
         DateTime birthDate = new(1990, 01, 01);
         const Gender gender = Gender.MALE;
-        
         var newGuid = Guid.NewGuid();
-        _createPlayerCommandHandler.Handle(Arg.Is<CreatePlayerCommand>(command =>
-                command != null
-                && command.FirstName == firstName
-                && command.LastName == lastName
-                && command.SecondLastName == secondLastName
-                && command.Gender == gender
-                && command.Birthdate == birthDate
-                    ), Arg.Any<CancellationToken>())
+        var request = new CreatePlayerRequest(firstName, lastName, secondLastName, birthDate, gender);
+        _createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CreatePlayerResponse(newGuid));
         
-        await _controller.GetBy(newGuid);
-        
-        await _getPlayerByIdQueryHandler.Received(1).Handle(
-            Arg.Is<GetPlayerByIdQuery>(query => query != null 
-                                                && query.Id == newGuid), 
-            Arg.Any<CancellationToken>());
+        var createResult = await _controller.Create(request);
+
+        createResult.Should().Be(newGuid);
+        await _createPlayerCommandHandler.Received(1).Handle(Arg.Is<CreatePlayerCommand>(command =>
+            command != null
+            && command.FirstName == request.FirstName
+            && command.LastName == request.LastName
+            && command.SecondLastName == request.SecondLastName
+            && command.Gender == request.Gender
+            && command.Birthdate == request.BirthDate
+        ), Arg.Any<CancellationToken>());
     }
 }
