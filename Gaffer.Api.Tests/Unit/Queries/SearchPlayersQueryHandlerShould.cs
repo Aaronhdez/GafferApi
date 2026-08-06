@@ -47,4 +47,21 @@ public class SearchPlayersQueryHandlerShould
         await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(1);
     }
+    
+    [Test]
+    public async Task ReturnTwoPlayersInformationWhenThereAreTwoPlayersFound()
+    {
+        var searchCriteria = new SearchPlayersQuery();
+        var players = new List<Player>();
+        var player1 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
+        var player2 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
+        players.Add(player1);
+        players.Add(player2);
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(players);
+        
+        var result = await _handler.Handle(searchCriteria, CancellationToken.None);
+
+        await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
+        result.Count.Should().Be(2);
+    }
 }
