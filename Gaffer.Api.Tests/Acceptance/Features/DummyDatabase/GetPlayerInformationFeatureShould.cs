@@ -37,40 +37,29 @@ public class GetPlayerInformationFeatureShould
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
     }
 
-    [TestFixture]
-    public class DummyDatabase : GetPlayerInformationFeatureShould
+    [Test]
+    public async Task GetAPlayerFromRepositoryByUsingItsId()
     {
-        [Test]
-        public async Task GetAPlayerFromRepositoryByUsingItsId()
-        {
-            var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
-            _playersList.Add(player);
+        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _playersList.Add(player);
 
-            var response = await _playerController.GetBy(_playerId);
+        var response = await _playerController.GetBy(_playerId);
 
-            response.Id.Should().Be(_playerId);
-            response.FirstName.Should().Be(FirstName);
-            response.LastName.Should().Be(LastName);
-            response.BirthDate.Should().Be(_birthDate);
-            response.Gender.Should().Be(Gender);
-        }
-
-        [Test]
-        public void ThrowExceptionIfPlayerDoesNotExist()
-        {
-            var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
-            _playersList.Add(player);
-            
-            var result = async () => await _playerController.GetBy(_playerId);
-            
-            result.Should().ThrowAsync<PlayerNotFoundException>();
-        }
+        response.Id.Should().Be(_playerId);
+        response.FirstName.Should().Be(FirstName);
+        response.LastName.Should().Be(LastName);
+        response.BirthDate.Should().Be(_birthDate);
+        response.Gender.Should().Be(Gender);
     }
 
-    [Ignore("Not implemented")]
-    [TestFixture]
-    public class MySqlDatabase : GetPlayerInformationFeatureShould
+    [Test]
+    public void ThrowExceptionIfPlayerDoesNotExist()
     {
-        
+        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _playersList.Add(player);
+
+        var result = async () => await _playerController.GetBy(_playerId);
+
+        result.Should().ThrowAsync<PlayerNotFoundException>();
     }
 }

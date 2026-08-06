@@ -26,4 +26,8 @@
       <ProjectReference Include="..\Gaffer.Api\Gaffer.Api.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Acceptance\Features\MySqlDatabase\" />
+    </ItemGroup>
+
 </Project>
