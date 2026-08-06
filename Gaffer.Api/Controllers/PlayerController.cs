@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Commands;
+﻿using DocumentFormat.OpenXml.Wordprocessing;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Microsoft.AspNetCore.Mvc;
@@ -52,6 +53,13 @@ public class PlayerController(
 
 public class SearchPlayersRequest
 {
+    public List<SearchPlayersFilter> Filters { get; set; }
+}
+
+public class SearchPlayersFilter
+{
+    public string Name { get; set; }
+    public string Value { get; set; }
 }
 
 public class SearchPlayerResponse

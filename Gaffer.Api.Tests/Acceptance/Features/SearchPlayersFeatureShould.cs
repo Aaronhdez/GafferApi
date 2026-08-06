@@ -51,10 +51,31 @@ public class SearchPlayersFeatureShould
 
         var response = await _playerController.Search(new SearchPlayersRequest());
 
-        
         response.Count.Should().Be(3);
         response.Should().Contain(x => x.Id == player1.Id);
         response.Should().Contain(x => x.Id == player2.Id);
         response.Should().Contain(x => x.Id == player3.Id);
+    }
+
+    [Test]
+    public async Task GetAllPlayersWhileSearchingWithIdFilter() {
+        var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _playersList.Add(player1);
+        _playersList.Add(player2);
+        _playersList.Add(player3);
+        var namePlayerFilter = new SearchPlayersFilter {
+            Name = "Id",
+            Value = $"{player2.Id}"
+        };
+        var searchPlayersRequest = new SearchPlayersRequest();
+        searchPlayersRequest.Filters = new List<SearchPlayersFilter>();
+        searchPlayersRequest.Filters.Add(namePlayerFilter);
+        
+        var response = await _playerController.Search(searchPlayersRequest);
+
+        response.Count.Should().Be(1);
+        response.Should().Contain(x => x.Id == player2.Id);
     }
 }
