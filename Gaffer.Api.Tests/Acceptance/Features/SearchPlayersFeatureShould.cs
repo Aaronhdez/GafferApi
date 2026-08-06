@@ -51,6 +51,7 @@ public class SearchPlayersFeatureShould
 
         var response = await _playerController.Search(new SearchPlayersRequest());
 
+        
         response.Count.Should().Be(3);
         response.Should().Contain(x => x.Id == player1.Id);
         response.Should().Contain(x => x.Id == player2.Id);
