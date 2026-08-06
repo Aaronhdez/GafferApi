@@ -23,6 +23,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         if (_players.Count == 1) return Task.FromResult(_players);
         if (_players.Count == 2) return Task.FromResult(_players);
+        if (_players.Count == 3) return Task.FromResult(_players);
         return Task.FromResult(new List<Player>());
     }
 
