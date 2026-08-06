@@ -21,7 +21,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        return Task.FromResult(new List<Player>());
     }
 
     public Task Save(Player player, CancellationToken cancellationToken)
