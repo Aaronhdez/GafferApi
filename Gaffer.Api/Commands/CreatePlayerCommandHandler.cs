@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Shared;
+﻿using Gaffer.Api.Domain;
+using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
@@ -15,9 +16,11 @@ public record CreatePlayerCommand(
 
 public class CreatePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>
 {
-    public Task<CreatePlayerResponse> Handle(CreatePlayerCommand command, CancellationToken cancellationToken)
+    public async Task<CreatePlayerResponse> Handle(CreatePlayerCommand command, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var newPlayer = new Player(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName, command.Birthdate, command.Gender);
+        await playerRepository.Save(newPlayer, cancellationToken);
+        return new CreatePlayerResponse(newPlayer.Id);
     }
 }
 

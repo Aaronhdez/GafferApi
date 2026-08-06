@@ -81,5 +81,22 @@ public class DummyPlayerRepositoryShould
         player.Birthdate.Should().Be(_birthDate);
         player.Gender.Should().Be(Gender);
     }
+    
+    [Test]
+    public async Task SaveAPlayer()
+    {
+        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+        var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        
+        await _repository.Save(player, _cancellationToken);
+        
+        _playersList.Count.Should().Be(1);
+        _playersList[0].Id.Should().Be(player.Id);
+        _playersList[0].FirstName.Should().Be(player.FirstName);
+        _playersList[0].LastName.Should().Be(player.LastName);
+        _playersList[0].SecondLastName.Should().Be(player.SecondLastName);
+        _playersList[0].Birthdate.Should().Be(player.Birthdate);
+        _playersList[0].Gender.Should().Be(player.Gender);
+    }
 
 }
