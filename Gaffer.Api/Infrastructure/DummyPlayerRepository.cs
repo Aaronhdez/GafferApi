@@ -18,5 +18,10 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
         return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
     }
 
+    public Task Save(Player player, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
+
     private bool DatabaseIsEmpty() => players == null || players.Count == 0;
 }

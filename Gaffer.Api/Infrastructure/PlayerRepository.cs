@@ -11,4 +11,9 @@ public class PlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) 
     {
         throw new NotImplementedException();
     }
+
+    public Task Save(Player player, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }
