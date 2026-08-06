@@ -20,9 +20,11 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task Save(Player player, CancellationToken cancellationToken)
     {
+        if(DatabaseIsNull()) throw new DatabaseNotReadyException($"Player with id {player.Id} not found");
         _players.Add(player);
         return Task.CompletedTask;
     }
 
-    private bool DatabaseIsEmpty() => players == null || players.Count == 0;
+    private bool DatabaseIsNull() => players == null;
+    private bool DatabaseIsEmpty() => DatabaseIsNull() || players.Count == 0;
 }
