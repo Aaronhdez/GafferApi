@@ -150,6 +150,25 @@ public class DummyPlayerRepositoryShould
         }
         
         [Test]
+        public async Task ReturnAllPlayersWhenGuidIsUsedAsSearchCriteria()
+        {
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            _playersList.Add(player1);
+            _playersList.Add(player2);
+            _playersList.Add(player3);
+            var searchCriteriaList = new List<SearchCriteria>();
+            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
+            var playerSearchCriteria = new PlayerSearchCriteria();
+            playerSearchCriteria.SearchCriteria = searchCriteriaList;
+            var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
+            
+            result.Count.Should().Be(1);
+            result.Should().Contain(player1);
+        }
+        
+        [Test]
         public async Task ThrowExceptionWhenDatabaseIsNull()
         {
             _repository = new DummyPlayerRepository(_connectionProvider, null);

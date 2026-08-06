@@ -10,6 +10,13 @@ public interface IPlayerRepository
 }
 
 public class PlayerSearchCriteria {
+    public List<SearchCriteria> SearchCriteria { get; set; }
+}
+
+public class SearchCriteria 
+{
+    public string Name { get; set; }
+    public string Value { get; set; }
 }
 
 public class PlayerNotFoundException(string message) : Exception(message);
