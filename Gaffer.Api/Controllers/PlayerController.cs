@@ -12,17 +12,16 @@ public class PlayerController(
     IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> getPlayerByIdQueryHandler,
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler) : ControllerBase
 {
-    private readonly IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler = getPlayerByIdQueryHandler;
 
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
-        var player = await _getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
+        var player = await getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
         return new GetPlayerResponse(player.Id, player.FirstName, player.LastName, player.SecondLastName, player.Birthdate, player.Gender);
     }
 
     [HttpPost("")]
-    public async Task<int> Create([FromBody] CreatePlayerRequest request)
+    public async Task<Guid> Create([FromBody] CreatePlayerRequest request)
     {
         throw new NotImplementedException();
     }
