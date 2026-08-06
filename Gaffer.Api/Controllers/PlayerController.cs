@@ -4,6 +4,7 @@ using Gaffer.Api.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Internal;
 using Namotion.Reflection;
+using NuGet.Protocol.Core.Types;
 
 namespace Gaffer.Api.Controllers;
 
@@ -11,13 +12,15 @@ namespace Gaffer.Api.Controllers;
 [ApiController]
 public class PlayerController(
     IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> getPlayerByIdQueryHandler,
-    ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler) : ControllerBase
+    ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
+    IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler) : ControllerBase
 {
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
         var queryResult = await getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
-        return new GetPlayerResponse(queryResult.Id, queryResult.FirstName, queryResult.LastName, queryResult.SecondLastName,
+        return new GetPlayerResponse(queryResult.Id, queryResult.FirstName, queryResult.LastName,
+            queryResult.SecondLastName,
             queryResult.Birthdate, queryResult.Gender);
     }
 
@@ -29,6 +32,25 @@ public class PlayerController(
                 request.Gender), CancellationToken.None);
         return createResult.Id;
     }
+
+    public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request)
+    {
+        throw new NotImplementedException();
+    }
+}
+
+public class SearchPlayersRequest
+{
+}
+
+public class SearchPlayerResponse
+{
+    public Guid Id;
+    public string FirstName;
+    public string LastName;
+    public string? SecondLastName;
+    public DateTime BirthDate;
+    public Gender Gende;
 }
 
 public record CreatePlayerRequest(

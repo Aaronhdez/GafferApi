@@ -33,7 +33,7 @@ public class CreatePlayerFeatureShould
         _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
         _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
+        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, null);
     }
 
     [Test]

@@ -19,7 +19,7 @@ public class PlayerControllerShould
     {
         _getPlayerByIdQueryHandler = Substitute.For<IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>>();
         _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
-        _controller = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler);
+        _controller = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, null);
     }
 
     [Test]
