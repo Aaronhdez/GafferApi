@@ -18,16 +18,15 @@ public class SearchPlayersQueryHandlerShould
     [SetUp]
     public void Setup()
     {
+        _players = new List<Player>();
         _repository = Substitute.For<IPlayerRepository>();
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
         _handler = new SearchPlayersQueryHandler(_repository);
     }
 
     [Test]
     public async Task ReturnEmptyInformationWhenNoPlayersFound()
     {
-        _players = new List<Player>();
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
-        
         var result = await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
 
         await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
@@ -43,63 +42,11 @@ public class SearchPlayersQueryHandlerShould
         _players.Add(player1);
         _players.Add(player2);
         _players.Add(player3);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
         
         var result = await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
 
         await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(_players.Count);
-        result.Should().Contain(spr => spr.Id == player1.Id);
-        result.Should().Contain(spr => spr.Id == player2.Id);
-        result.Should().Contain(spr => spr.Id == player3.Id);
-    }
-    
-    [Test]
-    public async Task ReturnOnePlayerInformationWhenThereIsOnePlayersFound()
-    {
-        var player1 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        _players.Add(player1);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
-        
-        var result = await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
-
-        await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
-        result.Count.Should().Be(1);
-        result.Should().Contain(spr => spr.Id == player1.Id);
-    }
-    
-    [Test]
-    public async Task ReturnTwoPlayersInformationWhenThereAreTwoPlayersFound()
-    {
-        var player1 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        var player2 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        _players.Add(player1);
-        _players.Add(player2);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
-        
-        var result = await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
-
-        await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
-        result.Count.Should().Be(2);
-        result.Should().Contain(spr => spr.Id == player1.Id);
-        result.Should().Contain(spr => spr.Id == player2.Id);
-    }
-    
-    [Test]
-    public async Task ReturnThreePlayersInformationWhenThereAreThreePlayersFound()
-    {
-        var player1 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        var player2 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        var player3 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001,1,1), Gender.MALE);
-        _players.Add(player1);
-        _players.Add(player2);
-        _players.Add(player3);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(_players);
-        
-        var result = await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
-
-        await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
-        result.Count.Should().Be(3);
         result.Should().Contain(spr => spr.Id == player1.Id);
         result.Should().Contain(spr => spr.Id == player2.Id);
         result.Should().Contain(spr => spr.Id == player3.Id);
