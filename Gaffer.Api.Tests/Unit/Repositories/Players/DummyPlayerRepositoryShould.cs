@@ -31,72 +31,82 @@ public class DummyPlayerRepositoryShould
     }
 
 
-    [Test]
-    public async Task ThrowExceptionWhenDatabaseIsNull()
+    [TestFixture]
+    public class WhenCreatingAPlayerInDummyRepository : DummyPlayerRepositoryShould
     {
-        _repository = new DummyPlayerRepository(_connectionProvider, null);
-        var playerId = Guid.NewGuid();
+        [Test]
+        public async Task ThrowExceptionWhenDatabaseIsNull()
+        {
+            _repository = new DummyPlayerRepository(_connectionProvider, null);
+            var playerId = Guid.NewGuid();
 
-        var result = async () => await _repository.Get(playerId, _cancellationToken);
+            var result = async () => await _repository.Get(playerId, _cancellationToken);
 
-        await result.Should().ThrowAsync<PlayerNotFoundException>();
+            await result.Should().ThrowAsync<PlayerNotFoundException>();
+        }
+
+        [Test]
+        public async Task ThrowExceptionWhenDatabaseIsEmpty()
+        {
+            var players = new List<Player>();
+            _repository = new DummyPlayerRepository(_connectionProvider, players);
+            var playerId = Guid.NewGuid();
+
+            var result = async () => await _repository.Get(playerId, _cancellationToken);
+
+            await result.Should().ThrowAsync<PlayerNotFoundException>();
+        }
+
+        [Test]
+        public async Task ThrowExceptionWhenPlayerIsNotFound()
+        {
+            var otherPlayerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var playerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
+            _playersList.Add(new Player(playerId, FirstName, LastName, SecondLastName, _birthDate, Gender));
+
+            var result = async () => await _repository.Get(otherPlayerId, _cancellationToken);
+
+            await result.Should().ThrowAsync<PlayerNotFoundException>();
+        }
+
+        [Test]
+        public async Task ReturnPlayerWhenGuidIsUsedAsQueryItem()
+        {
+            var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));
+
+            var player = await _repository.Get(newGuid, _cancellationToken);
+
+            player.Id.Should().Be(newGuid);
+            player.FirstName.Should().Be(FirstName);
+            player.LastName.Should().Be(LastName);
+            player.SecondLastName.Should().Be(SecondLastName);
+            player.Birthdate.Should().Be(_birthDate);
+            player.Gender.Should().Be(Gender);
+        }
     }
 
-    [Test]
-    public async Task ThrowExceptionWhenDatabaseIsEmpty()
+
+    [TestFixture]
+    public class WhenSavingAPlayerInDummyRepository : DummyPlayerRepositoryShould
     {
-        var players = new List<Player>();
-        _repository = new DummyPlayerRepository(_connectionProvider, players);
-        var playerId = Guid.NewGuid();
+        [Test]
+        public async Task SaveAPlayer()
+        {
+            var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
 
-        var result = async () => await _repository.Get(playerId, _cancellationToken);
+            await _repository.Save(player, _cancellationToken);
 
-        await result.Should().ThrowAsync<PlayerNotFoundException>();
-    }
-    
-    [Test]
-    public async Task ThrowExceptionWhenPlayerIsNotFound()
-    {
-        var otherPlayerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        var playerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
-        _playersList.Add(new Player(playerId, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-        var result = async () => await _repository.Get(otherPlayerId, _cancellationToken);
-
-        await result.Should().ThrowAsync<PlayerNotFoundException>();
+            _playersList.Count.Should().Be(1);
+            _playersList[0].Id.Should().Be(player.Id);
+            _playersList[0].FirstName.Should().Be(player.FirstName);
+            _playersList[0].LastName.Should().Be(player.LastName);
+            _playersList[0].SecondLastName.Should().Be(player.SecondLastName);
+            _playersList[0].Birthdate.Should().Be(player.Birthdate);
+            _playersList[0].Gender.Should().Be(player.Gender);
+        }
     }
 
-    [Test]
-    public async Task ReturnPlayerWhenGuidIsUsedAsQueryItem()
-    {
-        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-        var player = await _repository.Get(newGuid, _cancellationToken);
-
-        player.Id.Should().Be(newGuid);
-        player.FirstName.Should().Be(FirstName);
-        player.LastName.Should().Be(LastName);
-        player.SecondLastName.Should().Be(SecondLastName);
-        player.Birthdate.Should().Be(_birthDate);
-        player.Gender.Should().Be(Gender);
-    }
-    
-    [Test]
-    public async Task SaveAPlayer()
-    {
-        var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-        var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
-        
-        await _repository.Save(player, _cancellationToken);
-        
-        _playersList.Count.Should().Be(1);
-        _playersList[0].Id.Should().Be(player.Id);
-        _playersList[0].FirstName.Should().Be(player.FirstName);
-        _playersList[0].LastName.Should().Be(player.LastName);
-        _playersList[0].SecondLastName.Should().Be(player.SecondLastName);
-        _playersList[0].Birthdate.Should().Be(player.Birthdate);
-        _playersList[0].Gender.Should().Be(player.Gender);
-    }
 
 }

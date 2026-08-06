@@ -9,3 +9,4 @@ public interface IPlayerRepository
 }
 
 public class PlayerNotFoundException(string message) : Exception(message);
+public class DatabaseNotReadyException(string message) : Exception(message);
