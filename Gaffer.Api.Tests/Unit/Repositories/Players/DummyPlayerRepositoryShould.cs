@@ -132,49 +132,7 @@ public class DummyPlayerRepositoryShould
         }
         
         [Test]
-        public async Task ReturnAPlayerWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
-        {
-            var player = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            _playersList.Add(player);
-            
-            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
-            
-            result.Count.Should().Be(1);
-            result.First().Id.Should().Be(player.Id);
-            result.First().FirstName.Should().Be(player.FirstName);
-            result.First().LastName.Should().Be(player.LastName);
-            result.First().SecondLastName.Should().Be(player.SecondLastName);
-            result.First().Birthdate.Should().Be(player.Birthdate);
-            result.First().Gender.Should().Be(player.Gender);
-        }        
-        
-        [Test]
-        public async Task ReturnTwoPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
-        {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            _playersList.Add(player1);
-            _playersList.Add(player2);
-            
-            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
-            
-            result.Count.Should().Be(2);
-            result.First().Id.Should().Be(player1.Id);
-            result.First().FirstName.Should().Be(player1.FirstName);
-            result.First().LastName.Should().Be(player1.LastName);
-            result.First().SecondLastName.Should().Be(player1.SecondLastName);
-            result.First().Birthdate.Should().Be(player1.Birthdate);
-            result.First().Gender.Should().Be(player1.Gender);
-            result.Last().Id.Should().Be(player2.Id);
-            result.Last().FirstName.Should().Be(player2.FirstName);
-            result.Last().LastName.Should().Be(player2.LastName);
-            result.Last().SecondLastName.Should().Be(player2.SecondLastName);
-            result.Last().Birthdate.Should().Be(player2.Birthdate);
-            result.Last().Gender.Should().Be(player2.Gender);
-        }    
-        
-        [Test]
-        public async Task ReturnThreePlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
+        public async Task ReturnAllPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
         {
             var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
             var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
@@ -186,24 +144,9 @@ public class DummyPlayerRepositoryShould
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
             
             result.Count.Should().Be(3);
-            result[0].Id.Should().Be(player1.Id);
-            result[0].FirstName.Should().Be(player1.FirstName);
-            result[0].LastName.Should().Be(player1.LastName);
-            result[0].SecondLastName.Should().Be(player1.SecondLastName);
-            result[0].Birthdate.Should().Be(player1.Birthdate);
-            result[0].Gender.Should().Be(player1.Gender);
-            result[1].Id.Should().Be(player2.Id);
-            result[1].FirstName.Should().Be(player2.FirstName);
-            result[1].LastName.Should().Be(player2.LastName);
-            result[1].SecondLastName.Should().Be(player2.SecondLastName);
-            result[1].Birthdate.Should().Be(player2.Birthdate);
-            result[1].Gender.Should().Be(player2.Gender);
-            result[2].Id.Should().Be(player3.Id);
-            result[2].FirstName.Should().Be(player3.FirstName);
-            result[2].LastName.Should().Be(player3.LastName);
-            result[2].SecondLastName.Should().Be(player3.SecondLastName);
-            result[2].Birthdate.Should().Be(player3.Birthdate);
-            result[2].Gender.Should().Be(player3.Gender);
+            result.Should().Contain(player1);
+            result.Should().Contain(player2);
+            result.Should().Contain(player3);
         }
     }
 
