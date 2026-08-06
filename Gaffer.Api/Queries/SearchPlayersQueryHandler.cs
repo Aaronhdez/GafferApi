@@ -4,23 +4,26 @@ using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Queries;
 
-public class SearchPlayersQueryHandler(IPlayerRepository playerRepository) : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>
+public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
+    : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>
 {
-    public Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken)
+    public async Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var players = await playerRepository.Get(new PlayerSearchCriteria(), cancellationToken);
+        return players.Select(player
+                => new SearchPlayerResult(player.Id, player.FirstName, player.LastName, player.SecondLastName,
+                    player.Birthdate, Gender.MALE))
+            .ToList();
     }
 }
 
-public class SearchPlayerResult
-{
-    public Guid Id;
-    public string FirstName;
-    public string LastName;
-    public string? SecondLastName;
-    public DateTime BirthDate;
-    public Gender Gender;
-}
+public record SearchPlayerResult(
+    Guid Id,
+    string FirstName,
+    string LastName,
+    string? SecondLastName,
+    DateTime BirthDate,
+    Gender Gender);
 
 public class SearchPlayersQuery : IQuery<List<SearchPlayerResult>>
 {

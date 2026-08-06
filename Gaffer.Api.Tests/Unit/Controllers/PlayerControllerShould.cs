@@ -46,15 +46,7 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
-                new SearchPlayerResult
-                {
-                    Id = Guid.NewGuid(),
-                    FirstName = null,
-                    LastName = null,
-                    SecondLastName = null,
-                    BirthDate = default,
-                    Gender = Gender.MALE
-                }
+                new(Guid.NewGuid(), null, null, null, default, Gender.MALE)
             });
 
         await _controller.Search(new SearchPlayersRequest());
