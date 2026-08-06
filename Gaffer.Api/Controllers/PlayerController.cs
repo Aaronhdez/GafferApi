@@ -37,7 +37,11 @@ public class PlayerController(
     [HttpPost("search")]
     public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request)
     {
-        var queryResult = await searchPlayersQueryHandler.Handle(new SearchPlayersQuery(), CancellationToken.None);
+        var query = new SearchPlayersQuery();
+        foreach (var filter in request.Filters) {
+            query.Filters.Add(new QueryFilter { Name = filter.Name, Value = filter.Value });
+        }
+        var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
         return queryResult.Select(row => new SearchPlayerResponse
             {
                 Id = row.Id,
@@ -53,7 +57,7 @@ public class PlayerController(
 
 public class SearchPlayersRequest
 {
-    public List<SearchPlayersFilter> Filters { get; set; }
+    public List<SearchPlayersFilter> Filters { get; set; } = [];
 }
 
 public class SearchPlayersFilter

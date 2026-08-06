@@ -61,18 +61,20 @@ public class PlayerControllerShould
         var newGuid = Guid.NewGuid();
         var guidFilter = new SearchPlayersFilter() { Name = "Id", Value = $"{newGuid}" };
         var guidQueryFilter = new QueryFilter() { Name = guidFilter.Name, Value = guidFilter.Value };
-        var searchPLayersRequest = new SearchPlayersRequest
-            { Filters = new List<SearchPlayersFilter>() { guidFilter } };
+        var searchPlayersRequest = new SearchPlayersRequest();
+        searchPlayersRequest.Filters.Add(guidFilter);
         _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
                 new(newGuid, null, null, null, default, Gender.MALE)
             });
 
-        await _controller.Search(searchPLayersRequest);
+        await _controller.Search(searchPlayersRequest);
 
         await _searchPlayersQueryHandler.Received(1)
-            .Handle(Arg.Is<SearchPlayersQuery>(spq => spq.Filters.Contains(guidQueryFilter)),
+            .Handle(Arg.Is<SearchPlayersQuery>(spq =>
+                    spq.Filters[0].Name == guidFilter.Name
+                    && spq.Filters[0].Value == guidFilter.Value),
                 Arg.Any<CancellationToken>());
     }
 
