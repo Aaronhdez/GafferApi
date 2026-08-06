@@ -161,7 +161,7 @@ public class DummyPlayerRepositoryShould
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.SearchCriteria = searchCriteriaList;
+            playerSearchCriteria.criteriaList = searchCriteriaList;
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
             
             result.Count.Should().Be(1);

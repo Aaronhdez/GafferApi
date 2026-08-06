@@ -5,12 +5,13 @@ namespace Gaffer.Api.Shared.Repositories;
 public interface IPlayerRepository
 {
     Task<Player> Get(Guid newGuid, CancellationToken cancellationToken);
-    Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken);
+    Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken);
     Task Save(Player player, CancellationToken cancellationToken);
 }
 
-public class PlayerSearchCriteria {
-    public List<SearchCriteria> SearchCriteria { get; set; }
+public class PlayerSearchCriteria
+{
+    public List<SearchCriteria> criteriaList { get; set; } = [];
 }
 
 public class SearchCriteria 

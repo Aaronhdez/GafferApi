@@ -19,11 +19,24 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
         return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
     }
 
-    public Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken)
+    public Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
         if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
-        
+        if (criteria.criteriaList.Count > 0) {
+            return Task.FromResult(FilteredResults(criteria));
+        }
         return Task.FromResult(_players);
+    }
+
+    private List<Player> FilteredResults(PlayerSearchCriteria criteria)
+    {
+        var result = new List<Player>();
+        if (criteria.criteriaList.Exists(s => s.Name == "Id"))
+        {
+            var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "Id")?.Value;
+            result = _players.Where(player => player.Id.ToString() == idCriteria).ToList();
+        }
+        return result;
     }
 
     public Task Save(Player player, CancellationToken cancellationToken)
