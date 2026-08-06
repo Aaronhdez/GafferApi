@@ -51,4 +51,27 @@ public class SearchPlayersQueryHandlerShould
         result.Should().Contain(spr => spr.Id == player2.Id);
         result.Should().Contain(spr => spr.Id == player3.Id);
     }
+
+    [Test]
+    public async Task ReturnAPlayerInformationWhenIdCriteriaIsSpecified()
+    {
+        var player1 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001, 1, 1), Gender.MALE);
+        var player2 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001, 1, 1), Gender.MALE);
+        var player3 = new Player(Guid.NewGuid(), "John", "Doe", "Smith", new DateTime(2001, 1, 1), Gender.MALE);
+        _players.Add(player1);
+        _players.Add(player2);
+        _players.Add(player3);
+        var filteredPlayers = new List<Player>();
+        filteredPlayers.Add(player1);
+        var query = new SearchPlayersQuery();
+        query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{player1.Id}" });
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(filteredPlayers);
+        
+        var result = await _handler.Handle(query, CancellationToken.None);
+        
+
+        await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
+        result.Count.Should().Be(1);
+        result.Should().Contain(spr => spr.Id == player1.Id);
+    }
 }

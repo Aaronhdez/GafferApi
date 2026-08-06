@@ -27,7 +27,7 @@ public record SearchPlayerResult(
 
 public class SearchPlayersQuery : IQuery<List<SearchPlayerResult>>
 {
-    public List<QueryFilter> Filters { get; set; }
+    public List<QueryFilter> Filters { get; } = [];
 }
 
 public class QueryFilter
