@@ -21,6 +21,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
 
     public Task<List<Player>> Get(PlayerSearchCriteria searchCriteria, CancellationToken cancellationToken)
     {
+        if (_players.Count == 1) return Task.FromResult(_players);
         return Task.FromResult(new List<Player>());
     }
 

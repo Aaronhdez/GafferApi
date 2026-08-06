@@ -130,6 +130,23 @@ public class DummyPlayerRepositoryShould
             
             result.Should().BeEmpty();
         }
+        
+        [Test]
+        public async Task ReturnAPlayerWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
+        {
+            var player = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            _playersList.Add(player);
+            
+            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            
+            result.Count.Should().Be(1);
+            result.First().Id.Should().Be(player.Id);
+            result.First().FirstName.Should().Be(player.FirstName);
+            result.First().LastName.Should().Be(player.LastName);
+            result.First().SecondLastName.Should().Be(player.SecondLastName);
+            result.First().Birthdate.Should().Be(player.Birthdate);
+            result.First().Gender.Should().Be(player.Gender);
+        }
     }
 
 
