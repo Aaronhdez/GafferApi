@@ -7,9 +7,8 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
-using Gaffer.Api.Tests.Unit.Queries;
 
-namespace Gaffer.Api.Tests.Acceptance.Features;
+namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
 
 public class SearchPlayersFeatureShould
 {
