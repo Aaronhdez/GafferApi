@@ -23,7 +23,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
         return Task.FromResult(criteria.criteriaList.Count > 0 
-            ? FilteredResults(criteria) 
+            ? FilteredResults(criteria)
             : _players);
     }
 

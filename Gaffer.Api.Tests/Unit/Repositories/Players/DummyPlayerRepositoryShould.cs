@@ -58,18 +58,6 @@ public class DummyPlayerRepositoryShould
         }
 
         [Test]
-        public async Task ThrowExceptionWhenPlayerIsNotFound()
-        {
-            var otherPlayerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var playerId = Guid.Parse("00000000-0000-0000-0000-000000000002");
-            _playersList.Add(new Player(playerId, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-            var result = async () => await _repository.Get(otherPlayerId, _cancellationToken);
-
-            await result.Should().ThrowAsync<PlayerNotFoundException>();
-        }
-
-        [Test]
         public async Task ReturnPlayerWhenGuidIsUsedAsQueryItem()
         {
             var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");

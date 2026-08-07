@@ -3,12 +3,16 @@ using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Queries;
 
-public class GetPlayerByIdQueryHandler(IPlayerRepository playerRepository)
+public class SearchPlayerByIdQueryHandler(IPlayerRepository playerRepository)
     : IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>
 {
     public async Task<GetPlayerByIdResponse> Handle(GetPlayerByIdQuery query, CancellationToken cancellationToken)
     {
-        var player = await playerRepository.Get(query.Id, cancellationToken);
+        var searchCriteria = new PlayerSearchCriteria();
+        searchCriteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{query.Id}", });
+        var queryResult = await playerRepository.Get(searchCriteria, cancellationToken);
+        var player = queryResult.FirstOrDefault();
+        if (player == null) throw new PlayerNotFoundException($"Player with id {query.Id} not found");
         return new GetPlayerByIdResponse
         {
             Id = player.Id,
