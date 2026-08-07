@@ -78,4 +78,26 @@ public class SearchPlayersFeatureShould
         response.Count.Should().Be(1);
         response.Should().Contain(x => x.Id == player2.Id);
     }
+    
+    [Test]
+    public async Task GetAllPlayersWhileSearchingWithFirstNameFilter() {
+        var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+        _playersList.Add(player1);
+        _playersList.Add(player2);
+        _playersList.Add(player3);
+        var namePlayerFilter = new SearchPlayersFilter {
+            Name = "Name",
+            Value = $"{player2.FirstName}"
+        };
+        var searchPlayersRequest = new SearchPlayersRequest();
+        searchPlayersRequest.Filters = new List<SearchPlayersFilter>();
+        searchPlayersRequest.Filters.Add(namePlayerFilter);
+        
+        var response = await _playerController.Search(searchPlayersRequest);
+
+        response.Count.Should().Be(1);
+        response.Should().Contain(x => x.Id == player2.Id);
+    }
 }
