@@ -22,10 +22,9 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     public Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
         if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
-        if (criteria.criteriaList.Count > 0) {
-            return Task.FromResult(FilteredResults(criteria));
-        }
-        return Task.FromResult(_players);
+        return Task.FromResult(criteria.criteriaList.Count > 0 
+            ? FilteredResults(criteria) 
+            : _players);
     }
 
     private List<Player> FilteredResults(PlayerSearchCriteria criteria)
@@ -36,11 +35,11 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "Id")?.Value;
             result = _players.Where(player => player.Id.ToString() == idCriteria).ToList();
         }
-        if (criteria.criteriaList.Exists(s => s.Name == "FirstName"))
+        if (criteria.criteriaList.Exists(s => s.Name == "FirstName")) 
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "FirstName")?.Value;
             result = _players.Where(player => player.FirstName == idCriteria).ToList();
-        }
+        } 
         if (criteria.criteriaList.Exists(s => s.Name == "LastName"))
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "LastName")?.Value;
