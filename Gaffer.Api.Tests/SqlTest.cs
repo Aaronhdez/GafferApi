@@ -7,6 +7,7 @@ public abstract class BaseSqlTest
 {
    private readonly IDatabaseConnectionProvider _connectionProvider;
    private string? _dbConnection;
+   protected List<string> _tablesToDelete;
 
    protected BaseSqlTest()
    {
@@ -14,22 +15,14 @@ public abstract class BaseSqlTest
       _connectionProvider = new SqlConnectionProvider(_dbConnection);
    }
    
-   public async Task ClearDatabase(List<string> tablesToDelete)
-   {
-      await _connectionProvider.ClearAsync("Gaffer_Tests", tablesToDelete);
-   }
-
-}
-
-[TestFixture]
-public class GafferSqlTest : BaseSqlTest
-{
-   protected List<string> _tablesToDelete;
-   
-   [Ignore("Not Implemented")]
    [TearDown]
    public void TearDown()
    {
       _ = ClearDatabase(_tablesToDelete);
+   }
+   
+   public async Task ClearDatabase(List<string> tablesToDelete)
+   {
+      await _connectionProvider.ClearAsync("Gaffer_Tests", tablesToDelete);
    }
 }
