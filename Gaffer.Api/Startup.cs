@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared.Repositories;
@@ -45,7 +46,8 @@ public class Startup(IConfiguration configuration)
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         services.ConfigureDatabase(configuration);
-        services.AddScoped<IPlayerRepository, PlayerRepository>();
+        services.AddSingleton(typeof(List<Player> ), provider => Activator.CreateInstance(typeof(List < > ).MakeGenericType(typeof(Player))));
+        services.AddScoped<IPlayerRepository,DummyPlayerRepository>();
         services.AddScoped<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>, SearchPlayerByIdQueryHandler>();
         services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
         services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();

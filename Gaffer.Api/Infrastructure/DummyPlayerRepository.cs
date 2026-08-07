@@ -1,5 +1,4 @@
 ﻿using Gaffer.Api.Domain;
-using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 
@@ -22,20 +21,21 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     private List<Player> FilteredResults(PlayerSearchCriteria criteria)
     {
         var result = new List<Player>();
+        result.AddRange(_players);
         if (criteria.criteriaList.Exists(s => s.Name == "Id"))
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "Id")?.Value;
-            result = _players.Where(player => player.Id.ToString() == idCriteria).ToList();
+            result = result.Where(player => player.Id.ToString() == idCriteria).ToList();
         }
         if (criteria.criteriaList.Exists(s => s.Name == "FirstName")) 
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "FirstName")?.Value;
-            result = _players.Where(player => player.FirstName == idCriteria).ToList();
+            result = result.Where(player => player.FirstName == idCriteria).ToList();
         } 
         if (criteria.criteriaList.Exists(s => s.Name == "LastName"))
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "LastName")?.Value;
-            result = _players.Where(player => player.LastName == idCriteria).ToList();
+            result = result.Where(player => player.LastName == idCriteria).ToList();
         }
         return result;
     }

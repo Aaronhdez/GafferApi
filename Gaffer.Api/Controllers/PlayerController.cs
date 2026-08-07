@@ -13,7 +13,7 @@ public class PlayerController(
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler) : ControllerBase
 {
     [HttpGet("{id}")]
-    public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
+    public async Task<GetPlayerResponse> GetBy([FromRoute] Guid id)
     {
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
