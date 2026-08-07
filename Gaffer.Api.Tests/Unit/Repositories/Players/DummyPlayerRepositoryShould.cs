@@ -37,12 +37,12 @@ public class DummyPlayerRepositoryShould
         public async Task SaveAPlayer()
         {
             var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player = new Player(newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
 
             await _repository.Save(player, _cancellationToken);
 
             _playersList.Count.Should().Be(1);
-            _playersList[0].Id.Should().Be(player.Id);
+            _playersList[0].PlayerId.Should().Be(player.PlayerId);
             _playersList[0].FirstName.Should().Be(player.FirstName);
             _playersList[0].LastName.Should().Be(player.LastName);
             _playersList[0].SecondLastName.Should().Be(player.SecondLastName);
@@ -55,7 +55,7 @@ public class DummyPlayerRepositoryShould
         {
             var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
             _repository = new DummyPlayerRepository(_connectionProvider, null);
-            var player = new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player = new Player(newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
 
             var result = async () => await _repository.Save(player, _cancellationToken);
 
@@ -77,9 +77,9 @@ public class DummyPlayerRepositoryShould
         [Test]
         public async Task ReturnAllPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             _playersList.Add(player1);
             _playersList.Add(player2);
             _playersList.Add(player3);
@@ -95,14 +95,14 @@ public class DummyPlayerRepositoryShould
         [Test]
         public async Task ReturnAllPlayersWhenGuidIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             _playersList.Add(player1);
             _playersList.Add(player2);
             _playersList.Add(player3);
             var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
+            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.PlayerId}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
@@ -114,9 +114,9 @@ public class DummyPlayerRepositoryShould
         [Test]
         public async Task ReturnAPlayersWhenFirstNameIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player2 = new Player(Guid.NewGuid(), "Other", LastName, SecondLastName, _birthDate, Gender);
-            var player3 = new Player(Guid.NewGuid(), "Other2", LastName, SecondLastName, _birthDate, Gender);
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), "Other", LastName, SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), "Other2", LastName, SecondLastName, Gender, _birthDate);
             _playersList.Add(player1);
             _playersList.Add(player2);
             _playersList.Add(player3);
@@ -133,9 +133,9 @@ public class DummyPlayerRepositoryShould
         [Test]
         public async Task ReturnAPlayerWhenLastNameIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, _birthDate, Gender);
-            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, _birthDate, Gender);
-            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, _birthDate, Gender);
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
             _playersList.Add(player1);
             _playersList.Add(player2);
             _playersList.Add(player3);

@@ -6,11 +6,11 @@ namespace Gaffer.Api.Infrastructure;
 
 public class PlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
 {
-    private readonly IDatabaseConnectionProvider _dbConnectionProvider = dbConnectionProvider;
-
-    public Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
+    public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var query = "SELECT * FROM Players";
+        var result =  await dbConnectionProvider.QueryAsync<Player>(query, cancellationToken);
+        return result.ToList();
     }
 
     public Task Save(Player player, CancellationToken cancellationToken)

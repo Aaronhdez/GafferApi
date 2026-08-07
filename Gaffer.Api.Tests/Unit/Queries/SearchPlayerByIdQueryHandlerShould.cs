@@ -31,7 +31,7 @@ public class SearchPlayerByIdQueryHandlerShould
     [Test]
     public async Task CallTheRepositoryWithIdToGetAPlayerByItsId()
     {
-        var player = new Player(_newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player = new Player(_newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
         var searchCriteria = new PlayerSearchCriteria();
         searchCriteria.criteriaList.Add(new SearchCriteria
         {

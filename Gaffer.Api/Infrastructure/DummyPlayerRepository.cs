@@ -25,7 +25,7 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
         if (criteria.criteriaList.Exists(s => s.Name == "Id"))
         {
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "Id")?.Value;
-            result = result.Where(player => player.Id.ToString() == idCriteria).ToList();
+            result = result.Where(player => player.PlayerId.ToString() == idCriteria).ToList();
         }
         if (criteria.criteriaList.Exists(s => s.Name == "FirstName")) 
         {

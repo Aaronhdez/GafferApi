@@ -50,7 +50,6 @@ public class Startup(IConfiguration configuration)
         services.ConfigureRepositories(configuration);
         services.ConfigureActions();
         //services.AddHealthChecks(_configuration);
-        //services.ConfigureSherlock(configuration);
         //services.ConfigureServices(configuration);
         //services.ConfigureClients(configuration);
         //services.AddHttpFilteringModelBinder();

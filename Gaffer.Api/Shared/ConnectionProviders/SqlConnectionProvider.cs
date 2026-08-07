@@ -1,4 +1,5 @@
-using MySqlConnector;
+using Dapper;
+using MySql.Data.MySqlClient;
 
 namespace Gaffer.Api.Shared.ConnectionProviders;
 
@@ -20,5 +21,50 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         await command.ExecuteReaderAsync();
         await _sqlConnection.CloseAsync();
         return true;
+    }
+
+    public async Task ClearAsync(string database, List<string> tablesToDelete)
+    {
+        _sqlConnection.Open();
+        foreach (var table in tablesToDelete)
+        {
+            await _sqlConnection.ExecuteAsync("DELETE FROM @table", new { database });
+        }
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
+    }
+
+    public async Task CreateAsync(string database)
+    {
+        _sqlConnection.Open();
+        var result = await _sqlConnection.ExecuteAsync("CREATE Database if not exists @database", new { database });
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
+    }
+    
+    public async Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
+    {
+        _sqlConnection.Open();
+        var result = await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters);
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
+        return result;
+    }
+
+    public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
+    {
+        _sqlConnection.Open();
+        var result = await _sqlConnection.QueryAsync<T>(query, parameters);
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
+        return result.ToList();
+    }
+
+    public async Task ExecuteAsync(string query, object? parameters = null)
+    {
+        _sqlConnection.Open();
+        await _sqlConnection.ExecuteAsync(query, parameters);
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
     }
 }

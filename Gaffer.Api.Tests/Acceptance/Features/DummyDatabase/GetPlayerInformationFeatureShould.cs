@@ -43,7 +43,7 @@ public class GetPlayerInformationFeatureShould
     [Test]
     public async Task GetAPlayerFromRepositoryByUsingItsId()
     {
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player = new Player(_playerId, FirstName, LastName, SecondLastName, Gender, _birthDate);
         _playersList.Add(player);
 
         var response = await _playerController.GetBy(_playerId);
@@ -58,7 +58,7 @@ public class GetPlayerInformationFeatureShould
     [Test]
     public void ThrowExceptionIfPlayerDoesNotExist()
     {
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, _birthDate, Gender);
+        var player = new Player(_playerId, FirstName, LastName, SecondLastName, Gender, _birthDate);
         _playersList.Add(player);
 
         var result = async () => await _playerController.GetBy(_playerId);

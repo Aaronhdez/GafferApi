@@ -18,9 +18,9 @@ public class CreatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 {
     public async Task<CreatePlayerResponse> Handle(CreatePlayerCommand command, CancellationToken cancellationToken)
     {
-        var newPlayer = new Player(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName, command.Birthdate, command.Gender);
+        var newPlayer = new Player(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName, command.Gender, command.Birthdate);
         await playerRepository.Save(newPlayer, cancellationToken);
-        return new CreatePlayerResponse(newPlayer.Id);
+        return new CreatePlayerResponse(newPlayer.PlayerId);
     }
 }
 
