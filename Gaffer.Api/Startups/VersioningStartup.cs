@@ -1,6 +1,7 @@
 ﻿using Asp.Versioning;
 using Asp.Versioning.Conventions;
 using Gaffer.Api.Controllers;
+using Gaffer.Api.Domain;
 using Gaffer.Api.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +18,7 @@ public static class VersioningStartup {
             })
             .AddMvc(options => {
                 var apiVersionsDefinition = new GafferApiVersioningDefinition();
-                options.Conventions.Controller<DummyController>().HasApiVersions(apiVersionsDefinition.Versions);
+                options.Conventions.Controller<PlayerController>().HasApiVersions(apiVersionsDefinition.Versions);
             })
             .AddApiExplorer(options => {
                 options.GroupNameFormat = "'v'VVV";
