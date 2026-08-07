@@ -16,6 +16,7 @@ public class CreatePlayerFeatureShould
     private IPlayerRepository _dummyPlayerRepository;
     private IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
+    private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private PlayerController _playerController;
 
     private const string FirstName = "John";
@@ -33,7 +34,8 @@ public class CreatePlayerFeatureShould
         _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
         _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, null);
+        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
+        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
     }
 
     [Test]
