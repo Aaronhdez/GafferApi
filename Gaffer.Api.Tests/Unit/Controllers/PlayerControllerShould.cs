@@ -11,14 +11,14 @@ namespace Gaffer.Api.Tests.Unit.Controllers;
 public class PlayerControllerShould
 {
     private PlayerController _controller;
-    private IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler;
+    private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
 
     [SetUp]
     public void Setup()
     {
-        _getPlayerByIdQueryHandler = Substitute.For<IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>>();
+        _getPlayerByIdQueryHandler = Substitute.For<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>>();
         _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
         _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
         _controller = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler,

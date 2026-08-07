@@ -4,16 +4,16 @@ using Gaffer.Api.Shared.Repositories;
 namespace Gaffer.Api.Queries;
 
 public class SearchPlayerByIdQueryHandler(IPlayerRepository playerRepository)
-    : IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>
+    : IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>
 {
-    public async Task<GetPlayerByIdResponse> Handle(GetPlayerByIdQuery query, CancellationToken cancellationToken)
+    public async Task<SearchPlayerByIdResponse> Handle(SearchPlayerByIdQuery query, CancellationToken cancellationToken)
     {
         var searchCriteria = new PlayerSearchCriteria();
         searchCriteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{query.Id}", });
         var queryResult = await playerRepository.Get(searchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();
         if (player == null) throw new PlayerNotFoundException($"Player with id {query.Id} not found");
-        return new GetPlayerByIdResponse
+        return new SearchPlayerByIdResponse
         {
             Id = player.Id,
             FirstName = player.FirstName,
@@ -25,7 +25,7 @@ public class SearchPlayerByIdQueryHandler(IPlayerRepository playerRepository)
     }
 }
 
-public class GetPlayerByIdResponse
+public class SearchPlayerByIdResponse
 {
     public Guid Id { get; set; }
     public string FirstName { get; set; }
@@ -35,7 +35,7 @@ public class GetPlayerByIdResponse
     public Gender Gender { get; set; }
 }
 
-public record GetPlayerByIdQuery(Guid Id) : IQuery<GetPlayerByIdResponse>
+public record SearchPlayerByIdQuery(Guid Id) : IQuery<SearchPlayerByIdResponse>
 {
     public Guid Id { get; } = Id;
 }

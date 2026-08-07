@@ -4,7 +4,6 @@ namespace Gaffer.Api.Shared.Repositories;
 
 public interface IPlayerRepository
 {
-    Task<Player> Get(Guid newGuid, CancellationToken cancellationToken);
     Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken);
     Task Save(Player player, CancellationToken cancellationToken);
 }

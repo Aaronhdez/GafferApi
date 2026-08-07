@@ -40,7 +40,7 @@ public class SearchPlayerByIdQueryHandlerShould
         });
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), _cancellationToken).Returns([player]);
 
-        var response = await _handler.Handle(new GetPlayerByIdQuery(_newGuid), CancellationToken.None);
+        var response = await _handler.Handle(new SearchPlayerByIdQuery(_newGuid), CancellationToken.None);
 
         await _repository.Received(1)
             .Get(Arg.Is<PlayerSearchCriteria>(psc =>
@@ -61,7 +61,7 @@ public class SearchPlayerByIdQueryHandlerShould
         var otherPlayerId = Guid.Parse("00000000-0000-0000-0000-000000000001");
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), _cancellationToken).Returns([]);
 
-        var response = async () => await _handler.Handle(new GetPlayerByIdQuery(_newGuid), CancellationToken.None);
+        var response = async () => await _handler.Handle(new SearchPlayerByIdQuery(_newGuid), CancellationToken.None);
 
         await response.Should().ThrowAsync<PlayerNotFoundException>();
     }

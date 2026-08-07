@@ -29,52 +29,7 @@ public class DummyPlayerRepositoryShould
         _playersList = new List<Player>();
         _repository = new DummyPlayerRepository(_connectionProvider, _playersList);
     }
-
-
-    [TestFixture]
-    public class WhenGettingAPlayerInDummyRepository : DummyPlayerRepositoryShould
-    {
-        [Test]
-        public async Task ThrowExceptionWhenDatabaseIsNull()
-        {
-            _repository = new DummyPlayerRepository(_connectionProvider, null);
-            var playerId = Guid.NewGuid();
-
-            var result = async () => await _repository.Get(playerId, _cancellationToken);
-
-            await result.Should().ThrowAsync<DatabaseNotReadyException>();
-        }
-
-        [Test]
-        public async Task ThrowExceptionWhenDatabaseIsEmpty()
-        {
-            var players = new List<Player>();
-            _repository = new DummyPlayerRepository(_connectionProvider, players);
-            var playerId = Guid.NewGuid();
-
-            var result = async () => await _repository.Get(playerId, _cancellationToken);
-
-            await result.Should().ThrowAsync<PlayerNotFoundException>();
-        }
-
-        [Test]
-        public async Task ReturnPlayerWhenGuidIsUsedAsQueryItem()
-        {
-            var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-            _playersList.Add(new Player(newGuid, FirstName, LastName, SecondLastName, _birthDate, Gender));
-
-            var player = await _repository.Get(newGuid, _cancellationToken);
-
-            player.Id.Should().Be(newGuid);
-            player.FirstName.Should().Be(FirstName);
-            player.LastName.Should().Be(LastName);
-            player.SecondLastName.Should().Be(SecondLastName);
-            player.Birthdate.Should().Be(_birthDate);
-            player.Gender.Should().Be(Gender);
-        }
-    }
-
-
+    
     [TestFixture]
     public class WhenSavingAPlayerInDummyRepository : DummyPlayerRepositoryShould
     {

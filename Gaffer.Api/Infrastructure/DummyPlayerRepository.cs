@@ -11,14 +11,6 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
     private List<Player> _players = players;
     public IDatabaseConnectionProvider DbConnectionProvider { get; } = dbConnectionProvider;
 
-    public Task<Player> Get(Guid newGuid, CancellationToken cancellationToken)
-    {
-        if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");
-        if (DatabaseIsEmpty()) throw new PlayerNotFoundException($"Player with id {newGuid} not found");
-        var player = players.FirstOrDefault(player => player.Id == newGuid);
-        return player == null ? throw new PlayerNotFoundException($"Player with id {newGuid} not found") : Task.FromResult(player);
-    }
-
     public Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
         if (DatabaseIsNull()) throw new DatabaseNotReadyException($"Database not ready");

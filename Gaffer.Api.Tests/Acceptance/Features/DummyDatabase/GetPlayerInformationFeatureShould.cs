@@ -15,7 +15,7 @@ public class GetPlayerInformationFeatureShould
 {
     private IDatabaseConnectionProvider _dummyConnectionProvider;
     private IPlayerRepository _dummyPlayerRepository;
-    private IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse> _getPlayerByIdQueryHandler;
+    private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private PlayerController _playerController;
@@ -34,7 +34,7 @@ public class GetPlayerInformationFeatureShould
         _dummyConnectionProvider = new DummyConnectionProvider();
         _playersList = new List<Player>();
         _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
-        _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
+        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);

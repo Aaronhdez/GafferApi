@@ -46,7 +46,7 @@ public class Startup(IConfiguration configuration)
         services.ConfigureSwagger(Program.ProductContext.Name);
         services.ConfigureDatabase(configuration);
         services.AddScoped<IPlayerRepository, PlayerRepository>();
-        services.AddScoped<IQueryHandler<GetPlayerByIdQuery, GetPlayerByIdResponse>, GetPlayerByIdQueryHandler>();
+        services.AddScoped<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>, SearchPlayerByIdQueryHandler>();
         services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
         services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
         //services.AddHealthChecks(_configuration);
