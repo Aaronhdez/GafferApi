@@ -41,6 +41,11 @@ public class DummyPlayerRepository(IDatabaseConnectionProvider dbConnectionProvi
             var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "FirstName")?.Value;
             result = _players.Where(player => player.FirstName == idCriteria).ToList();
         }
+        if (criteria.criteriaList.Exists(s => s.Name == "LastName"))
+        {
+            var idCriteria = criteria.criteriaList.FirstOrDefault(c => c.Name == "LastName")?.Value;
+            result = _players.Where(player => player.LastName == idCriteria).ToList();
+        }
         return result;
     }
 
