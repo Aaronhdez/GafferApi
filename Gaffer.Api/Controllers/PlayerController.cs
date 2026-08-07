@@ -1,11 +1,7 @@
-﻿using DocumentFormat.OpenXml.Wordprocessing;
-using Gaffer.Api.Commands;
+﻿using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Internal;
-using Namotion.Reflection;
-using NuGet.Protocol.Core.Types;
 
 namespace Gaffer.Api.Controllers;
 

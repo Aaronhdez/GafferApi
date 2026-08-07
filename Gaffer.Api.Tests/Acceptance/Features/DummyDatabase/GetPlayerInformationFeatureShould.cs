@@ -37,7 +37,7 @@ public class GetPlayerInformationFeatureShould
         _getPlayerByIdQueryHandler = new GetPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, null);
+        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
     }
 
     [Test]
