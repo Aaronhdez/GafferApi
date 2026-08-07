@@ -29,15 +29,19 @@ public class PlayerControllerShould
     public async Task CallAQueryToGetAPlayerById()
     {
         var newGuid = Guid.NewGuid();
-        _getPlayerByIdQueryHandler.Handle(Arg.Is<GetPlayerByIdQuery>(query => query.Id == newGuid),
-                Arg.Any<CancellationToken>())
-            .Returns(new GetPlayerByIdResponse { Id = newGuid });
+        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+            .Returns(new List<SearchPlayerResult>
+            {
+                new(Guid.NewGuid(), null, null, null, default, Gender.MALE)
+            });;
 
         await _controller.GetBy(newGuid);
 
-        await _getPlayerByIdQueryHandler.Received(1).Handle(
-            Arg.Is<GetPlayerByIdQuery>(query => query != null && query.Id == newGuid),
-            Arg.Any<CancellationToken>());
+        await _searchPlayersQueryHandler.Received(1)
+            .Handle(Arg.Is<SearchPlayersQuery>(spq =>
+                    spq.Filters[0].Name == "Id"
+                    && spq.Filters[0].Value == $"{newGuid}"),
+                Arg.Any<CancellationToken>());
     }
 
     [Test]

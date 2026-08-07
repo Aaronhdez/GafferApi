@@ -19,10 +19,12 @@ public class PlayerController(
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromQuery] Guid id)
     {
-        var queryResult = await getPlayerByIdQueryHandler.Handle(new GetPlayerByIdQuery(id), CancellationToken.None);
-        return new GetPlayerResponse(queryResult.Id, queryResult.FirstName, queryResult.LastName,
-            queryResult.SecondLastName,
-            queryResult.Birthdate, queryResult.Gender);
+        var query = new SearchPlayersQuery();
+        query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
+        var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
+        return queryResult.Select(row => new GetPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
+            row.BirthDate, row.Gender
+        )).First();
     }
 
     [HttpPost("")]
@@ -38,9 +40,11 @@ public class PlayerController(
     public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request)
     {
         var query = new SearchPlayersQuery();
-        foreach (var filter in request.Filters) {
+        foreach (var filter in request.Filters)
+        {
             query.Filters.Add(new QueryFilter { Name = filter.Name, Value = filter.Value });
         }
+
         var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
         return queryResult.Select(row => new SearchPlayerResponse
             {
