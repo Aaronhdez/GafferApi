@@ -46,11 +46,9 @@ public class Startup(IConfiguration configuration)
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         services.ConfigureDatabase(configuration);
-        services.AddSingleton(typeof(List<Player> ), provider => Activator.CreateInstance(typeof(List < > ).MakeGenericType(typeof(Player))));
-        services.AddScoped<IPlayerRepository,DummyPlayerRepository>();
-        services.AddScoped<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>, SearchPlayerByIdQueryHandler>();
-        services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
-        services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
+        services.ConfigureDummyRepositories(configuration);
+        services.ConfigureRepositories(configuration);
+        services.ConfigureActions();
         //services.AddHealthChecks(_configuration);
         //services.ConfigureSherlock(configuration);
         //services.ConfigureServices(configuration);
