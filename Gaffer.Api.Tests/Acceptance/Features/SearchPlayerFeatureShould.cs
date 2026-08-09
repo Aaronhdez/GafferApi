@@ -11,7 +11,7 @@ using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Acceptance.Features;
 
-public class GetPlayerInformationFeatureShould
+public class SearchPlayerFeatureShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _playerRepository;
