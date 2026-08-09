@@ -14,19 +14,26 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     private SqlPlayerRepository _repository;
     private const string FirstName = "John";
     private const string LastName = "Doe";
-    private const string? SecondLastName = "Doe";
+    private const string SecondLastName = "Doe";
     private const Gender Gender = Shared.Gender.MALE;
     private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
 
     [SetUp]
-    public void Setup()
+    public async Task Setup()
     {
         _tablesToDelete = new List<string>
         {
             DbTableNames.PlayersTable,
         };
+        await ClearDatabase(_tablesToDelete);
         _databaseConnectionProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         _repository = new SqlPlayerRepository(_databaseConnectionProvider);
+    }
+    
+    [TearDown]
+    public async Task TearDown()
+    {
+        await ClearDatabase(_tablesToDelete);
     }
 
     [TestFixture]
@@ -46,25 +53,25 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            InsertAPlayerInDb(player1);
-            InsertAPlayerInDb(player2);
-            InsertAPlayerInDb(player3);
+            await InsertAPlayerInDb(player1);
+            await InsertAPlayerInDb(player2);
+            await InsertAPlayerInDb(player3);
             
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
             
             result.Count.Should().Be(3);
-            result.Should().Contain(player1);
-            result.Should().Contain(player2);
-            result.Should().Contain(player3);
+            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.PlayerId == player2.PlayerId);
+            result.Should().Contain(p => p.PlayerId == player3.PlayerId);
         }
 
-        private void InsertAPlayerInDb(Player player)
+        private async Task InsertAPlayerInDb(Player player)
         {
-            var query = "INSERT INTO Players (PlayerId, FirstName, LastName, SecondLastName, Gender, _birthDate) " +
-                        "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate)";
-            _databaseConnectionProvider.ExecuteAsync(query, new
+            var query = "INSERT INTO `Players` (PlayerId, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+                        "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
+            await _databaseConnectionProvider.ExecuteAsync(query, new
             {
-                player.PlayerId,
+                Id = player.PlayerId,
                 player.FirstName,
                 player.LastName,
                 player.SecondLastName,

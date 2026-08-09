@@ -15,12 +15,6 @@ public abstract class BaseSqlTest
       _connectionProvider = new SqlConnectionProvider(_dbConnection);
    }
    
-   [TearDown]
-   public void TearDown()
-   {
-      _ = ClearDatabase(_tablesToDelete);
-   }
-   
    public async Task ClearDatabase(List<string> tablesToDelete)
    {
       await _connectionProvider.ClearAsync("Gaffer_Tests", tablesToDelete);

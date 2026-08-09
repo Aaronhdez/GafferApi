@@ -32,7 +32,7 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         }
         foreach (var table in tablesToDelete)
         {
-            await _sqlConnection.ExecuteAsync("DELETE FROM @table", new { database });
+            await _sqlConnection.ExecuteAsync($"DELETE FROM `{table}`");
         }
         if (_sqlConnection.State == ConnectionState.Open)
         {
@@ -91,7 +91,7 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         {
             _sqlConnection.Open();
         }
-        await _sqlConnection.ExecuteAsync(query, parameters);
+        var result = await _sqlConnection.ExecuteAsync(query, parameters);
         if (_sqlConnection.State == ConnectionState.Open)
         {
             await _sqlConnection.CloseAsync();

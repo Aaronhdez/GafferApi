@@ -8,7 +8,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
 {
     public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
-        var query = "SELECT * FROM Players";
+        var query = "SELECT * FROM `Players`;";
         var result =  await dbConnectionProvider.QueryAsync<Player>(query, cancellationToken);
         return result.ToList();
     }

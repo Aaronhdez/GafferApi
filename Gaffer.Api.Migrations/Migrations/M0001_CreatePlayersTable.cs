@@ -11,8 +11,8 @@ public class M0001_CreatePlayersTable : Migration
             .WithColumn("PlayerId").AsGuid().NotNullable().PrimaryKey()
             .WithColumn("FirstName").AsString().NotNullable()
             .WithColumn("LastName").AsString().NotNullable()
-            .WithColumn("SecondLastName").AsString().NotNullable()
-            .WithColumn("Gender").AsInt32().NotNullable()
+            .WithColumn("SecondLastName").AsString().Nullable()
+            .WithColumn("Gender").AsString().NotNullable()
             .WithColumn("BirthDate").AsDateTime().NotNullable();
     }
 
