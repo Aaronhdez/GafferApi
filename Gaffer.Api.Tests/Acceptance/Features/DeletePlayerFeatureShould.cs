@@ -15,7 +15,6 @@ public class DeletePlayerFeatureShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _playerRepository;
-    private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
@@ -35,11 +34,10 @@ public class DeletePlayerFeatureShould
         var connectionString = TestDefaultValues.TestConnectionString;
         _connectionProvider = new SqlConnectionProvider(connectionString);
         _playerRepository = new SqlPlayerRepository(_connectionProvider);
-        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_playerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_playerRepository);
         _deletePlayerCommandHandler = new DeletePlayerCommandHandler(_playerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler,
+        _playerController = new PlayerController(_createPlayerCommandHandler,
             _searchPlayersQueryHandler, _deletePlayerCommandHandler);
     }
 

@@ -8,7 +8,6 @@ namespace Gaffer.Api.Controllers;
 [Route("api/v{version:apiVersion}/players")]
 [ApiController]
 public class PlayerController(
-    IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> getPlayerByIdQueryHandler,
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
     ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler = null) : ControllerBase

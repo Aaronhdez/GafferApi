@@ -20,8 +20,6 @@ public static class ActionsStartup
 
     private static void ConfigureQueries(IServiceCollection services)
     {
-        services
-            .AddScoped<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>, SearchPlayerByIdQueryHandler>();
         services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
     }
 }

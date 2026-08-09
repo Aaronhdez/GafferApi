@@ -15,7 +15,6 @@ public class SearchPlayersFeatureShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _dummyPlayerRepository;
-    private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private PlayerController _playerController;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery,List<SearchPlayerResult>> _searchPlayersQueryHandler;
@@ -36,10 +35,9 @@ public class SearchPlayersFeatureShould
         var connectionString = TestDefaultValues.TestConnectionString;
         _connectionProvider = new SqlConnectionProvider(connectionString);
         _dummyPlayerRepository = new SqlPlayerRepository(_connectionProvider);
-        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+        _playerController = new PlayerController(_createPlayerCommandHandler, _searchPlayersQueryHandler);
         
         player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, _birthDate);
         player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, _birthDate);

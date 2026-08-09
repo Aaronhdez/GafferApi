@@ -14,7 +14,6 @@ public class CreatePlayerFeatureShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _playerRepository;
-    private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private PlayerController _playerController;
@@ -31,10 +30,9 @@ public class CreatePlayerFeatureShould
         var connectionString = TestDefaultValues.TestConnectionString;
         _connectionProvider = new SqlConnectionProvider(connectionString);
         _playerRepository = new SqlPlayerRepository(_connectionProvider);
-        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_playerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_playerRepository);
-        _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+        _playerController = new PlayerController(_createPlayerCommandHandler, _searchPlayersQueryHandler);
     }
     
     [TearDown]
