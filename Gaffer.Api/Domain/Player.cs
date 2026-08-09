@@ -19,7 +19,7 @@ public class Player(
 
     public string GetFirstName()
     {
-        throw new NotImplementedException();
+        return FirstName;
     }
 
     public void SetFirstName(string newFirstName)
