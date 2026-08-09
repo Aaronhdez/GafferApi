@@ -63,8 +63,9 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         });
     }
 
-    public Task Delete(Guid id, CancellationToken cancellationToken)
+    public async Task Delete(Guid id, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var query = "DELETE FROM `Players` WHERE ID = @Id";
+        await dbConnectionProvider.ExecuteAsync(query, new { Id = id });
     }
 }

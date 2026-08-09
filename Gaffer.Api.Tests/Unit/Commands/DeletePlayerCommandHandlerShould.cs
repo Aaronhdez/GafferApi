@@ -21,8 +21,7 @@ public class DeletePlayerCommandHandlerShould
     [Test]
     public async Task DeleteAPlayerWhileBeingExecuted()
     {
-        var createPlayerCommand = new DeletePlayerCommand(
-            TestDefaultValues.EmptyPlayerId);
+        var createPlayerCommand = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
 
         await _handler.Handle(createPlayerCommand, CancellationToken.None);
 
