@@ -16,6 +16,8 @@ public static class ActionsStartup
     private static void ConfigureCommands(IServiceCollection services)
     {
         services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
+        services.AddScoped<ICommandHandler<DeletePlayerCommand>, DeletePlayerCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdatePlayerCommand>, UpdatePlayerCommandHandler>();
     }
 
     private static void ConfigureQueries(IServiceCollection services)
