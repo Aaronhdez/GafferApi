@@ -64,7 +64,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     }
 
     [TestFixture]
-    public class WhenGettingPlayersInSqlRepository : SqlPlayerRepositoryShould
+    public class WhenGettingPlayers : SqlPlayerRepositoryShould
     {
         [Test]
         public async Task ReturnEmptyListWhenSearchCriteriaAndDatabaseAreBothEmpty()
@@ -168,6 +168,29 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             result.Should().Contain(p => p.Id == player2.Id);
             result.Should().Contain(p => p.FirstName == player2.FirstName);
             result.Should().Contain(p => p.LastName == player2.LastName);
+        }
+    }
+    
+    [TestFixture]
+    public class WhenSavingAPlayer : SqlPlayerRepositoryShould
+    {
+        [Test]
+        public async Task SaveAPlayer()
+        {
+            var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
+            var player = new Player(newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
+
+            await _repository.Save(player, CancellationToken.None);
+
+            var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            
+            result.Count.Should().Be(1);
+            result[0].Id.Should().Be(player.Id);
+            result[0].FirstName.Should().Be(player.FirstName);
+            result[0].LastName.Should().Be(player.LastName);
+            result[0].SecondLastName.Should().Be(player.SecondLastName);
+            result[0].Birthdate.Should().Be(player.Birthdate);
+            result[0].Gender.Should().Be(player.Gender);
         }
     }
 }
