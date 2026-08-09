@@ -152,19 +152,19 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         public async Task ReturnAPlayerWhenFirstAndLastNameAreUsedAsConditionalSearchCriteria()
         {
             var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), "Paul", "Other", SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), "Michael", "Other2", SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}", CriteriaType = CriteriaType.AND});
-            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player2.LastName}", CriteriaType = CriteriaType.OR });
+            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}", CriteriaType = CriteriaType.OR });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
-            result.Count.Should().Be(1);
+            result.Count.Should().Be(2);
             result.Should().Contain(p => p.Id == player2.Id);
             result.Should().Contain(p => p.FirstName == player2.FirstName);
             result.Should().Contain(p => p.LastName == player2.LastName);

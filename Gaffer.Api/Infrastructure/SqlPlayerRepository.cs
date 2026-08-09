@@ -25,16 +25,22 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     
     private static string AddFilter(string query, string fieldName, PlayerSearchCriteria searchCriteria)
     {
-        var criteria = searchCriteria.criteriaList.Where(c => c.Name == fieldName).ToList();
-        if (criteria.Count == 0) return string.Empty;
+        var criteria = searchCriteria.criteriaList.FirstOrDefault(c => c.Name == fieldName);
+        if (criteria == null) return string.Empty;
         return !query.Contains("WHERE") ? 
-            "WHERE " + AppendFilter(fieldName, criteria) 
-            : "AND " + AppendFilter(fieldName, criteria);
+            "WHERE" + AggregateFilter(fieldName, criteria) 
+            : AppendFilter(fieldName, criteria);
     }
 
-    private static string AppendFilter(string fieldName, List<SearchCriteria> guids)
+    private static string AggregateFilter(string fieldName, SearchCriteria searchCriteria)
     {
-        var filter = guids.Aggregate($" {fieldName} IN ('", (current, criteria) => current + criteria.Value + "', ");
+        var filter = $" {fieldName} IN ('{searchCriteria.Value}', ";
+        return filter.Remove(filter.Length - 2) + ") ";
+    }
+
+    private static string AppendFilter(string fieldName, SearchCriteria searchCriteria)
+    {
+        var filter = $" {searchCriteria.CriteriaType.ToString()} {fieldName} IN ('{searchCriteria.Value}', ";
         return filter.Remove(filter.Length - 2) + ") ";
     }
 
