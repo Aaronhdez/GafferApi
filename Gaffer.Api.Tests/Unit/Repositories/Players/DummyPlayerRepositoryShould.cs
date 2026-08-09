@@ -42,7 +42,7 @@ public class DummyPlayerRepositoryShould
             await _repository.Save(player, _cancellationToken);
 
             _playersList.Count.Should().Be(1);
-            _playersList[0].PlayerId.Should().Be(player.PlayerId);
+            _playersList[0].Id.Should().Be(player.Id);
             _playersList[0].FirstName.Should().Be(player.FirstName);
             _playersList[0].LastName.Should().Be(player.LastName);
             _playersList[0].SecondLastName.Should().Be(player.SecondLastName);
@@ -102,7 +102,7 @@ public class DummyPlayerRepositoryShould
             _playersList.Add(player2);
             _playersList.Add(player3);
             var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.PlayerId}" });
+            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);

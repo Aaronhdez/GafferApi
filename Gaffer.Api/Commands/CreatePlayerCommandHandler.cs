@@ -20,7 +20,7 @@ public class CreatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     {
         var newPlayer = new Player(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName, command.Gender, command.Birthdate);
         await playerRepository.Save(newPlayer, cancellationToken);
-        return new CreatePlayerResponse(newPlayer.PlayerId);
+        return new CreatePlayerResponse(newPlayer.Id);
     }
 }
 

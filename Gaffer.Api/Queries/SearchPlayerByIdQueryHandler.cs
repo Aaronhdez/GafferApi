@@ -15,7 +15,7 @@ public class SearchPlayerByIdQueryHandler(IPlayerRepository playerRepository)
         if (player == null) throw new PlayerNotFoundException($"Player with id {query.Id} not found");
         return new SearchPlayerByIdResponse
         {
-            Id = player.PlayerId,
+            Id = player.Id,
             FirstName = player.FirstName,
             LastName = player.LastName,
             SecondLastName = player.SecondLastName,

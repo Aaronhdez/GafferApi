@@ -3,14 +3,14 @@
 namespace Gaffer.Api.Domain;
 
 public class Player(
-    Guid playerId,
+    Guid id,
     string firstName,
     string lastName,
     string secondLastName,
     Gender gender,
     DateTime birthdate)
 {
-    public Guid PlayerId { get; set; } = playerId;
+    public Guid Id { get; set; } = id;
     public string FirstName { get; set; } = firstName;
     public string LastName { get; set; } = lastName;
     public string? SecondLastName { get; set; } = secondLastName;
