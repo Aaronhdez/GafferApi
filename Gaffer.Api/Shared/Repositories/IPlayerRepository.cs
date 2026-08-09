@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Domain;
+﻿using Gaffer.Api.Commands;
+using Gaffer.Api.Domain;
 
 namespace Gaffer.Api.Shared.Repositories;
 
@@ -7,6 +8,7 @@ public interface IPlayerRepository
     Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken);
     Task Save(Player player, CancellationToken cancellationToken);
     Task Delete(Guid id, CancellationToken cancellationToken);
+    Task Update(Player player, CancellationToken any);
 }
 
 public class PlayerSearchCriteria

@@ -68,4 +68,9 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         var query = "DELETE FROM `Players` WHERE ID = @Id";
         await dbConnectionProvider.ExecuteAsync(query, new { Id = id });
     }
+
+    public async Task Update(Player player, CancellationToken any)
+    {
+        throw new NotImplementedException();
+    }
 }
