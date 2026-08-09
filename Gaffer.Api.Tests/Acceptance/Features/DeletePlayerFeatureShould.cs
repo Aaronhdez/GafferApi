@@ -57,7 +57,7 @@ public class DeletePlayerFeatureShould
         var result = await _playerController.Search(request);
         result.Should().BeEmpty();
     }
-
+    
     [TearDown]
     public async Task TearDown()
     {
