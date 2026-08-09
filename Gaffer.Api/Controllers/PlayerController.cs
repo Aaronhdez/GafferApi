@@ -10,7 +10,7 @@ namespace Gaffer.Api.Controllers;
 public class PlayerController(
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
-    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler = null) : ControllerBase
+    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler) : ControllerBase
 {
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromRoute] Guid id)

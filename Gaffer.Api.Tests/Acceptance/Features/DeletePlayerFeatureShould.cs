@@ -11,77 +11,28 @@ using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Acceptance.Features;
 
-public class DeletePlayerFeatureShould
+public class DeletePlayerFeatureShould : PlayerFeatureShould
 {
-    private IDatabaseConnectionProvider _connectionProvider;
-    private IPlayerRepository _playerRepository;
-    private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
-    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
-    private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
-    private PlayerController _playerController;
-
-    private Guid _playerId = TestDefaultValues.EmptyPlayerId;
-    private static readonly string FirstName = TestDefaultValues.DefaultFirstName;
-    private static readonly string LastName = TestDefaultValues.DefaultLastName;
-    private static readonly string SecondLastName = TestDefaultValues.DefaultSecondLastName;
-    private readonly DateTime _birthDate = TestDefaultValues.DefaultBirthDate;
-    private List<Player> _playersList;
-    private const Gender Gender = TestDefaultValues.DefaultGender;
-
-    [SetUp]
-    public void SetUp()
-    {
-        var connectionString = TestDefaultValues.TestConnectionString;
-        _connectionProvider = new SqlConnectionProvider(connectionString);
-        _playerRepository = new SqlPlayerRepository(_connectionProvider);
-        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
-        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_playerRepository);
-        _deletePlayerCommandHandler = new DeletePlayerCommandHandler(_playerRepository);
-        _playerController = new PlayerController(_createPlayerCommandHandler,
-            _searchPlayersQueryHandler, _deletePlayerCommandHandler);
-    }
-
     [Test]
     public async Task DeleteAPlayerOnCommand()
     {
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, Gender, _birthDate);
+        var player = new Player(PlayerId, FirstName, LastName, SecondLastName, Gender, BirthDate);
         await InsertAPlayerInDb(player);
-        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{_playerId}" };
+        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{PlayerId}" };
         var request = new SearchPlayersRequest();
         request.Filters.Add(filter);
 
-        await _playerController.Delete(new DeletePlayerRequest(_playerId));
+        await PlayerController.Delete(new DeletePlayerRequest(PlayerId));
         
-        var result = await _playerController.Search(request);
+        var result = await PlayerController.Search(request);
         result.Should().BeEmpty();
     }
     
     [Test]
     public void ThrowExceptionWhenPlayerNotFound()
     {       
-        var result = async () => await _playerController.Delete(new DeletePlayerRequest(Guid.NewGuid()));
+        var result = async () => await PlayerController.Delete(new DeletePlayerRequest(Guid.NewGuid()));
         
         result.Should().ThrowAsync<PlayerNotFoundException>();
-    }
-    
-    [TearDown]
-    public async Task TearDown()
-    {
-        await _connectionProvider.ClearAsync([TestDefaultValues.PlayersTableName]);
-    }
-
-    private async Task InsertAPlayerInDb(Player player)
-    {
-        var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
-                    "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
-        await _connectionProvider.ExecuteAsync(query, new
-        {
-            player.Id,
-            player.FirstName,
-            player.LastName,
-            player.SecondLastName,
-            Gender = player.Gender.ToString(),
-            BirthDate = player.Birthdate
-        });
     }
 }
