@@ -4,9 +4,10 @@ namespace Gaffer.Api.Commands;
 
 public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<DeletePlayerCommand, DeletePlayerResult>
 {
-    public Task<DeletePlayerResult> Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
+    public async Task<DeletePlayerResult> Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        await playerRepository.Delete(command.Id, cancellationToken);
+        return new DeletePlayerResult();
     }
 }
 
