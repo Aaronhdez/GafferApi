@@ -16,6 +16,7 @@ public class PlayerControllerShould
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
+    private ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult> _updatePlayerCommandHandler;
 
     [SetUp]
     public void Setup()
@@ -23,8 +24,9 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
         _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
         _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand, DeletePlayerResult>>();
+        _updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult>>();
         _controller = new PlayerController(_createPlayerCommandHandler,
-            _searchPlayersQueryHandler, _deletePlayerCommandHandler);
+            _searchPlayersQueryHandler, _deletePlayerCommandHandler, _updatePlayerCommandHandler);
     }
 
     [Test]
@@ -122,6 +124,21 @@ public class PlayerControllerShould
         _controller.Delete(new DeletePlayerRequest(id));
 
         await _deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
+            command != null && command.Id == id
+        ), Arg.Any<CancellationToken>());
+    }
+    
+    [Test]
+    public async Task CallACommandToUpdateAPlayerById()
+    {
+        var id = Guid.NewGuid();
+        _updatePlayerCommandHandler
+            .Handle(Arg.Is<UpdatePlayerCommand>(c => c.Id == id), Arg.Any<CancellationToken>())
+            .Returns(new UpdatePlayerResult());
+
+        await _controller.Delete(new DeletePlayerRequest(id));
+
+        await _updatePlayerCommandHandler.Received(1).Handle(Arg.Is<UpdatePlayerCommand>(command =>
             command != null && command.Id == id
         ), Arg.Any<CancellationToken>());
     }

@@ -10,15 +10,16 @@ namespace Gaffer.Api.Controllers;
 public class PlayerController(
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
-    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler) : ControllerBase
+    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler,
+    ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult> updatePlayerCommandHandler = null) : ControllerBase
 {
     [HttpGet("{id}")]
-    public async Task<GetPlayerResponse> GetBy([FromRoute] Guid id)
+    public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id)
     {
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
         var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
-        return queryResult.Select(row => new GetPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
+        return queryResult.Select(row => new SearchPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
             row.BirthDate, row.Gender
         )).First();
     }
@@ -42,15 +43,14 @@ public class PlayerController(
         }
 
         var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
-        return queryResult.Select(row => new SearchPlayerResponse
-            {
-                Id = row.Id,
-                FirstName = row.FirstName,
-                LastName = row.LastName,
-                SecondLastName = row.SecondLastName,
-                BirthDate = row.BirthDate,
-                Gender = row.Gender
-            })
+        return queryResult.Select(row => new SearchPlayerResponse(
+                row.Id,
+                row.FirstName,
+                row.LastName,
+                row.SecondLastName,
+                row.BirthDate,
+                row.Gender
+            ))
             .ToList();
     }
 
@@ -59,6 +59,16 @@ public class PlayerController(
     {
         await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(request.Id),  CancellationToken.None);
     }
+
+    [HttpDelete("id")]
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request)
+    {
+        await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand{Id = id}, CancellationToken.None);
+    }
+}
+
+public class UpdatePlayerRequest
+{
 }
 
 public class SearchPlayersRequest
@@ -72,25 +82,15 @@ public class SearchPlayersFilter
     public string Value { get; set; }
 }
 
-public class SearchPlayerResponse
-{
-    public Guid Id;
-    public string FirstName;
-    public string LastName;
-    public string? SecondLastName;
-    public DateTime BirthDate;
-    public Gender Gender;
-}
-
-public record CreatePlayerRequest(
+public record SearchPlayerResponse(
+    Guid Id,
     string FirstName,
     string LastName,
     string? SecondLastName,
     DateTime BirthDate,
     Gender Gender);
 
-public record GetPlayerResponse(
-    Guid Id,
+public record CreatePlayerRequest(
     string FirstName,
     string LastName,
     string? SecondLastName,
