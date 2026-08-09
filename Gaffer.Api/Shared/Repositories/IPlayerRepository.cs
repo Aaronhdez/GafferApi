@@ -6,6 +6,7 @@ public interface IPlayerRepository
 {
     Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken);
     Task Save(Player player, CancellationToken cancellationToken);
+    Task Delete(Guid id, CancellationToken cancellationToken);
 }
 
 public class PlayerSearchCriteria

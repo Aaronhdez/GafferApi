@@ -62,4 +62,9 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
             player.Birthdate
         });
     }
+
+    public Task Delete(Guid id, CancellationToken cancellationToken)
+    {
+        throw new NotImplementedException();
+    }
 }
