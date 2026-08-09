@@ -4,7 +4,7 @@ using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Infrastructure;
 
-public class PlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
+public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
 {
     public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {

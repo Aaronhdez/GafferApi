@@ -1,3 +1,4 @@
+using System.Data;
 using Dapper;
 using MySql.Data.MySqlClient;
 
@@ -25,46 +26,76 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
 
     public async Task ClearAsync(string database, List<string> tablesToDelete)
     {
-        _sqlConnection.Open();
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            _sqlConnection.Open();
+        }
         foreach (var table in tablesToDelete)
         {
             await _sqlConnection.ExecuteAsync("DELETE FROM @table", new { database });
         }
-        await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        if (_sqlConnection.State == ConnectionState.Open)
+        {
+            await _sqlConnection.CloseAsync();
+            await _sqlConnection.DisposeAsync();
+        }
     }
 
     public async Task CreateAsync(string database)
     {
-        _sqlConnection.Open();
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            _sqlConnection.Open();
+        }
         var result = await _sqlConnection.ExecuteAsync("CREATE Database if not exists @database", new { database });
-        await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        if (_sqlConnection.State == ConnectionState.Open)
+        {
+            await _sqlConnection.CloseAsync();
+            await _sqlConnection.DisposeAsync();
+        }
     }
     
     public async Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
     {
-        _sqlConnection.Open();
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            _sqlConnection.Open();
+        }
         var result = await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters);
-        await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        if (_sqlConnection.State == ConnectionState.Open)
+        {
+            await _sqlConnection.CloseAsync();
+            await _sqlConnection.DisposeAsync();
+        }
         return result;
     }
 
     public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
     {
-        _sqlConnection.Open();
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            _sqlConnection.Open();
+        }
         var result = await _sqlConnection.QueryAsync<T>(query, parameters);
-        await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        if (_sqlConnection.State == ConnectionState.Open)
+        {
+            await _sqlConnection.CloseAsync();
+            await _sqlConnection.DisposeAsync();
+        }
         return result.ToList();
     }
 
     public async Task ExecuteAsync(string query, object? parameters = null)
     {
-        _sqlConnection.Open();
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            _sqlConnection.Open();
+        }
         await _sqlConnection.ExecuteAsync(query, parameters);
-        await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        if (_sqlConnection.State == ConnectionState.Open)
+        {
+            await _sqlConnection.CloseAsync();
+            await _sqlConnection.DisposeAsync();
+        }
     }
 }
