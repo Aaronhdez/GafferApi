@@ -195,4 +195,22 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             result[0].Gender.Should().Be(player.Gender);
         }
     }
+
+    [TestFixture]
+    public class WhenDeletingPlayers : SqlPlayerRepositoryShould
+    {
+
+        [Test]
+        public async Task DeleteAPlayer()
+        {
+            await _repository.Delete(player1.Id, CancellationToken.None);
+
+            var result = await _repository.Get(new PlayerSearchCriteria
+            {
+                criteriaList = new List<SearchCriteria>(){ new() { Name = "Id", Value = $"{player1.Id}" } }
+            }, CancellationToken.None);
+            
+            result.Count.Should().Be(0);
+        }
+    }
 }
