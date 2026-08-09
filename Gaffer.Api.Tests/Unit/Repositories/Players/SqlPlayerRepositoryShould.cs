@@ -60,9 +60,9 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
 
             result.Count.Should().Be(3);
-            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
-            result.Should().Contain(p => p.PlayerId == player2.PlayerId);
-            result.Should().Contain(p => p.PlayerId == player3.PlayerId);
+            result.Should().Contain(p => p.Id == player1.Id);
+            result.Should().Contain(p => p.Id == player2.Id);
+            result.Should().Contain(p => p.Id == player3.Id);
         }
 
         [Test]
@@ -75,13 +75,14 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.PlayerId}" });
+            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
+            
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
-            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.Id == player1.Id);
         }
 
         [Test]
@@ -100,7 +101,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
-            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.Id == player1.Id);
             result.Should().Contain(p => p.FirstName == player1.FirstName);
         }
 
@@ -120,7 +121,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
-            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.Id == player1.Id);
             result.Should().Contain(p => p.FirstName == player1.FirstName);
             result.Should().Contain(p => p.LastName == player1.LastName);
         }
@@ -142,18 +143,18 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
-            result.Should().Contain(p => p.PlayerId == player2.PlayerId);
+            result.Should().Contain(p => p.Id == player2.Id);
             result.Should().Contain(p => p.FirstName == player2.FirstName);
             result.Should().Contain(p => p.LastName == player2.LastName);
         }
 
         private async Task InsertAPlayerInDb(Player player)
         {
-            var query = "INSERT INTO `Players` (PlayerId, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+            var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
                         "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
             await _databaseConnectionProvider.ExecuteAsync(query, new
             {
-                Id = player.PlayerId,
+                Id = player.Id,
                 player.FirstName,
                 player.LastName,
                 player.SecondLastName,

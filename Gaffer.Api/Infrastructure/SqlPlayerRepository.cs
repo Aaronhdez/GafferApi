@@ -14,22 +14,22 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return result.ToList();
     }
 
-    private string AddFilters(string query, PlayerSearchCriteria criteria)
+    private static string AddFilters(string query, PlayerSearchCriteria criteria)
     {
         if (criteria.criteriaList.Count == 0) return query;
-        query += AddFilter(query, "PlayerId", criteria.criteriaList.Where(c => c.Name == "Id").ToList());
-        query += AddFilter(query, "FirstName",
-            criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
-        query += AddFilter(query, "LastName", criteria.criteriaList.Where(c => c.Name == "LastName").ToList());
+        query += AddFilter(query, "Id", criteria);
+        query += AddFilter(query, "FirstName", criteria);
+        query += AddFilter(query, "LastName", criteria);
         return query;
     }
     
-    private static string AddFilter(string query, string fieldName, List<SearchCriteria>? guids)
+    private static string AddFilter(string query, string fieldName, PlayerSearchCriteria searchCriteria)
     {
-        if (guids == null || guids.Count == 0) return string.Empty;
+        var criteria = searchCriteria.criteriaList.Where(c => c.Name == fieldName).ToList();
+        if (criteria.Count == 0) return string.Empty;
         return !query.Contains("WHERE") ? 
-            "WHERE " + AppendFilter(fieldName, guids) 
-            : "AND " + AppendFilter(fieldName, guids);
+            "WHERE " + AppendFilter(fieldName, criteria) 
+            : "AND " + AppendFilter(fieldName, criteria);
     }
 
     private static string AppendFilter(string fieldName, List<SearchCriteria> guids)
