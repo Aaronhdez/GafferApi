@@ -60,7 +60,7 @@ public class PlayerController(
         await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(request.Id),  CancellationToken.None);
     }
 
-    [HttpDelete("id")]
+    [HttpPut("id")]
     public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request)
     {
         await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand {Id = id}, CancellationToken.None);
