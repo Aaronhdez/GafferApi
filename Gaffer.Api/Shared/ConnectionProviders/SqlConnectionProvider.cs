@@ -91,7 +91,7 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         {
             _sqlConnection.Open();
         }
-        var result = await _sqlConnection.ExecuteAsync(query, parameters);
+        await _sqlConnection.ExecuteAsync(query, parameters);
         if (_sqlConnection.State == ConnectionState.Open)
         {
             await _sqlConnection.CloseAsync();

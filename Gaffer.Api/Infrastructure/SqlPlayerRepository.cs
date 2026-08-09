@@ -35,8 +35,31 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return filter.Remove(filter.Length - 2) + ") ";
     }
 
-    public Task Save(Player player, CancellationToken cancellationToken)
+    public async Task Save(Player player, CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        const string query =
+            "INSERT INTO `Players` (" +
+                "Id, " +
+                "FirstName, " +
+                "LastName, " +
+                "SecondLastName, " +
+                "Gender, " +
+                "BirthDate) " +
+            "VALUES (" +
+                "@Id, " +
+                "@FirstName, " +
+                "@LastName, " +
+                "@SecondLastName, " +
+                "@Gender, " +
+                "@BirthDate);";
+        await dbConnectionProvider.ExecuteAsync(query, new
+        {
+            player.Id,
+            player.FirstName,
+            player.LastName,
+            player.SecondLastName,
+            player.Gender,
+            player.Birthdate
+        });
     }
 }

@@ -177,6 +177,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task SaveAPlayer()
         {
+            await ClearDatabase(_tablesToDelete);
             var newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
             var player = new Player(newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
 
