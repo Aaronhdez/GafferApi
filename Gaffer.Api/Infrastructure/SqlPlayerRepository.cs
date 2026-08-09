@@ -18,27 +18,20 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     {
         if (criteria.criteriaList.Count == 0) return query;
         return criteria.criteriaList.Aggregate(query, (current, criteriaItem)
-            => current + AddFilter(current, criteriaItem.Name, criteria));
+            => current + AddFilter(current, criteriaItem));
     }
 
-    private static string AddFilter(string query, string fieldName, PlayerSearchCriteria searchCriteria)
+    private static string AddFilter(string query, SearchCriteria? criteria)
     {
-        var criteria = searchCriteria.criteriaList.FirstOrDefault(c => c.Name == fieldName);
         if (criteria == null) return string.Empty;
         return !query.Contains("WHERE")
-            ? "WHERE" + AggregateFilter(fieldName, criteria)
-            : AppendFilter(fieldName, criteria);
-    }
-
-    private static string AggregateFilter(string fieldName, SearchCriteria searchCriteria)
-    {
-        var filter = $" {fieldName} IN ('{searchCriteria.Value}', ";
-        return filter.Remove(filter.Length - 2) + ") ";
+            ? "WHERE" + AppendFilter(criteria.Name, criteria)
+            : $"{criteria.CriteriaType.ToString()}" + AppendFilter(criteria.Name, criteria);
     }
 
     private static string AppendFilter(string fieldName, SearchCriteria searchCriteria)
     {
-        var filter = $" {searchCriteria.CriteriaType.ToString()} {fieldName} IN ('{searchCriteria.Value}', ";
+        var filter = $" {fieldName} IN ('{searchCriteria.Value}', ";
         return filter.Remove(filter.Length - 2) + ") ";
     }
 
