@@ -10,38 +10,69 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
         var baseQuery = "SELECT * FROM `Players`";
-        baseQuery = AddFilters(baseQuery, criteria) +";";
-        var result =  await dbConnectionProvider.QueryAsync<Player>(baseQuery, cancellationToken);
+        if (criteria.criteriaList.Count > 0)
+        {
+            baseQuery = AddFilters(baseQuery, criteria) + ";";
+        }
+
+        var result = await dbConnectionProvider.QueryAsync<Player>(baseQuery, cancellationToken);
         return result.ToList();
     }
 
     private string AddFilters(string query, PlayerSearchCriteria criteria)
     {
-        var guidFilters = AddGuidFilter("PlayerId", criteria.criteriaList.Where(c => c.Name == "Id").ToList());
-        var firstNameFilter = AddFirstNameFilter("FirstName", criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
-        var lastNameFilters = AddLastNameFilter("LastName", criteria.criteriaList.Where(c => c.Name == "LastName").ToList());
-        return query + guidFilters + firstNameFilter + lastNameFilters;
+        query += AddGuidFilter(query, "PlayerId", criteria.criteriaList.Where(c => c.Name == "Id").ToList());
+        query += AddFirstNameFilter(query, "FirstName",
+            criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
+        query += AddLastNameFilter(query, "LastName", criteria.criteriaList.Where(c => c.Name == "LastName").ToList());
+        return query;
     }
 
-    private string AddGuidFilter(string fieldName, List<SearchCriteria>? guids)
+    private string AddGuidFilter(string query, string fieldName, List<SearchCriteria>? guids)
     {
-        if(guids == null || guids.Count == 0) return string.Empty;
-        var filter = guids.Aggregate($" WHERE {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
-        return filter.Remove(filter.Length - 2) + ")";
+        if (guids == null || guids.Count == 0) return string.Empty;
+        var filter = string.Empty;
+        if (!query.Contains("WHERE"))
+        {
+            filter = guids.Aggregate($"WHERE {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
+            filter = filter.Remove(filter.Length - 2) + ")";
+            return filter;
+        }
+        filter = guids.Aggregate($" AND {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
+        filter = filter.Remove(filter.Length - 2) + ")";
+        return filter;
     }
 
-    private string AddFirstNameFilter(string fieldName, List<SearchCriteria>? names)
+    private string AddFirstNameFilter(string query, string fieldName, List<SearchCriteria>? names)
     {
-        if(names == null || names.Count == 0) return string.Empty;
-        var filter = names.Aggregate($" WHERE {fieldName} IN ('", (current, firstName) => current + firstName.Value + "', ");
-        return filter.Remove(filter.Length - 2) + ")";
+        if (names == null || names.Count == 0) return string.Empty;
+        var filter = string.Empty;
+        if (!query.Contains("WHERE"))
+        {
+            filter = names.Aggregate($"WHERE {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
+            filter = filter.Remove(filter.Length - 2) + ")";
+            return filter;
+        }
+        filter = names.Aggregate($" AND {fieldName} IN ('",
+            (current, firstName) => current + firstName.Value + "', ");
+        filter = filter.Remove(filter.Length - 2) + ")";
+        return filter;
     }
 
-    private string AddLastNameFilter(string fieldName, List<SearchCriteria>? names)
+    private string AddLastNameFilter(string query, string fieldName, List<SearchCriteria>? names)
     {
-        if(names == null || names.Count == 0) return string.Empty;
-        var filter = names.Aggregate($" WHERE {fieldName} IN ('", (current, firstName) => current + firstName.Value + "', ");
-        return filter.Remove(filter.Length - 2) + ")";
+        if (names == null || names.Count == 0) return string.Empty;
+        var filter = string.Empty;
+        if (!query.Contains("WHERE"))
+        {
+            filter = names.Aggregate($"WHERE {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
+            filter = filter.Remove(filter.Length - 2) + ")";
+            return filter;
+        }
+        filter = names.Aggregate($" AND {fieldName} IN ('",
+            (current, firstName) => current + firstName.Value + "', ");
+        filter = filter.Remove(filter.Length - 2) + ")";
+        return filter;
     }
 
     public Task Save(Player player, CancellationToken cancellationToken)
