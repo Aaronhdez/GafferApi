@@ -98,6 +98,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
+            
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
@@ -118,6 +119,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player1.LastName}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
+            
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
@@ -140,6 +142,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
+            
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(1);
@@ -162,6 +165,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}", CriteriaType = CriteriaType.OR });
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
+            
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
 
             result.Count.Should().Be(2);
