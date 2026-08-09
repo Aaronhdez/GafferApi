@@ -17,6 +17,13 @@ public class SearchCriteria
 {
     public string Name { get; set; }
     public string Value { get; set; }
+    public CriteriaType CriteriaType { get; set; }
+}
+
+public enum CriteriaType
+{
+    AND,
+    OR
 }
 
 public class PlayerNotFoundException(string message) : Exception(message);
