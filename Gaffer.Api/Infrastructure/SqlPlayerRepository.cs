@@ -17,18 +17,16 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     private static string AddFilters(string query, PlayerSearchCriteria criteria)
     {
         if (criteria.criteriaList.Count == 0) return query;
-        query += AddFilter(query, "Id", criteria);
-        query += AddFilter(query, "FirstName", criteria);
-        query += AddFilter(query, "LastName", criteria);
-        return query;
+        return criteria.criteriaList.Aggregate(query, (current, criteriaItem)
+            => current + AddFilter(current, criteriaItem.Name, criteria));
     }
-    
+
     private static string AddFilter(string query, string fieldName, PlayerSearchCriteria searchCriteria)
     {
         var criteria = searchCriteria.criteriaList.FirstOrDefault(c => c.Name == fieldName);
         if (criteria == null) return string.Empty;
-        return !query.Contains("WHERE") ? 
-            "WHERE" + AggregateFilter(fieldName, criteria) 
+        return !query.Contains("WHERE")
+            ? "WHERE" + AggregateFilter(fieldName, criteria)
             : AppendFilter(fieldName, criteria);
     }
 

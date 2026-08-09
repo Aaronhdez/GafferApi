@@ -12,11 +12,16 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
 {
     public IDatabaseConnectionProvider _databaseConnectionProvider;
     private SqlPlayerRepository _repository;
+    private Player player1;
+    private Player player2;
+    private Player player3;
     private const string FirstName = "John";
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
     private const Gender Gender = Shared.Gender.MALE;
     private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
+    
+
 
     [SetUp]
     public async Task Setup()
@@ -26,6 +31,9 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             DbTableNames.PlayersTable,
         };
         await ClearDatabase(_tablesToDelete);
+        player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, _birthDate);
+        player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, _birthDate);
+        player3 = new Player(Guid.NewGuid(), "Michael", "Bacllack", null, Gender.MALE, _birthDate);
         _databaseConnectionProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         _repository = new SqlPlayerRepository(_databaseConnectionProvider);
     }
@@ -39,20 +47,19 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     [TestFixture]
     public class WhenGettingPlayersInSqlRepository : SqlPlayerRepositoryShould
     {
+        
+
         [Test]
         public async Task ReturnEmptyListWhenSearchCriteriaAndDatabaseAreBothEmpty()
         {
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
-
+            
             result.Should().BeEmpty();
         }
 
         [Test]
         public async Task ReturnAllPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
@@ -68,9 +75,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAllPlayersWhenGuidIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
@@ -88,9 +92,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayersWhenFirstNameIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), "Other", "Doe2", SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), "Other2", LastName, SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
@@ -109,9 +110,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenLastNameIsUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
@@ -131,15 +129,12 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenFirstAndLastNameAreUsedAsSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}" });
-            searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}" });
+            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}"});
+            searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player2.FirstName}"});
             var playerSearchCriteria = new PlayerSearchCriteria();
             playerSearchCriteria.criteriaList = searchCriteriaList;
             
@@ -154,9 +149,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenFirstAndLastNameAreUsedAsConditionalSearchCriteria()
         {
-            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-            var player2 = new Player(Guid.NewGuid(), "Paul", "Other", SecondLastName, Gender, _birthDate);
-            var player3 = new Player(Guid.NewGuid(), "Michael", "Other2", SecondLastName, Gender, _birthDate);
             await InsertAPlayerInDb(player1);
             await InsertAPlayerInDb(player2);
             await InsertAPlayerInDb(player3);

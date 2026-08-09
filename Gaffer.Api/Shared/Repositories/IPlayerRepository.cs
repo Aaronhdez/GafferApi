@@ -17,7 +17,7 @@ public class SearchCriteria
 {
     public string Name { get; set; }
     public string Value { get; set; }
-    public CriteriaType CriteriaType { get; set; }
+    public CriteriaType CriteriaType { get; set; } = CriteriaType.AND;
 }
 
 public enum CriteriaType
