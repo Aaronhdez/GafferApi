@@ -15,7 +15,7 @@ public class PlayerControllerShould
     private PlayerController _controller;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
-    private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
+    private ICommandHandler<DeletePlayerCommand> _deletePlayerCommandHandler;
     private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
 
     [SetUp]
@@ -23,7 +23,7 @@ public class PlayerControllerShould
     {
         _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
         _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
-        _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand, DeletePlayerResult>>();
+        _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand>>();
         _updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand>>();
         _controller = new PlayerController(_createPlayerCommandHandler,
             _searchPlayersQueryHandler, _deletePlayerCommandHandler, _updatePlayerCommandHandler);
@@ -117,11 +117,8 @@ public class PlayerControllerShould
     public async Task CallACommandToDeleteAPlayerById()
     {
         var id = Guid.NewGuid();
-        _deletePlayerCommandHandler
-            .Handle(Arg.Is<DeletePlayerCommand>(c => c.Id == id), Arg.Any<CancellationToken>())
-            .Returns(new DeletePlayerResult());
 
-        _controller.Delete(new DeletePlayerRequest(id));
+        await _controller.Delete(new DeletePlayerRequest(id));
 
         await _deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
             command != null && command.Id == id

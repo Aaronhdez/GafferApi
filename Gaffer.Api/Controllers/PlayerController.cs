@@ -10,7 +10,7 @@ namespace Gaffer.Api.Controllers;
 public class PlayerController(
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
-    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler,
+    ICommandHandler<DeletePlayerCommand> deletePlayerCommandHandler,
     ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler) : ControllerBase
 {
     [HttpGet("{id}")]

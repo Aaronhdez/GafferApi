@@ -3,14 +3,13 @@ using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
 
-public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<DeletePlayerCommand, DeletePlayerResult>
+public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<DeletePlayerCommand>
 {
-    public async Task<DeletePlayerResult> Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
+    public async Task Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
     {
         var player = await FindPlayer(command, cancellationToken);
         if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found");
         await playerRepository.Delete(command.Id, cancellationToken);
-        return new DeletePlayerResult();
     }
 
     private async Task<Player?> FindPlayer(DeletePlayerCommand command, CancellationToken cancellationToken)
@@ -29,7 +28,7 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 }
 
-public record DeletePlayerCommand(Guid Id) : ICommand<DeletePlayerResult>;
+public record DeletePlayerCommand(Guid Id) : ICommand;
 
 public class DeletePlayerResult
 {

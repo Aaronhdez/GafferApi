@@ -16,7 +16,7 @@ public class PlayerFeatureShould
     private IPlayerRepository _playerRepository;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
-    private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
+    private ICommandHandler<DeletePlayerCommand> _deletePlayerCommandHandler;
     private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
     protected PlayerController PlayerController;
     
