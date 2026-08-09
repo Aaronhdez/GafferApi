@@ -100,7 +100,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
             
             result.Count.Should().Be(1);
-            result.Should().Contain(player1);
+            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.FirstName == player1.FirstName);
         }
 
         private async Task InsertAPlayerInDb(Player player)

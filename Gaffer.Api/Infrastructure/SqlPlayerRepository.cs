@@ -18,13 +18,21 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     private string AddFilters(string query, PlayerSearchCriteria criteria)
     {
         var guidFilters = AddGuidFilter("PlayerId", criteria.criteriaList.Where(c => c.Name == "Id").ToList());
-        return query + guidFilters;
+        var nameFilters = AddFirstNameFilter("FirstName", criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
+        return query + guidFilters + nameFilters;
     }
 
     private string AddGuidFilter(string fieldName, List<SearchCriteria>? guids)
     {
         if(guids == null || guids.Count == 0) return string.Empty;
-        var filter = guids.Aggregate($"{fieldName} WHERE PlayerId IN ('", (current, guid) => current + (guid.Value + "', "));
+        var filter = guids.Aggregate($" WHERE {fieldName} IN ('", (current, guid) => current + guid.Value + "', ");
+        return filter.Remove(filter.Length - 2) + ")";
+    }
+
+    private string AddFirstNameFilter(string fieldName, List<SearchCriteria>? names)
+    {
+        if(names == null || names.Count == 0) return string.Empty;
+        var filter = names.Aggregate($" WHERE {fieldName} IN ('", (current, firstName) => current + firstName.Value + "', ");
         return filter.Remove(filter.Length - 2) + ")";
     }
 
