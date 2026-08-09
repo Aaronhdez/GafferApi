@@ -7,14 +7,15 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 using Gaffer.Api.Tests.Unit.Queries;
 
 namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
 
 public class GetPlayerInformationFeatureShould
 {
-    private IDatabaseConnectionProvider _dummyConnectionProvider;
-    private IPlayerRepository _dummyPlayerRepository;
+    private IDatabaseConnectionProvider _connectionProvider;
+    private IPlayerRepository _playerRepository;
     private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
@@ -31,20 +32,26 @@ public class GetPlayerInformationFeatureShould
     [SetUp]
     public void Setup()
     {
-        _dummyConnectionProvider = new DummyConnectionProvider();
-        _playersList = new List<Player>();
-        _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
-        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_dummyPlayerRepository);
-        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
-        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
+        var connectionString = TestDefaultValues.TestConnectionString;
+        _connectionProvider = new SqlConnectionProvider(connectionString);
+        _playerRepository = new SqlPlayerRepository(_connectionProvider);
+        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_playerRepository);
+        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
+        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_playerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+    }
+    
+    [TearDown]
+    public async Task TearDown()
+    {
+        await _connectionProvider.ClearAsync(["Players"]);
     }
 
     [Test]
     public async Task GetAPlayerFromRepositoryByUsingItsId()
     {
         var player = new Player(_playerId, FirstName, LastName, SecondLastName, Gender, _birthDate);
-        _playersList.Add(player);
+        await InsertAPlayerInDb(player);
 
         var response = await _playerController.GetBy(_playerId);
 
@@ -58,11 +65,25 @@ public class GetPlayerInformationFeatureShould
     [Test]
     public void ThrowExceptionIfPlayerDoesNotExist()
     {
-        var player = new Player(_playerId, FirstName, LastName, SecondLastName, Gender, _birthDate);
-        _playersList.Add(player);
-
         var result = async () => await _playerController.GetBy(_playerId);
 
         result.Should().ThrowAsync<PlayerNotFoundException>();
+    }
+    
+    
+
+    private async Task InsertAPlayerInDb(Player player)
+    {
+        var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+                    "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
+        await _connectionProvider.ExecuteAsync(query, new
+        {
+            player.Id,
+            player.FirstName,
+            player.LastName,
+            player.SecondLastName,
+            Gender = player.Gender.ToString(),
+            BirthDate = player.Birthdate
+        });
     }
 }

@@ -3,7 +3,7 @@ namespace Gaffer.Api.Shared.ConnectionProviders;
 public class DummyConnectionProvider : IDatabaseConnectionProvider
 {
     public Task<bool> TestConnection() => Task.FromResult(true);
-    public Task ClearAsync(string database, List<string> tablesToDelete)
+    public Task ClearAsync(List<string> tablesToDelete)
     {
         throw new NotImplementedException();
     }

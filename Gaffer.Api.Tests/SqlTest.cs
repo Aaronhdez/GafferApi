@@ -17,6 +17,6 @@ public abstract class BaseSqlTest
    
    public async Task ClearDatabase(List<string> tablesToDelete)
    {
-      await _connectionProvider.ClearAsync("Gaffer_Tests", tablesToDelete);
+      await _connectionProvider.ClearAsync(tablesToDelete);
    }
 }

@@ -174,6 +174,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     [TestFixture]
     public class WhenSavingAPlayer : SqlPlayerRepositoryShould
     {
+        
         [Test]
         public async Task SaveAPlayer()
         {

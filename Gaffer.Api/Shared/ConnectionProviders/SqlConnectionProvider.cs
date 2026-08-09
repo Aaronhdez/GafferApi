@@ -24,7 +24,7 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         return true;
     }
 
-    public async Task ClearAsync(string database, List<string> tablesToDelete)
+    public async Task ClearAsync(List<string> tablesToDelete)
     {
         if (_sqlConnection.State != ConnectionState.Open)
         {

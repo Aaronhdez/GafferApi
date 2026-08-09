@@ -10,13 +10,12 @@ namespace Gaffer.Api.Startups;
 public static class RepositoriesStartup
 {
     public static IServiceCollection ConfigureRepositories(this IServiceCollection services, IConfiguration configuration) {
+        services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
         return services;
     }
 
     public static IServiceCollection ConfigureDummyRepositories(this IServiceCollection services, IConfiguration configuration)
     {        
-        services.AddSingleton(typeof(List<Player> ), provider => Activator.CreateInstance(typeof(List < > ).MakeGenericType(typeof(Player))));
-        services.AddScoped<IPlayerRepository,DummyPlayerRepository>();
         return services;
     }
 }

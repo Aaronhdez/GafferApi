@@ -7,12 +7,13 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
 
 public class SearchPlayersFeatureShould
 {
-    private IDatabaseConnectionProvider _dummyConnectionProvider;
+    private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _dummyPlayerRepository;
     private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private PlayerController _playerController;
@@ -24,19 +25,24 @@ public class SearchPlayersFeatureShould
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
     private readonly DateTime _birthDate = new(1990, 01, 01);
-    private List<Player> _playersList;
     private const Gender Gender = Shared.Gender.MALE;
 
     [SetUp]
     public void Setup()
     {
-        _dummyConnectionProvider = new DummyConnectionProvider();
-        _playersList = new List<Player>();
-        _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
+        var connectionString = TestDefaultValues.TestConnectionString;
+        _connectionProvider = new SqlConnectionProvider(connectionString);
+        _dummyPlayerRepository = new SqlPlayerRepository(_connectionProvider);
         _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_dummyPlayerRepository);
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+    }
+    
+    [TearDown]
+    public async Task TearDown()
+    {
+        await _connectionProvider.ClearAsync(["Players"]);
     }
 
     [Test]
@@ -44,9 +50,9 @@ public class SearchPlayersFeatureShould
         var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        _playersList.Add(player1);
-        _playersList.Add(player2);
-        _playersList.Add(player3);
+        await InsertAPlayerInDb(player1);
+        await InsertAPlayerInDb(player2);
+        await InsertAPlayerInDb(player3);
 
         var response = await _playerController.Search(new SearchPlayersRequest());
 
@@ -61,9 +67,9 @@ public class SearchPlayersFeatureShould
         var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        _playersList.Add(player1);
-        _playersList.Add(player2);
-        _playersList.Add(player3);
+        await InsertAPlayerInDb(player1);
+        await InsertAPlayerInDb(player2);
+        await InsertAPlayerInDb(player3);
         var namePlayerFilter = new SearchPlayersFilter {
             Name = "Id",
             Value = $"{player2.Id}"
@@ -83,9 +89,9 @@ public class SearchPlayersFeatureShould
         var player1 = new Player(Guid.NewGuid(), "Other", LastName, SecondLastName, Gender, _birthDate);
         var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player3 = new Player(Guid.NewGuid(), "Other2", LastName, SecondLastName, Gender, _birthDate);
-        _playersList.Add(player1);
-        _playersList.Add(player2);
-        _playersList.Add(player3);
+        await InsertAPlayerInDb(player1);
+        await InsertAPlayerInDb(player2);
+        await InsertAPlayerInDb(player3);
         var namePlayerFilter = new SearchPlayersFilter {
             Name = "FirstName",
             Value = $"{player2.FirstName}"
@@ -106,9 +112,9 @@ public class SearchPlayersFeatureShould
         var player1 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
         var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
-        _playersList.Add(player1);
-        _playersList.Add(player2);
-        _playersList.Add(player3);
+        await InsertAPlayerInDb(player1);
+        await InsertAPlayerInDb(player2);
+        await InsertAPlayerInDb(player3);
         var namePlayerFilter = new SearchPlayersFilter {
             Name = "LastName",
             Value = $"{player2.LastName}"
@@ -122,5 +128,20 @@ public class SearchPlayersFeatureShould
         response.Count.Should().Be(1);
         response.Should().Contain(x => x.Id == player2.Id);
         response.Should().Contain(x => x.FirstName == player2.FirstName);
+    }
+    
+    private async Task InsertAPlayerInDb(Player player)
+    {
+        var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+                    "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
+        await _connectionProvider.ExecuteAsync(query, new
+        {
+            player.Id,
+            player.FirstName,
+            player.LastName,
+            player.SecondLastName,
+            Gender = player.Gender.ToString(),
+            BirthDate = player.Birthdate
+        });
     }
 }

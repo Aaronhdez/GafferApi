@@ -7,13 +7,14 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
 
 public class CreatePlayerFeatureShould
 {
-    private IDatabaseConnectionProvider _dummyConnectionProvider;
-    private IPlayerRepository _dummyPlayerRepository;
+    private IDatabaseConnectionProvider _connectionProvider;
+    private IPlayerRepository _playerRepository;
     private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
@@ -23,19 +24,24 @@ public class CreatePlayerFeatureShould
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
     private readonly DateTime _birthDate = new(1990, 01, 01);
-    private List<Player> _playersList;
     private const Gender Gender = Shared.Gender.MALE;
 
     [SetUp]
     public void SetUp()
     {
-        _dummyConnectionProvider = new DummyConnectionProvider();
-        _playersList = new List<Player>();
-        _dummyPlayerRepository = new DummyPlayerRepository(_dummyConnectionProvider, _playersList);
-        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_dummyPlayerRepository);
-        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
-        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
+        var connectionString = TestDefaultValues.TestConnectionString;
+        _connectionProvider = new SqlConnectionProvider(connectionString);
+        _playerRepository = new SqlPlayerRepository(_connectionProvider);
+        _getPlayerByIdQueryHandler = new SearchPlayerByIdQueryHandler(_playerRepository);
+        _createPlayerCommandHandler = new CreatePlayerCommandHandler(_playerRepository);
+        _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_playerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+    }
+    
+    [TearDown]
+    public async Task TearDown()
+    {
+        await _connectionProvider.ClearAsync(["Players"]);
     }
 
     [Test]
