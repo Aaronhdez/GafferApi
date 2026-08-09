@@ -16,8 +16,8 @@ public class SearchPlayerFeatureShould
     private IDatabaseConnectionProvider _connectionProvider;
     private IPlayerRepository _playerRepository;
     private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
-    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
+    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private PlayerController _playerController;
 
     private Guid _playerId = TestDefaultValues.EmptyPlayerId;

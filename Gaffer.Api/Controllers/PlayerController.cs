@@ -10,7 +10,8 @@ namespace Gaffer.Api.Controllers;
 public class PlayerController(
     IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> getPlayerByIdQueryHandler,
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
-    IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler) : ControllerBase
+    IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
+    ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler = null) : ControllerBase
 {
     [HttpGet("{id}")]
     public async Task<GetPlayerResponse> GetBy([FromRoute] Guid id)
@@ -52,6 +53,12 @@ public class PlayerController(
                 Gender = row.Gender
             })
             .ToList();
+    }
+
+    [HttpDelete("id")]
+    public void Delete([FromRoute] Guid id)
+    {
+        throw new NotImplementedException();
     }
 }
 
