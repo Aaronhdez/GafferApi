@@ -56,7 +56,7 @@ public class PlayerController(
     }
 
     [HttpDelete("id")]
-    public async void Delete(DeletePlayerRequest request)
+    public async Task Delete(DeletePlayerRequest request)
     {
         await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(request.Id),  CancellationToken.None);
     }

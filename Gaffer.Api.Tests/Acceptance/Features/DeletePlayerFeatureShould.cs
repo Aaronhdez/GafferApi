@@ -52,10 +52,18 @@ public class DeletePlayerFeatureShould
         var request = new SearchPlayersRequest();
         request.Filters.Add(filter);
 
-        _playerController.Delete(new DeletePlayerRequest(_playerId));
+        await _playerController.Delete(new DeletePlayerRequest(_playerId));
         
         var result = await _playerController.Search(request);
         result.Should().BeEmpty();
+    }
+    
+    [Test]
+    public void ThrowExceptionWhenPlayerNotFound()
+    {       
+        var result = async () => await _playerController.Delete(new DeletePlayerRequest(Guid.NewGuid()));
+        
+        result.Should().ThrowAsync<PlayerNotFoundException>();
     }
     
     [TearDown]
