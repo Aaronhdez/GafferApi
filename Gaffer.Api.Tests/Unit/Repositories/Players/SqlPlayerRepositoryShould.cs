@@ -15,10 +15,10 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     private static Player player1;
     private Player player2;
     private Player player3;
-    private const string FirstName = "John";
-    private const string LastName = "Doe";
-    private const string SecondLastName = "Doe";
-    private const Gender Gender = Shared.Gender.MALE;
+    private static readonly string FirstName = TestDefaultValues.DefaultFirstName;
+    private static readonly string LastName = TestDefaultValues.DefaultLastName;
+    private static readonly string SecondLastName = TestDefaultValues.DefaultSecondLastName;
+    private const Gender Gender = TestDefaultValues.DefaultGender;
     private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
     
 
@@ -35,8 +35,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         _repository = new SqlPlayerRepository(_databaseConnectionProvider);
         
         player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, _birthDate);
-        player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, _birthDate);
-        player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, _birthDate);
+        player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", string.Empty, Gender.MALE, _birthDate);
+        player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", string.Empty, Gender.MALE, _birthDate);
         await InsertAPlayerInDb(player1);
         await InsertAPlayerInDb(player2);
         await InsertAPlayerInDb(player3);

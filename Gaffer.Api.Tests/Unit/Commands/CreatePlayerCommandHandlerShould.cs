@@ -2,6 +2,7 @@
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
@@ -21,21 +22,21 @@ public class CreatePlayerCommandHandlerShould
     [Test]
     public async Task CreateAPlayerWhileBeingExecuted()
     {
-        const string firstName = "John";
-        const string lastName = "Doe";
-        const string secondLastName = "Doe";
-        DateTime birthDate = new(1990, 01, 01);
-        const Gender gender = Gender.MALE;
-        var createPlayerCommand = new CreatePlayerCommand(firstName, lastName, secondLastName, birthDate, gender);
+        var createPlayerCommand = new CreatePlayerCommand(
+            TestDefaultValues.DefaultFirstName,
+            TestDefaultValues.DefaultLastName,
+            TestDefaultValues.DefaultSecondLastName,
+            TestDefaultValues.DefaultBirthDate,
+            TestDefaultValues.DefaultGender);
 
         await _handler.Handle(createPlayerCommand, CancellationToken.None);
 
         await _repository.Received(1).Save(Arg.Is<Player>(p =>
-            p.FirstName == firstName
-            && p.LastName == lastName
-            && p.SecondLastName == secondLastName
-            && p.Birthdate == birthDate
-            && p.Gender == gender
+            p.FirstName == TestDefaultValues.DefaultFirstName
+            && p.LastName == TestDefaultValues.DefaultLastName
+            && p.SecondLastName == TestDefaultValues.DefaultSecondLastName
+            && p.Birthdate == TestDefaultValues.DefaultBirthDate
+            && p.Gender == TestDefaultValues.DefaultGender
         ), Arg.Any<CancellationToken>());
     }
 }

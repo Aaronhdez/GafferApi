@@ -20,15 +20,15 @@ public class SearchPlayersFeatureShould
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery,List<SearchPlayerResult>> _searchPlayersQueryHandler;
 
-    private Guid _playerId = Guid.Parse("00000000-0000-0000-0000-000000000000");
-    private const string FirstName = "John";
-    private const string LastName = "Doe";
-    private const string SecondLastName = "Doe";
-    private readonly DateTime _birthDate = new(1990, 01, 01);
+    private Guid _playerId = TestDefaultValues.EmptyPlayerId;
+    private static readonly string FirstName = TestDefaultValues.DefaultFirstName;
+    private static readonly string LastName = TestDefaultValues.DefaultLastName;
+    private static readonly string SecondLastName = TestDefaultValues.DefaultSecondLastName;
+    private readonly DateTime _birthDate = TestDefaultValues.DefaultBirthDate;
     private Player player1;
     private Player player2;
     private Player player3;
-    private const Gender Gender = Shared.Gender.MALE;
+    private const Gender Gender = TestDefaultValues.DefaultGender;
 
     [SetUp]
     public void Setup()
@@ -49,7 +49,7 @@ public class SearchPlayersFeatureShould
     [TearDown]
     public async Task TearDown()
     {
-        await _connectionProvider.ClearAsync(["Players"]);
+        await _connectionProvider.ClearAsync([TestDefaultValues.PlayersTableName]);
     }
 
     [Test]

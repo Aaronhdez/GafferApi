@@ -3,6 +3,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
 using NuGet.Protocol.Core.Types;
 
@@ -85,13 +86,13 @@ public class PlayerControllerShould
     [Test]
     public async Task CallACommandToCreateAPlayerById()
     {
-        const string firstName = "John";
-        const string lastName = "Doe";
-        const string secondLastName = "Doe";
-        DateTime birthDate = new(1990, 01, 01);
-        const Gender gender = Gender.MALE;
         var newGuid = Guid.NewGuid();
-        var request = new CreatePlayerRequest(firstName, lastName, secondLastName, birthDate, gender);
+        var request = new CreatePlayerRequest(
+            TestDefaultValues.DefaultFirstName,
+            TestDefaultValues.DefaultLastName,
+            TestDefaultValues.DefaultSecondLastName,
+            TestDefaultValues.DefaultBirthDate,
+            TestDefaultValues.DefaultGender);
         _createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CreatePlayerResponse(newGuid));
 

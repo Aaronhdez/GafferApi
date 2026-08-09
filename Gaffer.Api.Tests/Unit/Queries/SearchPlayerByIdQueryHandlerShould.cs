@@ -3,6 +3,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
 using NuGet.Protocol.Core.Types;
 
@@ -12,12 +13,8 @@ public class SearchPlayerByIdQueryHandlerShould
 {
     private SearchPlayerByIdQueryHandler _handler;
     private IPlayerRepository _repository;
-    private const string FirstName = "John";
-    private const string LastName = "Doe";
-    private const string? SecondLastName = "Doe";
-    private const Gender Gender = Shared.Gender.MALE;
     private readonly Guid _newGuid = Guid.Parse("00000000-0000-0000-0000-000000000001");
-    private readonly DateTime _birthDate = new DateTime(2000, 1, 1);
+    private readonly DateTime _birthDate = TestDefaultValues.DefaultBirthDate;
     private CancellationToken _cancellationToken;
 
     [SetUp]
@@ -31,7 +28,13 @@ public class SearchPlayerByIdQueryHandlerShould
     [Test]
     public async Task CallTheRepositoryWithIdToGetAPlayerByItsId()
     {
-        var player = new Player(_newGuid, FirstName, LastName, SecondLastName, Gender, _birthDate);
+        var player = new Player(
+            _newGuid,
+            TestDefaultValues.DefaultFirstName,
+            TestDefaultValues.DefaultLastName,
+            TestDefaultValues.DefaultSecondLastName,
+            TestDefaultValues.DefaultGender,
+            _birthDate);
         var searchCriteria = new PlayerSearchCriteria();
         searchCriteria.criteriaList.Add(new SearchCriteria
         {
@@ -47,11 +50,11 @@ public class SearchPlayerByIdQueryHandlerShould
                     psc.criteriaList.Exists(sc => sc.Name == "Id" && sc.Value == $"{_newGuid}")),
                 _cancellationToken);
         response.Id.Should().Be(_newGuid);
-        response.FirstName.Should().Be(FirstName);
-        response.LastName.Should().Be(LastName);
-        response.SecondLastName.Should().Be(SecondLastName);
+        response.FirstName.Should().Be(TestDefaultValues.DefaultFirstName);
+        response.LastName.Should().Be(TestDefaultValues.DefaultLastName);
+        response.SecondLastName.Should().Be(TestDefaultValues.DefaultSecondLastName);
         response.Birthdate.Should().Be(_birthDate);
-        response.Gender.Should().Be(Gender);
+        response.Gender.Should().Be(TestDefaultValues.DefaultGender);
     }
 
 
