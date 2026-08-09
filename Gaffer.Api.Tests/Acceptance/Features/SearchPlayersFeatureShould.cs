@@ -9,7 +9,7 @@ using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 
-namespace Gaffer.Api.Tests.Acceptance.Features.MySqlDatabase;
+namespace Gaffer.Api.Tests.Acceptance.Features;
 
 public class SearchPlayersFeatureShould
 {
