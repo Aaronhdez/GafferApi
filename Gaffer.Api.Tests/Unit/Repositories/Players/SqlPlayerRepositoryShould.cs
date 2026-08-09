@@ -31,11 +31,15 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             DbTableNames.PlayersTable,
         };
         await ClearDatabase(_tablesToDelete);
+        _databaseConnectionProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        _repository = new SqlPlayerRepository(_databaseConnectionProvider);
+        
         player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, _birthDate);
         player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, _birthDate);
         player3 = new Player(Guid.NewGuid(), "Michael", "Bacllack", null, Gender.MALE, _birthDate);
-        _databaseConnectionProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
-        _repository = new SqlPlayerRepository(_databaseConnectionProvider);
+        await InsertAPlayerInDb(player1);
+        await InsertAPlayerInDb(player2);
+        await InsertAPlayerInDb(player3);
     }
 
     [TearDown]
@@ -44,14 +48,29 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         await ClearDatabase(_tablesToDelete);
     }
 
+    private async Task InsertAPlayerInDb(Player player)
+    {
+        var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+                    "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
+        await _databaseConnectionProvider.ExecuteAsync(query, new
+        {
+            Id = player.Id,
+            player.FirstName,
+            player.LastName,
+            player.SecondLastName,
+            Gender = player.Gender.ToString(),
+            BirthDate = player.Birthdate
+        });
+    }
+
     [TestFixture]
     public class WhenGettingPlayersInSqlRepository : SqlPlayerRepositoryShould
     {
-        
-
         [Test]
         public async Task ReturnEmptyListWhenSearchCriteriaAndDatabaseAreBothEmpty()
         {
+            await ClearDatabase(_tablesToDelete);
+            
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
             
             result.Should().BeEmpty();
@@ -60,9 +79,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAllPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
 
             var result = await _repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
 
@@ -75,9 +91,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAllPlayersWhenGuidIsUsedAsSearchCriteria()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
@@ -92,9 +105,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayersWhenFirstNameIsUsedAsSearchCriteria()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
@@ -110,9 +120,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenLastNameIsUsedAsSearchCriteria()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player1.LastName}" });
             var playerSearchCriteria = new PlayerSearchCriteria();
@@ -129,9 +136,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenFirstAndLastNameAreUsedAsSearchCriteria()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}"});
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player2.FirstName}"});
@@ -149,9 +153,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         [Test]
         public async Task ReturnAPlayerWhenFirstAndLastNameAreUsedAsConditionalSearchCriteria()
         {
-            await InsertAPlayerInDb(player1);
-            await InsertAPlayerInDb(player2);
-            await InsertAPlayerInDb(player3);
             var searchCriteriaList = new List<SearchCriteria>();
             searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}", CriteriaType = CriteriaType.AND});
             searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}", CriteriaType = CriteriaType.OR });
@@ -164,21 +165,6 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             result.Should().Contain(p => p.Id == player2.Id);
             result.Should().Contain(p => p.FirstName == player2.FirstName);
             result.Should().Contain(p => p.LastName == player2.LastName);
-        }
-
-        private async Task InsertAPlayerInDb(Player player)
-        {
-            var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
-                        "VALUES (@Id,  @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);";
-            await _databaseConnectionProvider.ExecuteAsync(query, new
-            {
-                Id = player.Id,
-                player.FirstName,
-                player.LastName,
-                player.SecondLastName,
-                Gender = player.Gender.ToString(),
-                BirthDate = player.Birthdate
-            });
         }
     }
 }
