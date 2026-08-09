@@ -52,7 +52,7 @@ public class DeletePlayerFeatureShould
         var request = new SearchPlayersRequest();
         request.Filters.Add(filter);
 
-        _playerController.Delete(_playerId);
+        _playerController.Delete(new DeletePlayerRequest(_playerId));
         
         var result = await _playerController.Search(request);
         result.Should().BeEmpty();

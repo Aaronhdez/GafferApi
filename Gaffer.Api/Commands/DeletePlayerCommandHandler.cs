@@ -10,10 +10,7 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 }
 
-public class DeletePlayerCommand : ICommand<DeletePlayerResult>
-{
-    
-}
+public record DeletePlayerCommand(Guid Id) : ICommand<DeletePlayerResult>;
 
 public class DeletePlayerResult
 {

@@ -4,6 +4,7 @@ using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Tests.TestShared;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using NuGet.Protocol.Core.Types;
 
@@ -15,15 +16,17 @@ public class PlayerControllerShould
     private IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse> _getPlayerByIdQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
+    private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
 
     [SetUp]
     public void Setup()
     {
         _getPlayerByIdQueryHandler = Substitute.For<IQueryHandler<SearchPlayerByIdQuery, SearchPlayerByIdResponse>>();
-        _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
         _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
+        _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
+        _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand, DeletePlayerResult>>();
         _controller = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler,
-            _searchPlayersQueryHandler);
+            _searchPlayersQueryHandler, _deletePlayerCommandHandler);
     }
 
     [Test]
@@ -34,7 +37,8 @@ public class PlayerControllerShould
             .Returns(new List<SearchPlayerResult>
             {
                 new(Guid.NewGuid(), null, null, null, default, Gender.MALE)
-            });;
+            });
+        ;
 
         await _controller.GetBy(newGuid);
 
@@ -106,6 +110,21 @@ public class PlayerControllerShould
             && command.SecondLastName == request.SecondLastName
             && command.Gender == request.Gender
             && command.Birthdate == request.BirthDate
+        ), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task CallACommandToDeleteAPlayerById()
+    {
+        var id = Guid.NewGuid();
+        _deletePlayerCommandHandler
+            .Handle(Arg.Is<DeletePlayerCommand>(c => c.Id == id), Arg.Any<CancellationToken>())
+            .Returns(new DeletePlayerResult());
+
+        _controller.Delete(new DeletePlayerRequest(id));
+
+        await _deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
+            command != null && command.Id == id
         ), Arg.Any<CancellationToken>());
     }
 }

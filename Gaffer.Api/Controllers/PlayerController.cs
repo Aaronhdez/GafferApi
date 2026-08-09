@@ -56,7 +56,7 @@ public class PlayerController(
     }
 
     [HttpDelete("id")]
-    public void Delete([FromRoute] Guid id)
+    public async void Delete(DeletePlayerRequest request)
     {
         throw new NotImplementedException();
     }
@@ -97,3 +97,8 @@ public record GetPlayerResponse(
     string? SecondLastName,
     DateTime BirthDate,
     Gender Gender);
+
+public class DeletePlayerRequest(Guid id)
+{
+    public Guid Id { get; } = id;
+}
