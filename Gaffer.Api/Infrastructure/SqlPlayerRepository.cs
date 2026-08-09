@@ -18,8 +18,9 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     private string AddFilters(string query, PlayerSearchCriteria criteria)
     {
         var guidFilters = AddGuidFilter("PlayerId", criteria.criteriaList.Where(c => c.Name == "Id").ToList());
-        var nameFilters = AddFirstNameFilter("FirstName", criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
-        return query + guidFilters + nameFilters;
+        var firstNameFilter = AddFirstNameFilter("FirstName", criteria.criteriaList.Where(c => c.Name == "FirstName").ToList());
+        var lastNameFilters = AddLastNameFilter("LastName", criteria.criteriaList.Where(c => c.Name == "LastName").ToList());
+        return query + guidFilters + firstNameFilter + lastNameFilters;
     }
 
     private string AddGuidFilter(string fieldName, List<SearchCriteria>? guids)
@@ -30,6 +31,13 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     }
 
     private string AddFirstNameFilter(string fieldName, List<SearchCriteria>? names)
+    {
+        if(names == null || names.Count == 0) return string.Empty;
+        var filter = names.Aggregate($" WHERE {fieldName} IN ('", (current, firstName) => current + firstName.Value + "', ");
+        return filter.Remove(filter.Length - 2) + ")";
+    }
+
+    private string AddLastNameFilter(string fieldName, List<SearchCriteria>? names)
     {
         if(names == null || names.Count == 0) return string.Empty;
         var filter = names.Aggregate($" WHERE {fieldName} IN ('", (current, firstName) => current + firstName.Value + "', ");
