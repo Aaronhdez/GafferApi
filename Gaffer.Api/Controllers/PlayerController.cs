@@ -58,7 +58,7 @@ public class PlayerController(
     [HttpDelete("id")]
     public async void Delete(DeletePlayerRequest request)
     {
-        throw new NotImplementedException();
+        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(request.Id),  CancellationToken.None);
     }
 }
 
