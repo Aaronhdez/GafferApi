@@ -15,12 +15,12 @@ public class UpdatePlayerCommandHandlerShould
 {
     private IPlayerRepository _repository;
     private UpdatePlayerCommandHandler _handler;
-    private Guid playerId = Guid.NewGuid();
-    private const string newName = "NewName";
-    private const string newLastName = "ANewLastName";
-    private const string newSecondLastName = "SecondLastName";
-    private DateTime newBirthDate;
-    const Gender newGender = Gender.FEMALE;
+    private readonly Guid _playerId = Guid.NewGuid();
+    private const string NewName = "NewName";
+    private const string NewLastName = "ANewLastName";
+    private const string NewSecondLastName = "SecondLastName";
+    private DateTime _newBirthDate;
+    const Gender NewGender = Gender.FEMALE;
 
     [SetUp]
     public void Setup()
@@ -32,7 +32,7 @@ public class UpdatePlayerCommandHandlerShould
     [Test]
     public async Task UpdateAPlayerWhileBeingExecuted()
     {
-        newBirthDate = new DateTime(2000, 1, 3);
+        _newBirthDate = new DateTime(2000, 1, 3);
         const Gender newGender = Gender.FEMALE;
         var player = new Player(TestDefaultValues.EmptyPlayerId,
             TestDefaultValues.DefaultFirstName,
@@ -42,11 +42,11 @@ public class UpdatePlayerCommandHandlerShould
             new DateTime(1999, 1, 1));
         var command = new UpdatePlayerCommand
         {
-            Id = playerId,
-            FirstName = newName,
-            LastName = newLastName,
-            SecondLastName = newSecondLastName,
-            BirthDate = newBirthDate.ToString(CultureInfo.InvariantCulture),
+            Id = _playerId,
+            FirstName = NewName,
+            LastName = NewLastName,
+            SecondLastName = NewSecondLastName,
+            BirthDate = _newBirthDate.ToString(CultureInfo.InvariantCulture),
             Gender = newGender.ToString(),
         };
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
@@ -57,15 +57,15 @@ public class UpdatePlayerCommandHandlerShould
             .Get(Arg.Is<PlayerSearchCriteria>(sc =>
                     sc.criteriaList.Any(c => 
                         c.Name == "Id" 
-                        && c.Value == playerId.ToString())),
+                        && c.Value == _playerId.ToString())),
                 Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(Arg.Is<Player>(p =>
-                p.Id == playerId
-                && p.FirstName == newName
-                && p.LastName == newLastName
-                && p.SecondLastName == newSecondLastName
+                p.Id == _playerId
+                && p.FirstName == NewName
+                && p.LastName == NewLastName
+                && p.SecondLastName == NewSecondLastName
                 && p.Gender == newGender
-                && p.Birthdate == newBirthDate),
+                && p.Birthdate == _newBirthDate),
             Arg.Any<CancellationToken>());
     }
 
@@ -74,12 +74,12 @@ public class UpdatePlayerCommandHandlerShould
     {
         var command = new UpdatePlayerCommand
         {
-            Id = playerId,
-            FirstName = newName,
-            LastName = newLastName,
-            SecondLastName = newSecondLastName,
-            BirthDate = newBirthDate.ToString(CultureInfo.InvariantCulture),
-            Gender = newGender.ToString(),
+            Id = _playerId,
+            FirstName = NewName,
+            LastName = NewLastName,
+            SecondLastName = NewSecondLastName,
+            BirthDate = _newBirthDate.ToString(CultureInfo.InvariantCulture),
+            Gender = NewGender.ToString(),
         };
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
         
