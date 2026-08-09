@@ -8,9 +8,8 @@ using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
-using Gaffer.Api.Tests.Unit.Queries;
 
-namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
+namespace Gaffer.Api.Tests.Acceptance.Features.MySqlDatabase;
 
 public class GetPlayerInformationFeatureShould
 {

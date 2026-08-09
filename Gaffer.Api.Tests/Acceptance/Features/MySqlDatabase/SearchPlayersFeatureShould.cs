@@ -9,7 +9,7 @@ using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 
-namespace Gaffer.Api.Tests.Acceptance.Features.DummyDatabase;
+namespace Gaffer.Api.Tests.Acceptance.Features.MySqlDatabase;
 
 public class SearchPlayersFeatureShould
 {
@@ -25,6 +25,9 @@ public class SearchPlayersFeatureShould
     private const string LastName = "Doe";
     private const string SecondLastName = "Doe";
     private readonly DateTime _birthDate = new(1990, 01, 01);
+    private Player player1;
+    private Player player2;
+    private Player player3;
     private const Gender Gender = Shared.Gender.MALE;
 
     [SetUp]
@@ -37,6 +40,10 @@ public class SearchPlayersFeatureShould
         _createPlayerCommandHandler = new CreatePlayerCommandHandler(_dummyPlayerRepository);
         _searchPlayersQueryHandler = new SearchPlayersQueryHandler(_dummyPlayerRepository);
         _playerController = new PlayerController(_getPlayerByIdQueryHandler, _createPlayerCommandHandler, _searchPlayersQueryHandler);
+        
+        player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, _birthDate);
+        player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, _birthDate);
+        player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, _birthDate);
     }
     
     [TearDown]
@@ -47,9 +54,6 @@ public class SearchPlayersFeatureShould
 
     [Test]
     public async Task GetAllPlayersWhileSearchingWithoutFilters() {
-        var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         await InsertAPlayerInDb(player1);
         await InsertAPlayerInDb(player2);
         await InsertAPlayerInDb(player3);
@@ -64,9 +68,6 @@ public class SearchPlayersFeatureShould
 
     [Test]
     public async Task GetAllPlayersWhileSearchingWithIdFilter() {
-        var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player3 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
         await InsertAPlayerInDb(player1);
         await InsertAPlayerInDb(player2);
         await InsertAPlayerInDb(player3);
@@ -86,9 +87,6 @@ public class SearchPlayersFeatureShould
     
     [Test]
     public async Task GetAllPlayersWhileSearchingWithFirstNameFilter() {
-        var player1 = new Player(Guid.NewGuid(), "Other", LastName, SecondLastName, Gender, _birthDate);
-        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player3 = new Player(Guid.NewGuid(), "Other2", LastName, SecondLastName, Gender, _birthDate);
         await InsertAPlayerInDb(player1);
         await InsertAPlayerInDb(player2);
         await InsertAPlayerInDb(player3);
@@ -109,9 +107,6 @@ public class SearchPlayersFeatureShould
     
     [Test]
     public async Task GetAllPlayersWhileSearchingWithSecondNameFilter() {
-        var player1 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
-        var player2 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
-        var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
         await InsertAPlayerInDb(player1);
         await InsertAPlayerInDb(player2);
         await InsertAPlayerInDb(player3);
