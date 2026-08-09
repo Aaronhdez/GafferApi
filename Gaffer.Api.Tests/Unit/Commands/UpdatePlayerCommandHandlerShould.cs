@@ -60,7 +60,7 @@ public class UpdatePlayerCommandHandlerShould
                         && c.Value == _playerId.ToString())),
                 Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(Arg.Is<Player>(p =>
-                p.Id == _playerId
+                p.Id == player.Id
                 && p.FirstName == NewName
                 && p.LastName == NewLastName
                 && p.SecondLastName == NewSecondLastName

@@ -16,7 +16,7 @@ public class PlayerControllerShould
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
-    private ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult> _updatePlayerCommandHandler;
+    private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
 
     [SetUp]
     public void Setup()
@@ -24,7 +24,7 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
         _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
         _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand, DeletePlayerResult>>();
-        _updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult>>();
+        _updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand>>();
         _controller = new PlayerController(_createPlayerCommandHandler,
             _searchPlayersQueryHandler, _deletePlayerCommandHandler, _updatePlayerCommandHandler);
     }
@@ -132,9 +132,6 @@ public class PlayerControllerShould
     public async Task CallACommandToUpdateAPlayerById()
     {
         var id = Guid.NewGuid();
-        _updatePlayerCommandHandler
-            .Handle(Arg.Is<UpdatePlayerCommand>(c => c != null && c.Id == id), Arg.Any<CancellationToken>())
-            .Returns(new UpdatePlayerResult());
 
         await _controller.Update(id, new UpdatePlayerRequest());
         await _updatePlayerCommandHandler.Received(1).Handle(Arg.Is<UpdatePlayerCommand>(command =>

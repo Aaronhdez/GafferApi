@@ -17,7 +17,7 @@ public class PlayerFeatureShould
     private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
     private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
     private ICommandHandler<DeletePlayerCommand, DeletePlayerResult> _deletePlayerCommandHandler;
-    private ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult> _updatePlayerCommandHandler;
+    private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
     protected PlayerController PlayerController;
     
     protected Guid PlayerId = TestDefaultValues.EmptyPlayerId;
@@ -44,7 +44,8 @@ public class PlayerFeatureShould
         PlayerController = new PlayerController(
             _createPlayerCommandHandler,
             _searchPlayersQueryHandler, 
-            _deletePlayerCommandHandler);
+            _deletePlayerCommandHandler, 
+            _updatePlayerCommandHandler);
         
         Player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, BirthDate);
         Player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, BirthDate);

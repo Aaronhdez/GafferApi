@@ -11,7 +11,7 @@ public class PlayerController(
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
     ICommandHandler<DeletePlayerCommand, DeletePlayerResult> deletePlayerCommandHandler,
-    ICommandHandler<UpdatePlayerCommand, UpdatePlayerResult> updatePlayerCommandHandler = null) : ControllerBase
+    ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler) : ControllerBase
 {
     [HttpGet("{id}")]
     public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id)
