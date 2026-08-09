@@ -133,11 +133,10 @@ public class PlayerControllerShould
     {
         var id = Guid.NewGuid();
         _updatePlayerCommandHandler
-            .Handle(Arg.Is<UpdatePlayerCommand>(c => c.Id == id), Arg.Any<CancellationToken>())
+            .Handle(Arg.Is<UpdatePlayerCommand>(c => c != null && c.Id == id), Arg.Any<CancellationToken>())
             .Returns(new UpdatePlayerResult());
 
-        await _controller.Delete(new DeletePlayerRequest(id));
-
+        await _controller.Update(id, new UpdatePlayerRequest());
         await _updatePlayerCommandHandler.Received(1).Handle(Arg.Is<UpdatePlayerCommand>(command =>
             command != null && command.Id == id
         ), Arg.Any<CancellationToken>());
