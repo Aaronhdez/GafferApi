@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Shared;
+﻿using System.Globalization;
+using Gaffer.Api.Shared;
 
 namespace Gaffer.Api.Domain;
 
@@ -24,46 +25,46 @@ public class Player(
 
     public void SetFirstName(string newFirstName)
     {
-        throw new NotImplementedException();
+        FirstName = newFirstName;
     }
 
     public string GetLastName()
     {
-        throw new NotImplementedException();
+        return LastName;
     }
 
     public void SetLastName(string commandFirstName)
     {
-        throw new NotImplementedException();
+        LastName = commandFirstName;
     }
 
     public string GetSecondLastName()
     {
-        throw new NotImplementedException();
+        return SecondLastName ?? string.Empty;
     }
 
     public void SetSecondLastName(string commandFirstName)
     {
-        throw new NotImplementedException();
+        SecondLastName = commandFirstName;
     }
 
     public string GetBirthDateName()
     {
-        throw new NotImplementedException();
+        return Birthdate.ToString(CultureInfo.InvariantCulture);
     }
 
     public void SetBirthDateName(string commandFirstName)
     {
-        throw new NotImplementedException();
+        Birthdate = DateTime.Parse(commandFirstName, CultureInfo.InvariantCulture);
     }
 
     public string GetGenderName()
     {
-        throw new NotImplementedException();
+        return Gender.ToString();
     }
 
-    public void SetGenderName(string commandFirstName)
+    public void SetGender(string commandFirstName)
     {
-        throw new NotImplementedException();
+        Gender = Enum.Parse<Gender>(commandFirstName, ignoreCase: true);
     }
 }
