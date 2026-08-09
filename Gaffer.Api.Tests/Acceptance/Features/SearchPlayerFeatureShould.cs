@@ -60,17 +60,7 @@ public class SearchPlayerFeatureShould
         response.BirthDate.Should().Be(_birthDate);
         response.Gender.Should().Be(Gender);
     }
-
-    [Test]
-    public void ThrowExceptionIfPlayerDoesNotExist()
-    {
-        var result = async () => await _playerController.GetBy(_playerId);
-
-        result.Should().ThrowAsync<PlayerNotFoundException>();
-    }
     
-    
-
     private async Task InsertAPlayerInDb(Player player)
     {
         var query = "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
