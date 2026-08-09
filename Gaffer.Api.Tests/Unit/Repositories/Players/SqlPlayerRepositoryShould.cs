@@ -103,6 +103,27 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             result.Should().Contain(p => p.PlayerId == player1.PlayerId);
             result.Should().Contain(p => p.FirstName == player1.FirstName);
         }
+        
+        [Test]
+        public async Task ReturnAPlayerWhenLastNameIsUsedAsSearchCriteria()
+        {
+            var player1 = new Player(Guid.NewGuid(), FirstName, LastName, SecondLastName, Gender, _birthDate);
+            var player2 = new Player(Guid.NewGuid(), FirstName, "Other", SecondLastName, Gender, _birthDate);
+            var player3 = new Player(Guid.NewGuid(), FirstName, "Other2", SecondLastName, Gender, _birthDate);
+            await InsertAPlayerInDb(player1);
+            await InsertAPlayerInDb(player2);
+            await InsertAPlayerInDb(player3);
+            var searchCriteriaList = new List<SearchCriteria>();
+            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player1.LastName}" });
+            var playerSearchCriteria = new PlayerSearchCriteria();
+            playerSearchCriteria.criteriaList = searchCriteriaList;
+            var result = await _repository.Get(playerSearchCriteria, CancellationToken.None);
+            
+            result.Count.Should().Be(1);
+            result.Should().Contain(p => p.PlayerId == player1.PlayerId);
+            result.Should().Contain(p => p.FirstName == player1.FirstName);
+            result.Should().Contain(p => p.LastName == player1.LastName);
+        }
 
         private async Task InsertAPlayerInDb(Player player)
         {
