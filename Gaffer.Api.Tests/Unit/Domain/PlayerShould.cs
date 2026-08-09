@@ -26,5 +26,13 @@ public class PlayerShould
         var name = _player.FirstName;
         
         _player.GetFirstName().Should().Be(TestDefaultValues.DefaultFirstName);
+    }    
+    
+    [Test]
+    public void ReturnLastName()
+    {
+        var name = _player.LastName;
+        
+        _player.GetLastName().Should().Be(TestDefaultValues.DefaultLastName);
     }
 }
