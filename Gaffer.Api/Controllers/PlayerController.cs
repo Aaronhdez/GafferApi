@@ -1,6 +1,7 @@
 ﻿using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gaffer.Api.Controllers;
@@ -19,9 +20,10 @@ public class PlayerController(
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
         var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
-        return queryResult.Select(row => new SearchPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
+        var player = queryResult.Select(row => new SearchPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
             row.BirthDate, row.Gender
-        )).First();
+        )).FirstOrDefault();
+        return player ?? throw new PlayerNotFoundException($"Player with id {id} not found");
     }
 
     [HttpPost("")]
