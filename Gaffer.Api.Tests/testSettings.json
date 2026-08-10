@@ -1,2 +1,6 @@
 ﻿{
+  "ApiUrl": "http://localhost:50000/",
+  "ConnectionStrings" : {
+    "Database": "Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=toor;"
+  }
 }
