@@ -13,9 +13,4 @@ public static class RepositoriesStartup
         services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
         return services;
     }
-
-    public static IServiceCollection ConfigureDummyRepositories(this IServiceCollection services, IConfiguration configuration)
-    {        
-        return services;
-    }
 }

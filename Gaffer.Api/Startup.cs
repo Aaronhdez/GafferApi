@@ -46,7 +46,6 @@ public class Startup(IConfiguration configuration)
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         services.ConfigureDatabase(configuration);
-        services.ConfigureDummyRepositories(configuration);
         services.ConfigureRepositories(configuration);
         services.ConfigureActions();
         //services.AddHealthChecks(_configuration);
