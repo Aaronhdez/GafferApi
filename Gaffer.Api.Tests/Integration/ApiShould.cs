@@ -14,7 +14,7 @@ public class ApiShould
     [Test]
     public async Task StatusIsUp()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost/swagger/index.html");
+        var request = new HttpRequestMessage(HttpMethod.Get, "http://localhost:50000/swagger/index.html");
         
         var response = await _client.SendAsync(request);
         
