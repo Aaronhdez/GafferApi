@@ -1,14 +1,16 @@
-﻿namespace Gaffer.Api.Tests.Integration;
+﻿using Gaffer.Api.Shared.Clients;
+
+namespace Gaffer.Api.Tests.Integration;
 
 [TestFixture]
 public class ApiShould
 {
-    private HttpClient _client;
+    private IGafferApiClient _client;
 
     [SetUp]
     public void Setup()
     {
-        _client = TestFixture.Client;
+        _client = TestFixture.GafferApiClientTest;
     }
 
     [Test]

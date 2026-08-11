@@ -1,30 +1,17 @@
-﻿using System.Net;
-using System.Net.Http.Headers;
-using System.Text;
-using AwesomeAssertions;
-using Gaffer.Api.Commands;
+﻿using AwesomeAssertions;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Domain;
-using Gaffer.Api.Infrastructure;
-using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
-using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
-using NSubstitute;
 
 namespace Gaffer.Api.Tests.EndToEnd;
 
 public class SearchPlayerFeatureShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
-    private IPlayerRepository _playerRepository;
-    private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
-    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
-    private ICommandHandler<DeletePlayerCommand> _deletePlayerCommandHandler;
-    private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
-    private HttpClient _client;
-    private PlayerController PlayerController;
+    private GafferApiClientTest _client;
+    
     private Guid PlayerId = TestDefaultValues.EmptyPlayerId;
     private static readonly string FirstName = TestDefaultValues.DefaultFirstName;
     private static readonly string LastName = TestDefaultValues.DefaultLastName;
@@ -36,28 +23,36 @@ public class SearchPlayerFeatureShould
     private Player Player3;
 
     [SetUp]
-    public void SetUp()
+    public async Task SetUp()
     {
-        _client = TestFixture.Client;
+        _connectionProvider = TestFixture.SqlConnectionProviderTest;
+        _client = (GafferApiClientTest) TestFixture.GafferApiClientTest;
         Player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, BirthDate);
         Player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, BirthDate);
         Player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, BirthDate);
+        await _connectionProvider.ClearAsync(DbTableNames.TablesToDelete);
     }
-    
+
+    [TearDown]
+    public async Task TearDown()
+    {
+        await _connectionProvider.ClearAsync(DbTableNames.TablesToDelete);
+    }
+
     [Test]
     public async Task GetPlayers()
     {
         var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        var formattedRequest = Newtonsoft.Json.JsonConvert.SerializeObject(createPlayerRequest);
-        var createUri = new Uri($"http://localhost:50000/api/v1.0/players/");
-        var result = await _client.PostAsync(createUri, new StringContent(formattedRequest, Encoding.UTF8, "application/json"));
-        var formattedResult = await result.Content.ReadFromJsonAsync<Guid>();
+        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer, createPlayerRequest);
         
+        var response = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
 
-        var queryUri = new Uri($"http://localhost:50000/api/v1.0/players/{formattedResult.ToString()}");
-        var response = await _client.GetAsync(queryUri);
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Should().NotBeNull();
+        response.Id.Should().Be(result);
+        response.FirstName.Should().Be(Player1.FirstName);
+        response.LastName.Should().Be(Player1.LastName);
+        response.BirthDate.Should().Be(Player1.Birthdate);
+        response.Gender.Should().Be(Player1.Gender);
     }
     
 //    [Test]

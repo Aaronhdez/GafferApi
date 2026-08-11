@@ -1,9 +1,17 @@
-﻿using System.Text.Json;
+﻿using System.Net.Http.Headers;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Asp.Versioning.Conventions;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
+using Gaffer.Api.Infrastructure;
+using Gaffer.Api.Queries;
+using Gaffer.Api.Shared.Clients;
+using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 using Gaffer.Api.Versioning;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -21,7 +29,9 @@ namespace Gaffer.Api.Tests;
 public class TestFixture
 {
     public static IConfigurationRoot Configuration;
-    public static HttpClient Client;
+    public static IGafferApiClient GafferApiClientTest;
+    public static IDatabaseConnectionProvider SqlConnectionProviderTest { get; set; }
+    public static HttpClient HttpClient;
     public static TestServer TestServer;
     public static UseCasesMock UseCasesMock;
 
@@ -30,26 +40,28 @@ public class TestFixture
     {
         UseCasesMock = new UseCasesMock();
         Configuration = PrepareConfiguration(new ConfigurationBuilder()).Build();
-        TestServer = await InitializeApiServer(Configuration["ApiUrl"], UseCasesMock);
-        Client = InitializeHttpClient(TestServer, Configuration["ApiUrl"]);
+        TestServer = await InitializeApiServer(Configuration["ApiUrl"], Configuration["ConnectionStrings:Database"]);
+        GafferApiClientTest = InitializeGafferHttpClient(TestServer, Configuration["ApiUrl"]);
     }
 
     [OneTimeTearDown]
     public void OneTimeTearDown()
     {
-        Client?.Dispose();
+        GafferApiClientTest?.Dispose();
         TestServer?.Dispose();
     }
 
-    private static HttpClient InitializeHttpClient(TestServer testServer, string? baseAddress)
+    private IGafferApiClient InitializeGafferHttpClient(TestServer testServer, string? baseAddress)
     {
         if (baseAddress == null) throw new NullReferenceException(nameof(baseAddress));
-        Client = testServer.CreateClient();
-        Client.BaseAddress = new Uri(baseAddress);
-        return Client;
+        Uris.BaseAddress = baseAddress;
+        var httpClient = testServer.CreateClient();
+        httpClient.BaseAddress = new Uri(baseAddress);
+        httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        return new GafferApiClientTest(httpClient);
     }
 
-    private static async Task<TestServer> InitializeApiServer(string? baseAddress, UseCasesMock useCasesMock)
+    private static async Task<TestServer> InitializeApiServer(string? baseAddress, string testDatabase)
     {
         if (baseAddress == null) throw new NullReferenceException(nameof(baseAddress));
 
@@ -92,10 +104,13 @@ public class TestFixture
                         });
                     services.AddRouting();
                     services.AddControllers();
-                    services.AddSingleton(useCasesMock.CreatePlayerCommandHandler);
-                    services.AddSingleton(useCasesMock.SearchPlayersQueryHandler);
-                    services.AddSingleton(useCasesMock.DeletePlayerCommandHandler);
-                    services.AddSingleton(useCasesMock.UpdatePlayerCommandHandler);
+                    SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
+                    services.AddScoped<IDatabaseConnectionProvider>(_ => SqlConnectionProviderTest);
+                    services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
+                    services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
+                    services.AddScoped<ICommandHandler<DeletePlayerCommand>, DeletePlayerCommandHandler>();
+                    services.AddScoped<ICommandHandler<UpdatePlayerCommand>, UpdatePlayerCommandHandler>();
+                    services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
                     services.AddHttpContextAccessor();
                 });
                 webHostBuilder.UseStartup<TestStartup>();
@@ -104,6 +119,8 @@ public class TestFixture
         await host.StartAsync();
         return host.GetTestServer();
     }
+
+
 
     private static IConfigurationBuilder PrepareConfiguration(IConfigurationBuilder configurationBuilder)
     {
