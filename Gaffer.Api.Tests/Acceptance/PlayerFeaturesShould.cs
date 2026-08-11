@@ -5,9 +5,9 @@ using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Tests.TestShared;
 
-namespace Gaffer.Api.Tests.EndToEnd;
+namespace Gaffer.Api.Tests.Acceptance;
 
-public class SearchPlayerFeatureShould
+public class PlayerFeaturesShould
 {
     private IDatabaseConnectionProvider _connectionProvider;
     private GafferApiClientTest _client;

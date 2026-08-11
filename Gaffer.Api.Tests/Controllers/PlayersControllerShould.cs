@@ -83,4 +83,20 @@ public class PlayersControllerShould
         await _updatePlayerCommandHandler.Received(1)
             .Handle(Arg.Any<UpdatePlayerCommand>(), Arg.Any<CancellationToken>());
     }
+    
+    [Test]
+    public async Task DeleteAPlayerOnCommand()
+    {
+        var playerId = Guid.NewGuid();
+        var player = new SearchPlayerResult(playerId, string.Empty, string.Empty, string.Empty, new DateTime(), Gender.OTHER);
+        _searchPlayersQueryHandler
+            .Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+            .Returns([player]);
+        
+        await PlayerController.Delete(new DeletePlayerRequest(playerId));
+        
+        await _deletePlayerCommandHandler.Received(1)
+            .Handle(Arg.Any<DeletePlayerCommand>(), Arg.Any<CancellationToken>());
+    }
+    
 }
