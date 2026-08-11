@@ -42,7 +42,7 @@ public class PlayersControllerShould
     }
 
     [Test]
-    public async Task GetPlayers()
+    public async Task GetPlayerOnDemand()
     {
         var playerId = Guid.NewGuid();
         var player = new SearchPlayerResult(playerId, string.Empty, string.Empty, string.Empty, new DateTime(), Gender.OTHER);
@@ -67,5 +67,20 @@ public class PlayersControllerShould
         
         await _createPlayerCommandHandler.Received(1)
             .Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>());
+    }
+    
+    [Test]
+    public async Task UpdateAPlayerOnDemand()
+    {
+        var playerId = Guid.NewGuid();
+        var player = new SearchPlayerResult(playerId, string.Empty, string.Empty, string.Empty, new DateTime(), Gender.OTHER);
+        _searchPlayersQueryHandler
+            .Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+            .Returns([player]);
+        
+        await PlayerController.Update(playerId, new UpdatePlayerRequest());
+        
+        await _updatePlayerCommandHandler.Received(1)
+            .Handle(Arg.Any<UpdatePlayerCommand>(), Arg.Any<CancellationToken>());
     }
 }
