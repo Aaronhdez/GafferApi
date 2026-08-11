@@ -40,10 +40,10 @@ public class PlayerFeaturesShould
     }
 
     [Test]
-    public async Task GetPlayers()
+    public async Task GetAPlayer()
     {
         var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer, createPlayerRequest);
+        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
         
         var response = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
 
