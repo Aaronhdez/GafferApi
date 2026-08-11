@@ -6,7 +6,7 @@ using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 
-namespace Gaffer.Api.Tests.Unit.Repositories.Players;
+namespace Gaffer.Api.Tests.Unit.Repositories;
 
 public class SqlPlayerRepositoryShould : BaseSqlTest
 {
