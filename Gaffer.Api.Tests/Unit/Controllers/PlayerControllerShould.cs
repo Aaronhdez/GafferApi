@@ -118,7 +118,7 @@ public class PlayerControllerShould
     {
         var id = Guid.NewGuid();
 
-        await _controller.Delete(new DeletePlayerRequest(id));
+        await _controller.Delete(id);
 
         await _deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
             command != null && command.Id == id

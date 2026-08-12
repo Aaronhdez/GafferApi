@@ -6,4 +6,6 @@ public static class Uris
     private static Uri BaseUri => new(BaseAddress+"api/v1.0/");
     public static Uri CreatePlayer() => new(BaseUri, $"players/");
     public static Uri GetPlayer(string playerId) => new(BaseUri, $"players/{playerId}");
+
+    public static Uri DeletePlayer(string playerId) => new(BaseUri, $"players/{playerId}");
 }

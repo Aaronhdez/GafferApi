@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using System.Text;
 using Gaffer.Api.Shared.Clients;
+using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Gaffer.Api.Tests.TestShared;
 
@@ -21,6 +22,14 @@ public class GafferApiClientTest(HttpClient client) : IGafferApiClient
         if (result.StatusCode == HttpStatusCode.OK) return await result.Content.ReadFromJsonAsync<TResult>();
         var content = await result.Content.ReadAsStringAsync();
         throw new GafferApiClientException(result.StatusCode, content);
+    }
+
+    public async Task DeleteAsync(Uri uri)
+    {
+        var result = await client.DeleteAsync(uri);
+        if (result.StatusCode == HttpStatusCode.OK) return;
+        var content = await result.Content.ReadAsStringAsync();
+        throw new GafferApiClientException(result.StatusCode, content);;
     }
 
     public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request)

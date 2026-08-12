@@ -56,13 +56,13 @@ public class PlayerController(
             .ToList();
     }
 
-    [HttpDelete("id")]
-    public async Task Delete(DeletePlayerRequest request)
+    [HttpDelete("{id}")]
+    public async Task Delete([FromRoute] Guid id)
     {
-        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(request.Id),  CancellationToken.None);
+        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(id),  CancellationToken.None);
     }
 
-    [HttpPut("id")]
+    [HttpPut("{id}")]
     public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request)
     {
         await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand {Id = id}, CancellationToken.None);

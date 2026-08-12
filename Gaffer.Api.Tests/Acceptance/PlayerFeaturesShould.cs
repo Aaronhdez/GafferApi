@@ -55,6 +55,21 @@ public class PlayerFeaturesShould
         response.Gender.Should().Be(Player1.Gender);
     }
     
+    [Test]
+    public async Task DeleteAPlayer()
+    {
+        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
+        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{PlayerId}" };
+        var request = new SearchPlayersRequest();
+        request.Filters.Add(filter);
+
+        await _client.DeleteAsync(Uris.DeletePlayer(result.ToString()));
+        
+        var response = async () => await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
+        await response.Should().ThrowAsync<Exception>();
+    }
+    
 //    [Test]
 //    public async Task GetAPlayerFromRepositoryByUsingItsId()
 //    {
