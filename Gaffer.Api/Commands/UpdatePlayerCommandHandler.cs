@@ -9,7 +9,7 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     {
         var player = await GetPlayer(command, cancellationToken);
         UpdatePlayer(player, command);
-        playerRepository.Update(player, cancellationToken);
+        await playerRepository.Update(player, cancellationToken);
     }
 
     private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken)

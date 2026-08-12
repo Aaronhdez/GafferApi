@@ -2,7 +2,7 @@
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Tests.Acceptance.Features;
+namespace Gaffer.Api.Tests.Acceptance.Features_Refactor;
 
 public class UpdatePlayerFeatureShould : PlayerFeatureShould
 {

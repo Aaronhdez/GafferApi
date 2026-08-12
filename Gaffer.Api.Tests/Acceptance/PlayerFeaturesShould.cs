@@ -61,6 +61,24 @@ public class PlayerFeaturesShould
         await response.Should().ThrowAsync<Exception>();
     }
     
+    [Test]
+    public async Task UpdateAPlayer()
+    {
+        var newFirstName = "AnotherFirstName";
+        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
+        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{PlayerId}" };
+        var request = new SearchPlayersRequest();
+        request.Filters.Add(filter);
+        var updatePlayerRequest = new UpdatePlayerRequest { FirstName = newFirstName };
+        
+        await _client.UpdateAsync(Uris.UpdatePlayer(result.ToString()), updatePlayerRequest);
+        
+        var response = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
+        response.Should().NotBeNull();
+        response.FirstName.Should().Be(newFirstName);
+    }
+    
 //    [Test]
 //    public async Task GetAPlayerFromRepositoryByUsingItsId()
 //    {

@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Commands;
+﻿using System.Globalization;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
@@ -65,12 +66,25 @@ public class PlayerController(
     [HttpPut("{id}")]
     public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request)
     {
-        await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand {Id = id}, CancellationToken.None);
+        await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand
+        {
+            Id = id,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            SecondLastName = request.SecondLastName,
+            BirthDate = request.BirthDate.ToString(CultureInfo.InvariantCulture),
+            Gender = request.Gender.ToString(),
+        }, CancellationToken.None);
     }
 }
 
 public class UpdatePlayerRequest
 {
+    public string FirstName;
+    public string LastName;
+    public string? SecondLastName; 
+    public DateTime BirthDate;
+    public Gender Gender;
 }
 
 public class SearchPlayersRequest
