@@ -42,11 +42,13 @@ public class TestFixture
         Configuration = PrepareConfiguration(new ConfigurationBuilder()).Build();
         TestServer = await InitializeApiServer(Configuration["ApiUrl"], Configuration["ConnectionStrings:Database"]);
         GafferApiClientTest = InitializeGafferHttpClient(TestServer, Configuration["ApiUrl"]);
+        await ClearDatabase();
     }
 
     [OneTimeTearDown]
-    public void OneTimeTearDown()
+    public async Task OneTimeTearDown()
     {
+        await ClearDatabase();
         GafferApiClientTest?.Dispose();
         TestServer?.Dispose();
     }
@@ -120,12 +122,15 @@ public class TestFixture
         return host.GetTestServer();
     }
 
-
-
     private static IConfigurationBuilder PrepareConfiguration(IConfigurationBuilder configurationBuilder)
     {
         return configurationBuilder.SetBasePath(TestContext.CurrentContext.TestDirectory)
             .AddJsonFile("testsettings.json", optional: false);
+    }
+
+    private static async Task ClearDatabase()
+    {
+        await SqlConnectionProviderTest.ClearAsync(DbTableNames.TablesToDelete);
     }
 }
 

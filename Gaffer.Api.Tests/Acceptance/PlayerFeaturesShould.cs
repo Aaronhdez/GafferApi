@@ -9,7 +9,6 @@ namespace Gaffer.Api.Tests.Acceptance;
 
 public class PlayerFeaturesShould
 {
-    private IDatabaseConnectionProvider _connectionProvider;
     private GafferApiClientTest _client;
     
     private Guid PlayerId = TestDefaultValues.EmptyPlayerId;
@@ -25,18 +24,10 @@ public class PlayerFeaturesShould
     [SetUp]
     public async Task SetUp()
     {
-        _connectionProvider = TestFixture.SqlConnectionProviderTest;
         _client = (GafferApiClientTest) TestFixture.GafferApiClientTest;
         Player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, BirthDate);
         Player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, BirthDate);
         Player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, BirthDate);
-        await _connectionProvider.ClearAsync(DbTableNames.TablesToDelete);
-    }
-
-    [TearDown]
-    public async Task TearDown()
-    {
-        await _connectionProvider.ClearAsync(DbTableNames.TablesToDelete);
     }
 
     [Test]
