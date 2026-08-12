@@ -1,4 +1,5 @@
-﻿using AwesomeAssertions;
+﻿using System.Linq.Expressions;
+using AwesomeAssertions;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
@@ -79,91 +80,16 @@ public class PlayerFeaturesShould
         response.FirstName.Should().Be(newFirstName);
     }
     
-//    [Test]
-//    public async Task GetAPlayerFromRepositoryByUsingItsId()
-//    {
-//        var player = new Player(PlayerId, FirstName, LastName, SecondLastName, Gender, BirthDate);
-//        await InsertAPlayerInDb(player);
-//
-//        var response = await PlayerController.GetBy(PlayerId);
-//
-//        response.Id.Should().Be(PlayerId);
-//        response.FirstName.Should().Be(FirstName);
-//        response.LastName.Should().Be(LastName);
-//        response.BirthDate.Should().Be(BirthDate);
-//        response.Gender.Should().Be(Gender);
-//    }
-//    
-//    [Test]
-//    public async Task GetAllPlayersWhileSearchingWithoutFilters() {
-//        await InsertAPlayerInDb(Player1);
-//        await InsertAPlayerInDb(Player2);
-//        await InsertAPlayerInDb(Player3);
-//
-//        var response = await PlayerController.Search(new SearchPlayersRequest());
-//
-//        response.Count.Should().Be(3);
-//        response.Should().Contain(x => x.Id == Player1.Id);
-//        response.Should().Contain(x => x.Id == Player2.Id);
-//        response.Should().Contain(x => x.Id == Player3.Id);
-//    }
-//
-//    [Test]
-//    public async Task GetAllPlayersWhileSearchingWithIdFilter() {
-//        await InsertAPlayerInDb(Player1);
-//        await InsertAPlayerInDb(Player2);
-//        await InsertAPlayerInDb(Player3);
-//        var namePlayerFilter = new SearchPlayersFilter {
-//            Name = "Id",
-//            Value = $"{Player2.Id}"
-//        };
-//        var searchPlayersRequest = new SearchPlayersRequest();
-//        searchPlayersRequest.Filters = new List<SearchPlayersFilter>();
-//        searchPlayersRequest.Filters.Add(namePlayerFilter);
-//        
-//        var response = await PlayerController.Search(searchPlayersRequest);
-//
-//        response.Count.Should().Be(1);
-//        response.Should().Contain(x => x.Id == Player2.Id);
-//    }
-//    
-//    [Test]
-//    public async Task GetAllPlayersWhileSearchingWithFirstNameFilter() {
-//        await InsertAPlayerInDb(Player1);
-//        await InsertAPlayerInDb(Player2);
-//        await InsertAPlayerInDb(Player3);
-//        var namePlayerFilter = new SearchPlayersFilter {
-//            Name = "FirstName",
-//            Value = $"{Player2.FirstName}"
-//        };
-//        var searchPlayersRequest = new SearchPlayersRequest();
-//        searchPlayersRequest.Filters = new List<SearchPlayersFilter>();
-//        searchPlayersRequest.Filters.Add(namePlayerFilter);
-//        
-//        var response = await PlayerController.Search(searchPlayersRequest);
-//
-//        response.Count.Should().Be(1);
-//        response.Should().Contain(x => x.Id == Player2.Id);
-//        response.Should().Contain(x => x.FirstName == Player2.FirstName);
-//    }
-//    
-//    [Test]
-//    public async Task GetAllPlayersWhileSearchingWithSecondNameFilter() {
-//        await InsertAPlayerInDb(Player1);
-//        await InsertAPlayerInDb(Player2);
-//        await InsertAPlayerInDb(Player3);
-//        var namePlayerFilter = new SearchPlayersFilter {
-//            Name = "LastName",
-//            Value = $"{Player2.LastName}"
-//        };
-//        var searchPlayersRequest = new SearchPlayersRequest();
-//        searchPlayersRequest.Filters = new List<SearchPlayersFilter>();
-//        searchPlayersRequest.Filters.Add(namePlayerFilter);
-//        
-//        var response = await PlayerController.Search(searchPlayersRequest);
-//
-//        response.Count.Should().Be(1);
-//        response.Should().Contain(x => x.Id == Player2.Id);
-//        response.Should().Contain(x => x.FirstName == Player2.FirstName);
-//    }
+    [Test]
+    public async Task ThrowExceptionIfPlayerIsNotFound()
+    {
+        var newFirstName = "AnotherFirstName";
+        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
+        await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        var updatePlayerRequest = new UpdatePlayerRequest { FirstName = newFirstName };
+        
+        var actionResult = async () => await _client.UpdateAsync(Uris.UpdatePlayer(Guid.NewGuid().ToString()), updatePlayerRequest);
+
+        actionResult.Should().ThrowAsync<Exception>().Result.And.Message.Should().Contain("NotFound");
+    }
 }

@@ -23,7 +23,7 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         });
         var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();
-        return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found");
+        return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
     }
 
     private void UpdatePlayer(Player player, UpdatePlayerCommand command)

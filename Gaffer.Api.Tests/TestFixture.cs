@@ -10,6 +10,7 @@ using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared.Clients;
 using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using Gaffer.Api.Versioning;
@@ -142,7 +143,7 @@ public class TestStartup
         if (environment.IsEnvironment("Test"))
         {
             app
-                //.UseMiddleware<ExceptionHandlingMiddleware>()
+                .UseMiddleware<ExceptionHandlingMiddleware>()
                 .UseOpenApi()
                 .UseSwaggerUi(settings =>
                 {

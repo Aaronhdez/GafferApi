@@ -6,6 +6,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Startups;
 using Microsoft.AspNetCore.Builder;
@@ -62,7 +63,7 @@ public class Startup(IConfiguration configuration)
         }
 
         app
-            //.UseMiddleware<ExceptionHandlingMiddleware>()
+            .UseMiddleware<ExceptionHandlingMiddleware>()
             .UseOpenApi()
             .UseSwaggerUi(settings =>
             {

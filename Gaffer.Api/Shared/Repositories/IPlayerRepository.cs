@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Commands;
+﻿using DocumentFormat.OpenXml.Drawing.Charts;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 
 namespace Gaffer.Api.Shared.Repositories;
@@ -16,7 +17,7 @@ public class PlayerSearchCriteria
     public List<SearchCriteria> criteriaList { get; set; } = [];
 }
 
-public class SearchCriteria 
+public class SearchCriteria
 {
     public string Name { get; set; }
     public string Value { get; set; }
@@ -30,5 +31,14 @@ public enum CriteriaType
     NONE
 }
 
-public class PlayerNotFoundException(string message) : Exception(message);
-public class DatabaseNotReadyException(string message) : Exception(message);
+public class PlayerNotFoundException : Exception
+{
+    public PlayerNotFoundException(string message, Guid id) : base(message)
+    {
+        Id = id.ToString();
+        ErrorMessage =  $"Player with id {id} not found in Database";
+    }
+
+    public string Id { get; set; }
+    public string ErrorMessage { get; set; }
+}

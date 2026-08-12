@@ -24,7 +24,7 @@ public class PlayerController(
         var player = queryResult.Select(row => new SearchPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
             row.BirthDate, row.Gender
         )).FirstOrDefault();
-        return player ?? throw new PlayerNotFoundException($"Player with id {id} not found");
+        return player ?? throw new PlayerNotFoundException($"Player with id {id} not found", id);
     }
 
     [HttpPost("")]

@@ -8,7 +8,7 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     public async Task Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
     {
         var player = await FindPlayer(command, cancellationToken);
-        if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found");
+        if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
         await playerRepository.Delete(command.Id, cancellationToken);
     }
 
