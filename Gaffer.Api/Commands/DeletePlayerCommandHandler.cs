@@ -41,11 +41,15 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 }
 
-public class CannotDeletePlayerNotFoundException(string message, Guid id) : Exception(message) { }
+public class CannotDeletePlayerNotFoundException(string message, Guid id) : Exception(message)
+{
+    public Guid Id { get; } = id;
+}
 
 public class CannotDeletePlayerException(string message, Guid id) : Exception(message)
 {
-    public string ErrorMessage { get; set; } = $"Player with id {id} not found in Database";
+    public Guid Id { get; } = id;
+    public string Reason { get; }
 }
 
 public record DeletePlayerCommand(Guid Id) : ICommand;

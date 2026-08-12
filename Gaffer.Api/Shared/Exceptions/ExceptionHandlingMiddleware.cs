@@ -28,17 +28,46 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
 
     private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        ExceptionToProblemDetails();
-        var problemDetails = GetProblemDetails(exception);
-        var result = JsonConvert.SerializeObject(problemDetails);
-        context.Response.ContentType = "application/json";
-        context.Response.StatusCode = GetResponseStatus(problemDetails.Status);
-        return context.Response.WriteAsync(result);
+        ProblemDetails problemDetails;
+        var converters = GetConverterDictionary();
+        if (!converters.ContainsKey(exception.GetType()))
+        {
+            problemDetails = UnknownError(context);
+        }
+        else
+        {
+            problemDetails = converters[exception.GetType()](exception);
+            if (problemDetails == null)
+            {
+                problemDetails = UnknownError(context);
+            }
+            else
+            {
+                problemDetails.Instance = context.Request.Path.Value;
+            }
+        }
+
+        return WriteErrorResponse(context, problemDetails);
+        
+        
+    }
+    
+    private ProblemDetails UnknownError(HttpContext context)
+    {
+        return new ProblemDetails
+        {
+            Title = "Unkwnown error",
+            Status = (int)HttpStatusCode.InternalServerError,
+            Instance = context.Request.Path.Value,
+        };
     }
 
-    private static void ExceptionToProblemDetails()
+    private Task WriteErrorResponse(HttpContext context, ProblemDetails problemDetails)
     {
-        var converters = GetConverterDictionary();
+        context.Response.ContentType = "application/json";
+        context.Response.StatusCode = GetResponseStatus(problemDetails.Status);
+        var result = JsonConvert.SerializeObject(problemDetails);
+        return context.Response.WriteAsync(result);
     }
 
     private static Dictionary<Type, Func<Exception, ProblemDetails>> GetConverterDictionary()
@@ -57,32 +86,6 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
     {
         return exception switch
         {
-            CannotDeletePlayerNotFoundException => new ProblemDetails
-            {
-                Title = "Cannot delete player",
-                Status = (int)HttpStatusCode.NotFound,
-                Type = exception.GetType().FullName,
-            },
-            CannotDeletePlayerException cannotDeletePlayerException => new ProblemDetails
-            {
-                Title = "Cannot delete player",
-                Status = (int)HttpStatusCode.BadRequest,
-                Type = exception.GetType().FullName,
-                Detail = cannotDeletePlayerException.ErrorMessage,
-            },
-            CannotUpdatePlayerNotFoundException => new ProblemDetails
-            {
-                Title = "Cannot delete player",
-                Status = (int)HttpStatusCode.NotFound,
-                Type = exception.GetType().FullName,
-            },
-            CannotUpdatePlayerException cannotDeletePlayerException => new ProblemDetails
-            {
-                Title = "Cannot delete player",
-                Status = (int)HttpStatusCode.BadRequest,
-                Type = exception.GetType().FullName,
-                Detail = cannotDeletePlayerException.ErrorMessage,
-            },
             _ => new ProblemDetails
             {
                 Title = "Unknown error",

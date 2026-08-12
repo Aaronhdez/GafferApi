@@ -60,11 +60,15 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 }
 
-public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message) { }
+public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message)
+{
+    public Guid Id { get; set; } = id;
+}
 
 public class CannotUpdatePlayerException(string message, Guid id) : Exception(message)
 {
-    public string ErrorMessage { get; set; } = $"Player with id {id} not found in Database";
+    public Guid Id { get; set; } = id;
+    public string Reason { get; }
 }
 
 public class UpdatePlayerCommand : ICommand<UpdatePlayerResult>, ICommand
