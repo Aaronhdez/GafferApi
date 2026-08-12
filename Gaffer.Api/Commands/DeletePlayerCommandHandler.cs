@@ -7,9 +7,22 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 {
     public async Task Handle(DeletePlayerCommand command, CancellationToken cancellationToken)
     {
-        var player = await FindPlayer(command, cancellationToken);
-        if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
-        await playerRepository.Delete(command.Id, cancellationToken);
+        try
+        {
+            var player = await FindPlayer(command, cancellationToken);
+            if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
+            await playerRepository.Delete(command.Id, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            switch (ex)
+            {
+                case PlayerNotFoundException:
+                    throw new CannotDeletePlayerNotFoundException(ex.Message, command.Id);
+                default:
+                    throw new CannotDeletePlayerException(ex.Message, command.Id);
+            }
+        }
     }
 
     private async Task<Player?> FindPlayer(DeletePlayerCommand command, CancellationToken cancellationToken)
@@ -26,6 +39,13 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         var player = queryResult.FirstOrDefault();
         return player;
     }
+}
+
+public class CannotDeletePlayerNotFoundException(string message, Guid id) : Exception(message) { }
+
+public class CannotDeletePlayerException(string message, Guid id) : Exception(message)
+{
+    public string ErrorMessage { get; set; } = $"Player with id {id} not found in Database";
 }
 
 public record DeletePlayerCommand(Guid Id) : ICommand;

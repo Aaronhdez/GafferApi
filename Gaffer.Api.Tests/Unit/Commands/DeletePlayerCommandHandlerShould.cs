@@ -45,6 +45,6 @@ public class DeletePlayerCommandHandlerShould
 
         var result = async () => await _handler.Handle(createPlayerCommand, CancellationToken.None);
 
-        await result.Should().ThrowAsync<PlayerNotFoundException>();
+        await result.Should().ThrowAsync<CannotDeletePlayerNotFoundException>();
     }
 }

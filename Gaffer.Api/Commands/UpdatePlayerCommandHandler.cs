@@ -14,16 +14,30 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 
     private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken)
     {
-        var playerSearchCriteria = new PlayerSearchCriteria();
-        playerSearchCriteria.criteriaList.Add(new SearchCriteria
+        try
         {
-            Name = "Id",
-            Value = $"{command.Id}",
-            CriteriaType = CriteriaType.NONE
-        });
-        var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
-        var player = queryResult.FirstOrDefault();
-        return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
+            var playerSearchCriteria = new PlayerSearchCriteria();
+            playerSearchCriteria.criteriaList.Add(new SearchCriteria
+            {
+                Name = "Id",
+                Value = $"{command.Id}",
+                CriteriaType = CriteriaType.NONE
+            });
+            var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
+            var player = queryResult.FirstOrDefault();
+            return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
+
+        }
+        catch (Exception ex)
+        {
+            switch (ex)
+            {
+                case PlayerNotFoundException:
+                    throw new CannotUpdatePlayerNotFoundException(ex.Message, command.Id);
+                default:
+                    throw new CannotUpdatePlayerException(ex.Message, command.Id);
+            }
+        }
     }
 
     private void UpdatePlayer(Player player, UpdatePlayerCommand command)
@@ -44,6 +58,13 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
             player.SetGender(command.Gender);
         }
     }
+}
+
+public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message) { }
+
+public class CannotUpdatePlayerException(string message, Guid id) : Exception(message)
+{
+    public string ErrorMessage { get; set; } = $"Player with id {id} not found in Database";
 }
 
 public class UpdatePlayerCommand : ICommand<UpdatePlayerResult>, ICommand

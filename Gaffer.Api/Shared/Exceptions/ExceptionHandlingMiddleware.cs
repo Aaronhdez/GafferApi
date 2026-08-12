@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -56,12 +57,31 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
     {
         return exception switch
         {
-            PlayerNotFoundException playerNotFoundException => new ProblemDetails
+            CannotDeletePlayerNotFoundException => new ProblemDetails
             {
-                Title = "Player not found",
+                Title = "Cannot delete player",
                 Status = (int)HttpStatusCode.NotFound,
                 Type = exception.GetType().FullName,
-                Detail = playerNotFoundException.ErrorMessage,
+            },
+            CannotDeletePlayerException cannotDeletePlayerException => new ProblemDetails
+            {
+                Title = "Cannot delete player",
+                Status = (int)HttpStatusCode.BadRequest,
+                Type = exception.GetType().FullName,
+                Detail = cannotDeletePlayerException.ErrorMessage,
+            },
+            CannotUpdatePlayerNotFoundException => new ProblemDetails
+            {
+                Title = "Cannot delete player",
+                Status = (int)HttpStatusCode.NotFound,
+                Type = exception.GetType().FullName,
+            },
+            CannotUpdatePlayerException cannotDeletePlayerException => new ProblemDetails
+            {
+                Title = "Cannot delete player",
+                Status = (int)HttpStatusCode.BadRequest,
+                Type = exception.GetType().FullName,
+                Detail = cannotDeletePlayerException.ErrorMessage,
             },
             _ => new ProblemDetails
             {
