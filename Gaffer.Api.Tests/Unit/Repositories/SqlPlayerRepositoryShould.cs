@@ -213,4 +213,32 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
             result.Count.Should().Be(0);
         }
     }
+    
+    [TestFixture]
+    public class WhenUpdatingPlayers : SqlPlayerRepositoryShould
+    {
+
+        [Test]
+        public async Task UpdateAPlayer()
+        {
+            var updatedPlayer = new Player(player1.Id,
+                "NewFirstName",
+                "NewLastName",
+                "NewSecondLastName",
+                Gender.OTHER,
+                new DateTime(1996, 1, 1));
+            await _repository.Update(updatedPlayer, CancellationToken.None);
+
+            var result = await _repository.Get(new PlayerSearchCriteria
+            {
+                criteriaList = new List<SearchCriteria>(){ new() { Name = "Id", Value = $"{player1.Id}" } }
+            }, CancellationToken.None);
+            result[0].Id.Should().Be(updatedPlayer.Id);
+            result[0].FirstName.Should().Be(updatedPlayer.FirstName);
+            result[0].LastName.Should().Be(updatedPlayer.LastName);
+            result[0].SecondLastName.Should().Be(updatedPlayer.SecondLastName);
+            result[0].Birthdate.Should().Be(updatedPlayer.Birthdate);
+            result[0].Gender.Should().Be(updatedPlayer.Gender);
+        }
+    }
 }
