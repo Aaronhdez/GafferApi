@@ -71,6 +71,23 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
 
     public async Task Update(Player player, CancellationToken any)
     {
-        throw new NotImplementedException();
+        const string query =
+            "UPDATE `Players` SET " +
+                "FirstName = @FirstName, " +
+                "LastName = @LastName, " +
+                "SecondLastName = @SecondLastName, " +
+                "Gender = @Gender, " +
+                "BirthDate = @BirthDate " +
+        "WHERE " +
+            "Id = @Id";
+        await dbConnectionProvider.ExecuteAsync(query, new
+        {
+            player.Id,
+            player.FirstName,
+            player.LastName,
+            player.SecondLastName,
+            player.Gender,
+            player.Birthdate
+        });
     }
 }
