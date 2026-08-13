@@ -83,6 +83,13 @@ You must execute the following phases in sequence without stopping, driving the 
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:orchestrator|Mode:agent|Invocation:<short-purpose>]`.
 
+# Response Concision Protocol (Mandatory)
+- Keep responses concrete and direct; avoid introductions and filler text.
+- Use compact structure: `status`, `delta`, `blockers`, `next action`.
+- Default limit: max 8 bullets or 160 words unless the user explicitly requests more detail.
+- Do not repeat phase details that did not change.
+- If blocked, provide concise options with trade-offs in 1 line each.
+
 # Documentation Context References
 - `.github/doc/work-guidelines.md`
 - `.github/doc/common/dev-stack.md`
