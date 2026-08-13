@@ -11,6 +11,7 @@ public static class RepositoriesStartup
 {
     public static IServiceCollection ConfigureRepositories(this IServiceCollection services, IConfiguration configuration) {
         services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
+        services.AddScoped<IFacilityRepository, SqlFacilityRepository>();
         return services;
     }
 }

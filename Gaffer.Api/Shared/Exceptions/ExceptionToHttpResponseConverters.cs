@@ -1,5 +1,6 @@
 using System.Net;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
@@ -37,6 +38,13 @@ public static class ExceptionToHttpResponseConverters
                     "Cannot update player",
                     $"Player {((CannotUpdatePlayerException)ex).Id} cannot be updated",
                     $"Error.Players.Update.{((CannotUpdatePlayerException)ex).Reason}")
+            },
+            {
+                typeof(FacilityValidationException),
+                ex => BuildBadRequestProblemDetailsWithExtension(
+                    "Cannot create facility",
+                    ex.Message,
+                    "Error.Facilities.Create.Validation")
             },
         };
     

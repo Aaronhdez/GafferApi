@@ -100,6 +100,7 @@ public class TestFixture
                         .AddMvc(options => {
                             var apiVersionsDefinition = new GafferApiVersioningDefinition();
                             options.Conventions.Controller<PlayerController>().HasApiVersions(apiVersionsDefinition.Versions);
+                            options.Conventions.Controller<FacilitiesController>().HasApiVersions(apiVersionsDefinition.Versions);
                         })
                         .AddApiExplorer(options => {
                             options.GroupNameFormat = "'v'VVV";
@@ -110,7 +111,9 @@ public class TestFixture
                     SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
                     services.AddScoped<IDatabaseConnectionProvider>(_ => SqlConnectionProviderTest);
                     services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
+                    services.AddScoped<IFacilityRepository, SqlFacilityRepository>();
                     services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
+                    services.AddScoped<ICommandHandler<CreateFacilityCommand, CreateFacilityResponse>, CreateFacilityCommandHandler>();
                     services.AddScoped<ICommandHandler<DeletePlayerCommand>, DeletePlayerCommandHandler>();
                     services.AddScoped<ICommandHandler<UpdatePlayerCommand>, UpdatePlayerCommandHandler>();
                     services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();

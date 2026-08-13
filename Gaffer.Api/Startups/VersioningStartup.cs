@@ -19,6 +19,7 @@ public static class VersioningStartup {
             .AddMvc(options => {
                 var apiVersionsDefinition = new GafferApiVersioningDefinition();
                 options.Conventions.Controller<PlayerController>().HasApiVersions(apiVersionsDefinition.Versions);
+                options.Conventions.Controller<FacilitiesController>().HasApiVersions(apiVersionsDefinition.Versions);
             })
             .AddApiExplorer(options => {
                 options.GroupNameFormat = "'v'VVV";
