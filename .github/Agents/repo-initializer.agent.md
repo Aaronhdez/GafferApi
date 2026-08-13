@@ -34,3 +34,9 @@ Architecture rules and project relationship matrices are defined in `Common/repo
 - Retry policy: max 1 retry per terminal/tool failure, then fallback.
 - Report only delta vs previous iteration.
 
+# Response Concision Protocol (Mandatory)
+- Keep responses concrete and direct; avoid introductions and filler text.
+- Follow the script-only output rule when emitting scripts.
+- When not emitting scripts, use the required response format only, with one concise line per section.
+- Do not repeat unchanged validation or creation details.
+

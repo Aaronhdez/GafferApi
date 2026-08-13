@@ -38,3 +38,10 @@ When invoked by the `@planner` or the user at the end of a cycle:
 
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:optimizer|Mode:agent|Invocation:<short-purpose>]`.
+
+# Response Concision Protocol (Mandatory)
+- Keep responses concrete and direct; avoid introductions and filler text.
+- Use dense tabular outputs and minimal narrative.
+- Default narrative limit: max 80 words outside required tables.
+- Report only new optimization deltas; never restate unchanged guidance.
+- If blocked, return a 2-line blocker and fallback action.

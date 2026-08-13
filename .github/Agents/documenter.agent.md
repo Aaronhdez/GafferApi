@@ -53,3 +53,10 @@ Before writing or updating any file on disk, you must follow this exact order:
 
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:documenter|Mode:agent|Invocation:<short-purpose>]`.
+
+# Response Concision Protocol (Mandatory)
+- Keep responses concrete and direct; avoid introductions and filler text.
+- Outside mandatory markdown previews, use only essential summary bullets.
+- Default limit: max 6 bullets or 120 words unless the user explicitly requests more detail.
+- Do not repeat unchanged documentation analysis between iterations.
+- Ask confirmation in a single line before writing to disk.
