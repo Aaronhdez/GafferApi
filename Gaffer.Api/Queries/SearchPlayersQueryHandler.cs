@@ -17,7 +17,7 @@ public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
         var players = await playerRepository.Get(searchCriteria, cancellationToken);
         return players.Select(player
                 => new SearchPlayerResult(player.Id, player.FirstName, player.LastName, player.SecondLastName,
-                    player.Birthdate, Gender.MALE))
+                    player.Birthdate, player.Gender))
             .ToList();
     }
 }

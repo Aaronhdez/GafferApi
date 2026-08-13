@@ -69,7 +69,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         await dbConnectionProvider.ExecuteAsync(query, new { Id = id });
     }
 
-    public async Task Update(Player player, CancellationToken any)
+    public async Task Update(Player player, CancellationToken cancellationToken)
     {
         const string query =
             "UPDATE `Players` SET " +

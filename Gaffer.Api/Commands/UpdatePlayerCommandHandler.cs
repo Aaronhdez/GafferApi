@@ -7,26 +7,11 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 {
     public async Task Handle(UpdatePlayerCommand command, CancellationToken cancellationToken)
     {
-        var player = await GetPlayer(command, cancellationToken);
-        UpdatePlayer(player, command);
-        await playerRepository.Update(player, cancellationToken);
-    }
-
-    private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken)
-    {
         try
         {
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.criteriaList.Add(new SearchCriteria
-            {
-                Name = "Id",
-                Value = $"{command.Id}",
-                CriteriaType = CriteriaType.NONE
-            });
-            var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
-            var player = queryResult.FirstOrDefault();
-            return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
-
+            var player = await GetPlayer(command, cancellationToken);
+            UpdatePlayer(player, command);
+            await playerRepository.Update(player, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -40,21 +25,44 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         }
     }
 
+    private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken)
+    {
+        var playerSearchCriteria = new PlayerSearchCriteria();
+        playerSearchCriteria.criteriaList.Add(new SearchCriteria
+        {
+            Name = "Id",
+            Value = $"{command.Id}",
+            CriteriaType = CriteriaType.NONE
+        });
+        var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
+        var player = queryResult.FirstOrDefault();
+        return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
+    }
+
     private void UpdatePlayer(Player player, UpdatePlayerCommand command)
     {
-        if (player.GetFirstName() != command.FirstName && !string.IsNullOrEmpty(command.FirstName)) {
+        if (player.GetFirstName() != command.FirstName && !string.IsNullOrEmpty(command.FirstName))
+        {
             player.SetFirstName(command.FirstName);
         }
-        if (player.GetLastName() != command.LastName && !string.IsNullOrEmpty(command.LastName)) {
+
+        if (player.GetLastName() != command.LastName && !string.IsNullOrEmpty(command.LastName))
+        {
             player.SetLastName(command.LastName);
         }
-        if (player.GetSecondLastName() != command.SecondLastName && !string.IsNullOrEmpty(command.SecondLastName)) {
+
+        if (player.GetSecondLastName() != command.SecondLastName && !string.IsNullOrEmpty(command.SecondLastName))
+        {
             player.SetSecondLastName(command.SecondLastName);
         }
-        if (player.GetBirthDateName() != command.BirthDate && !string.IsNullOrEmpty(command.BirthDate)) {
+
+        if (player.GetBirthDateName() != command.BirthDate && !string.IsNullOrEmpty(command.BirthDate))
+        {
             player.SetBirthDateName(command.BirthDate);
         }
-        if (player.GetGenderName() != command.Gender && !string.IsNullOrEmpty(command.Gender)) {
+
+        if (player.GetGenderName() != command.Gender && !string.IsNullOrEmpty(command.Gender))
+        {
             player.SetGender(command.Gender);
         }
     }
@@ -84,4 +92,3 @@ public class UpdatePlayerCommand : ICommand<UpdatePlayerResult>, ICommand
 public class UpdatePlayerResult
 {
 }
-

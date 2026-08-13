@@ -5,6 +5,7 @@ using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Queries;
 
@@ -73,5 +74,38 @@ public class SearchPlayersQueryHandlerShould
         await _repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(1);
         result.Should().Contain(spr => spr.Id == player1.Id);
+    }
+
+    [Test]
+    public async Task PropagateExceptionWhenRepositoryFails()
+    {
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("repository unavailable"));
+
+        var result = async () => await _handler.Handle(_emptySearchCriteria, CancellationToken.None);
+
+        await result.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*repository unavailable*");
+    }
+
+    [Test]
+    public async Task MapEveryQueryFilterToRepositorySearchCriteria()
+    {
+        var player = new Player(Guid.NewGuid(), "Jane", "Doe", "Smith", Gender.FEMALE, new DateTime(2002, 2, 2));
+        var query = new SearchPlayersQuery();
+        query.Filters.Add(new QueryFilter { Name = "FirstName", Value = "Jane" });
+        query.Filters.Add(new QueryFilter { Name = "Gender", Value = nameof(Gender.FEMALE) });
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        await _repository.Received(1).Get(Arg.Is<PlayerSearchCriteria>(criteria =>
+            criteria.criteriaList.Count == 2
+            && criteria.criteriaList.Any(filter => filter.Name == "FirstName" && filter.Value == "Jane")
+            && criteria.criteriaList.Any(filter => filter.Name == "Gender" && filter.Value == nameof(Gender.FEMALE))),
+            Arg.Any<CancellationToken>());
+        result.Should().ContainSingle();
+        result[0].Gender.Should().Be(Gender.FEMALE);
+        result[0].BirthDate.Should().Be(player.Birthdate);
     }
 }

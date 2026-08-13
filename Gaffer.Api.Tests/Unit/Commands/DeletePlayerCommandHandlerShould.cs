@@ -4,6 +4,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
 
@@ -46,5 +47,40 @@ public class DeletePlayerCommandHandlerShould
         var result = async () => await _handler.Handle(createPlayerCommand, CancellationToken.None);
 
         await result.Should().ThrowAsync<CannotDeletePlayerNotFoundException>();
+    }
+
+    [Test]
+    public async Task ThrowExceptionIfRepositoryFailsWhileFindingPlayer()
+    {
+        var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("database unavailable"));
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await result.Should().ThrowAsync<CannotDeletePlayerException>()
+            .WithMessage("*database unavailable*");
+    }
+
+    [Test]
+    public async Task ThrowExceptionIfRepositoryFailsWhileDeletingPlayer()
+    {
+        var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
+        var player = new Player(
+            command.Id,
+            TestDefaultValues.DefaultFirstName,
+            TestDefaultValues.DefaultLastName,
+            TestDefaultValues.DefaultSecondLastName,
+            TestDefaultValues.DefaultGender,
+            TestDefaultValues.DefaultBirthDate);
+
+        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        _repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("delete failed"));
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await result.Should().ThrowAsync<CannotDeletePlayerException>()
+            .WithMessage("*delete failed*");
     }
 }

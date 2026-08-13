@@ -1,4 +1,5 @@
-﻿using Gaffer.Api.Commands;
+﻿using AwesomeAssertions;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
@@ -37,6 +38,35 @@ public class CreatePlayerCommandHandlerShould
             && p.SecondLastName == TestDefaultValues.DefaultSecondLastName
             && p.Birthdate == TestDefaultValues.DefaultBirthDate
             && p.Gender == TestDefaultValues.DefaultGender
+        ), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task ReturnCreatedPlayerResponseWithGeneratedId()
+    {
+        var command = new CreatePlayerCommand(
+            "Jane",
+            "Smith",
+            null,
+            new DateTime(1995, 4, 12),
+            Gender.FEMALE);
+        Player? savedPlayer = null;
+
+        _repository.When(x => x.Save(Arg.Any<Player>(), Arg.Any<CancellationToken>()))
+            .Do(callInfo => savedPlayer = callInfo.Arg<Player>());
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.Id.Should().NotBeEmpty();
+        savedPlayer.Should().NotBeNull();
+        result.Id.Should().Be(savedPlayer!.Id);
+        await _repository.Received(1).Save(Arg.Is<Player>(p =>
+            p.Id == result.Id
+            && p.FirstName == command.FirstName
+            && p.LastName == command.LastName
+            && p.SecondLastName == command.SecondLastName
+            && p.Birthdate == command.Birthdate
+            && p.Gender == command.Gender
         ), Arg.Any<CancellationToken>());
     }
 }
