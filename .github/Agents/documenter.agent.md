@@ -54,6 +54,12 @@ Before writing or updating any file on disk, you must follow this exact order:
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:documenter|Mode:agent|Invocation:<short-purpose>]`.
 
+# Token Usage Reporting Protocol (Mandatory)
+- Final step of every invocation (after the write step, or after the preview if the user has not yet confirmed): read the tokens consumed by this invocation from the AI Insights extension.
+- End the response with exactly one line: `[Tokens|Agent:documenter|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
+- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
+
 # Response Concision Protocol (Mandatory)
 - Keep responses concrete and direct; avoid introductions and filler text.
 - Outside mandatory markdown previews, use only essential summary bullets.

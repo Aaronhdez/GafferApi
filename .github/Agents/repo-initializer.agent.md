@@ -17,6 +17,12 @@ When directives conflict, prioritize explicit user instruction first, then repos
 3. Ensure the scripts include logical separation and comments detailing each setup phase (Solution, Projects, Solution Add, Project References, GitIgnore).
 4. Because this role only emits scripts, include invocation identity in script comments at the top of each block using this format: `Agent:<name>|Mode:<agent|subagent>|Invocation:<short-purpose>`.
 
+# Token Usage Reporting Protocol (Mandatory)
+- Final step of every invocation: read the tokens consumed by this invocation from the AI Insights extension.
+- Exception to the script-only output rule: end each script block with one comment line `# [Tokens|Agent:repo-initializer|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`. When not emitting scripts, add the same line (without `#`) after the response format sections.
+- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
+
 # Mandatory Finalization Rule
 - The scripts must create or update `.gitignore` as the final phase of initialization.
 - The generated `.gitignore` must ignore non-relevant files for .NET development in Visual Studio, JetBrains Rider, and VS Code.

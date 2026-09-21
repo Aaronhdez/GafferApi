@@ -11,7 +11,7 @@ This repository is governed by a specialized multi-agent ecosystem. To ensure co
 - **`@documenter`**: Solely responsible for maintaining Markdown files and Mermaid diagrams within the `Doc/` directory.
 - **`@scaffolding`**: Responsible for repository scaffolding analysis, stack/dependency documentation, template generation, and agent documentation context alignment.
 - **`@net-repo-initializer`**: Used only when initializing or scaffolding projects according to core architectural rules.
-- **`@optimizer`**: Mandatory final step after every feature cycle to minimize token consumption, record retrospective lessons in `Doc/Memories.md`, and record optimization results in `Doc/Stats.md`.
+- **`@optimizer`**: Mandatory final step after every feature cycle to minimize token consumption using `.github/doc/TokenUsage.md` as the measured baseline, record retrospective lessons in `.github/doc/Memories.md`, and record optimization results in `.github/doc/Stats.md`.
 - **`@committer`**: Responsible for committing and pushing changes to the repository. It will only commit after all agents have completed their tasks and the user has approved the final output.
 
 ## 2. Core Architectural Rules

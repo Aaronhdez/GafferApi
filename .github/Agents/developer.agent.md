@@ -47,6 +47,12 @@ Apply these principles without duplicating stack-specific mandates:
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:developer|Mode:agent|Invocation:<short-purpose>]`.
 
+# Token Usage Reporting Protocol (Mandatory)
+- Final step of every invocation: read the tokens consumed by this invocation from the AI Insights extension.
+- End the response with exactly one line: `[Tokens|Agent:developer|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
+- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
+
 # Response Concision Protocol (Mandatory)
 - Keep responses concrete and direct; avoid introductions and filler text.
 - Prefer short bullet lists with only actionable information.

@@ -49,5 +49,5 @@ Specialized documentation architect ensuring up-to-date system catalogs.
 Process and workflow optimization agent called mandatorily at the end of each feature cycle.
 - **Scope**: User-level (Global)
 - **Role**: Post-cycle optimization focused primarily on minimizing token consumption.
-- **Output**: Writes retrospective lessons to `Doc/Memories.md` and optimization results to `Doc/Stats.md`.
+- **Output**: Persists measured token lines to `.github/doc/TokenUsage.md` (its reference baseline), retrospective lessons to `.github/doc/Memories.md`, and optimization results to `.github/doc/Stats.md`.
 - **Integrated Skills**: `write-doc`

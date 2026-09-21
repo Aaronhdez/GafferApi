@@ -53,10 +53,12 @@ You must execute the following phases in sequence without stopping, driving the 
 2. Validate that documentation reflects behavior, contracts, and relevant usage notes.
 
 ## Phase 5: Optimization Coordination (Mandatory)
-1. Delegate post-cycle optimization to the optimizer agent after documentation is complete.
-2. Require the optimizer to prioritize token-consumption minimization as its primary objective.
-3. Validate that retrospective findings are documented in `Doc/Memories.md`.
-4. Validate that optimization results are documented in `Doc/Stats.md`.
+1. Collect every `[Tokens|...]` line reported by the planner and each delegated agent during the cycle (plus your own).
+2. Delegate post-cycle optimization to the optimizer agent after documentation is complete, passing the collected token lines.
+3. Require the optimizer to prioritize token-consumption minimization as its primary objective, based on the measured token data.
+4. Validate that retrospective findings are documented in `.github/doc/Memories.md`.
+5. Validate that optimization results are documented in `.github/doc/Stats.md`, each citing a measured figure from `.github/doc/TokenUsage.md` (or marked `unmeasured`).
+6. Validate that the token lines were persisted in `.github/doc/TokenUsage.md`.
 
 ## Phase 6: Closure
 1. Validate that all phase outputs and handoffs are complete.
@@ -82,6 +84,13 @@ You must execute the following phases in sequence without stopping, driving the 
 
 # Invocation Identity Protocol
 - At the beginning of each invocation, start your response with: `[Agent:orchestrator|Mode:agent|Invocation:<short-purpose>]`.
+
+# Token Usage Reporting Protocol (Mandatory)
+- Require every delegated response to end with its `[Tokens|...]` line; if missing, request it once before advancing the phase.
+- Final step of every invocation: read the tokens consumed by this invocation from the AI Insights extension.
+- End the response with exactly one line: `[Tokens|Agent:orchestrator|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
+- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 # Response Concision Protocol (Mandatory)
 - Keep responses concrete and direct; avoid introductions and filler text.

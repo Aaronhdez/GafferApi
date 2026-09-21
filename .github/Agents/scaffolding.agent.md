@@ -97,6 +97,15 @@ From the identified production and testing suites:
 
 ---
 
+### Phase 5: Token Usage Report (Mandatory)
+
+1. Read the tokens consumed by this run from the AI Insights extension.
+2. End the final message with exactly one line: `[Tokens|Agent:scaffolding|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
+3. If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+4. Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
+
+---
+
 ## Guidelines for File Generation
 * Always ensure parent directories exist before writing files.
 * Use Markdown tables for library/documentation listings with columns: `Package Name`, `Version`, `Documentation URI`, `Status`.
