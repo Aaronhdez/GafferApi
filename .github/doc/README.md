@@ -11,6 +11,7 @@ This directory contains repository scaffolding artifacts generated from project 
 ## Feature Documentation
 
 - `.github/doc/features/facility-create.md`: Facility creation flow from API request mapping to command handling and SQL persistence.
+- `.github/doc/features/facility-crud.md`: Facility select (get by id / list), full-replace update, and delete flows.
 
 ## Common Stack Documentation
 
