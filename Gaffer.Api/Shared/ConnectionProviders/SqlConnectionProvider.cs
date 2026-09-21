@@ -7,6 +7,7 @@ namespace Gaffer.Api.Shared.ConnectionProviders;
 public class SqlConnectionProvider : IDatabaseConnectionProvider
 {
     private readonly MySqlConnection _sqlConnection;
+    private MySqlTransaction? _currentTransaction;
 
     public SqlConnectionProvider(string? dbConnection)
     {
@@ -57,12 +58,9 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
     
     public async Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
     {
-        if (_sqlConnection.State != ConnectionState.Open)
-        {
-            _sqlConnection.Open();
-        }
-        var result = await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters);
-        if (_sqlConnection.State == ConnectionState.Open)
+        var ownsConnection = await OpenIfNeededAsync();
+        var result = await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters, _currentTransaction);
+        if (ownsConnection)
         {
             await _sqlConnection.CloseAsync();
             await _sqlConnection.DisposeAsync();
@@ -72,12 +70,9 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
 
     public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
     {
-        if (_sqlConnection.State != ConnectionState.Open)
-        {
-            _sqlConnection.Open();
-        }
-        var result = await _sqlConnection.QueryAsync<T>(query, parameters);
-        if (_sqlConnection.State == ConnectionState.Open)
+        var ownsConnection = await OpenIfNeededAsync();
+        var result = await _sqlConnection.QueryAsync<T>(query, parameters, _currentTransaction);
+        if (ownsConnection)
         {
             await _sqlConnection.CloseAsync();
             await _sqlConnection.DisposeAsync();
@@ -87,15 +82,57 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
 
     public async Task ExecuteAsync(string query, object? parameters = null)
     {
-        if (_sqlConnection.State != ConnectionState.Open)
-        {
-            _sqlConnection.Open();
-        }
-        await _sqlConnection.ExecuteAsync(query, parameters);
-        if (_sqlConnection.State == ConnectionState.Open)
+        var ownsConnection = await OpenIfNeededAsync();
+        await _sqlConnection.ExecuteAsync(query, parameters, _currentTransaction);
+        if (ownsConnection)
         {
             await _sqlConnection.CloseAsync();
             await _sqlConnection.DisposeAsync();
         }
+    }
+
+    public async Task ExecuteInTransactionAsync(Func<Task> operations)
+    {
+        if (_currentTransaction != null)
+        {
+            // Already running inside an ambient transaction started by an outer call: just execute inline.
+            await operations();
+            return;
+        }
+
+        await OpenIfNeededAsync();
+        _currentTransaction = await _sqlConnection.BeginTransactionAsync();
+        try
+        {
+            await operations();
+            await _currentTransaction.CommitAsync();
+        }
+        catch
+        {
+            await _currentTransaction.RollbackAsync();
+            throw;
+        }
+        finally
+        {
+            await _currentTransaction.DisposeAsync();
+            _currentTransaction = null;
+            if (_sqlConnection.State == ConnectionState.Open)
+            {
+                await _sqlConnection.CloseAsync();
+                await _sqlConnection.DisposeAsync();
+            }
+        }
+    }
+
+    /// <summary>Opens the connection if not already open. Returns whether the caller is responsible for closing it.</summary>
+    private async Task<bool> OpenIfNeededAsync()
+    {
+        if (_currentTransaction != null) return false;
+
+        if (_sqlConnection.State != ConnectionState.Open)
+        {
+            await _sqlConnection.OpenAsync();
+        }
+        return true;
     }
 }

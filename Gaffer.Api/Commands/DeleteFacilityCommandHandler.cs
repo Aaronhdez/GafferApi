@@ -1,0 +1,59 @@
+using Gaffer.Api.Domain;
+using Gaffer.Api.Shared.Repositories;
+
+namespace Gaffer.Api.Commands;
+
+public class DeleteFacilityCommandHandler(IFacilityRepository facilityRepository) : ICommandHandler<DeleteFacilityCommand>
+{
+    public async Task Handle(DeleteFacilityCommand command, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var facility = await FindFacility(command, cancellationToken);
+            if (facility == null) throw new FacilityNotFoundException($"Facility with id {command.Id} not found", command.Id);
+            await facilityRepository.Delete(command.Id, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            switch (ex)
+            {
+                case FacilityNotFoundException:
+                    throw new CannotDeleteFacilityNotFoundException(ex.Message, command.Id);
+                default:
+                    throw new CannotDeleteFacilityException(ex.Message, command.Id);
+            }
+        }
+    }
+
+    private async Task<Facility?> FindFacility(DeleteFacilityCommand command, CancellationToken cancellationToken)
+    {
+        var criteria = new SearchCriteria
+        {
+            Name = "Id",
+            Value = command.Id.ToString(),
+            CriteriaType = CriteriaType.NONE
+        };
+        var searchCriteria = new FacilitySearchCriteria();
+        searchCriteria.criteriaList.Add(criteria);
+        var queryResult = await facilityRepository.Get(searchCriteria, cancellationToken);
+        var facility = queryResult.FirstOrDefault();
+        return facility;
+    }
+}
+
+public class CannotDeleteFacilityNotFoundException(string message, Guid id) : Exception(message)
+{
+    public Guid Id { get; } = id;
+}
+
+public class CannotDeleteFacilityException(string message, Guid id) : Exception(message)
+{
+    public Guid Id { get; } = id;
+    public string Reason { get; }
+}
+
+public record DeleteFacilityCommand(Guid Id) : ICommand;
+
+public class DeleteFacilityResult
+{
+}

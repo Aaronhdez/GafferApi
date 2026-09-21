@@ -1,15 +1,39 @@
 using System.ComponentModel.DataAnnotations;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
+using Gaffer.Api.Queries;
+using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gaffer.Api.Controllers;
 
 [Route("api/v{version:apiVersion}/facilities")]
 [ApiController]
-public class FacilitiesController(ICommandHandler<CreateFacilityCommand, CreateFacilityResponse> createFacilityCommandHandler)
+public class FacilitiesController(
+    ICommandHandler<CreateFacilityCommand, CreateFacilityResponse> createFacilityCommandHandler,
+    IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>> searchFacilitiesQueryHandler,
+    ICommandHandler<DeleteFacilityCommand> deleteFacilityCommandHandler,
+    ICommandHandler<UpdateFacilityCommand> updateFacilityCommandHandler)
     : ControllerBase
 {
+    [HttpGet("{id}")]
+    public async Task<SearchFacilityResult> GetBy([FromRoute] Guid id)
+    {
+        var query = new SearchFacilitiesQuery();
+        query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
+        var queryResult = await searchFacilitiesQueryHandler.Handle(query, CancellationToken.None);
+        var facility = queryResult.FirstOrDefault();
+        return facility ?? throw new FacilityNotFoundException($"Facility with id {id} not found", id);
+    }
+
+    [HttpGet("")]
+    public async Task<List<SearchFacilityResult>> GetAll()
+    {
+        var query = new SearchFacilitiesQuery();
+        return await searchFacilitiesQueryHandler.Handle(query, CancellationToken.None);
+    }
+
     [HttpPost("")]
     public async Task<Guid> Create([FromBody] CreateFacilityRequest request)
     {
@@ -30,6 +54,34 @@ public class FacilitiesController(ICommandHandler<CreateFacilityCommand, CreateF
 
         var result = await createFacilityCommandHandler.Handle(command, CancellationToken.None);
         return result.Id;
+    }
+
+    [HttpDelete("{id}")]
+    public async Task Delete([FromRoute] Guid id)
+    {
+        await deleteFacilityCommandHandler.Handle(new DeleteFacilityCommand(id), CancellationToken.None);
+    }
+
+    [HttpPut("{id}")]
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdateFacilityRequest request)
+    {
+        await updateFacilityCommandHandler.Handle(new UpdateFacilityCommand
+        {
+            Id = id,
+            Name = request.Name,
+            Active = request.Active,
+            BuildDate = request.BuildDate,
+            Type = request.Type,
+            Capacity = request.Capacity,
+            Address = new UpdateFacilityAddressCommand(
+                request.Address.Street,
+                request.Address.StreetNumber,
+                request.Address.PostalCode,
+                request.Address.City,
+                request.Address.Region,
+                request.Address.Country),
+            Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList(),
+        }, CancellationToken.None);
     }
 }
 
@@ -59,6 +111,37 @@ public class CreateFacilityAddressRequest
 }
 
 public class CreateFacilityStandRequest
+{
+    public string StandName { get; set; } = string.Empty;
+    public int StandCapacity { get; set; }
+}
+
+public class UpdateFacilityRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public bool Active { get; set; }
+    public DateTime BuildDate { get; set; }
+    public FacilityType Type { get; set; }
+    public int Capacity { get; set; }
+
+    [Required]
+    public UpdateFacilityAddressRequest Address { get; set; } = null!;
+
+    [MaxLength(4)]
+    public List<UpdateFacilityStandRequest>? Stands { get; set; }
+}
+
+public class UpdateFacilityAddressRequest
+{
+    public string Street { get; set; } = string.Empty;
+    public string StreetNumber { get; set; } = string.Empty;
+    public string PostalCode { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string Region { get; set; } = string.Empty;
+    public string Country { get; set; } = string.Empty;
+}
+
+public class UpdateFacilityStandRequest
 {
     public string StandName { get; set; } = string.Empty;
     public int StandCapacity { get; set; }

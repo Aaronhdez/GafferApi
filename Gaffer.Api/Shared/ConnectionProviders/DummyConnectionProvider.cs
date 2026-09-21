@@ -23,6 +23,11 @@ public class DummyConnectionProvider : IDatabaseConnectionProvider
         throw new NotImplementedException();
     }
 
+    public Task ExecuteInTransactionAsync(Func<Task> operations)
+    {
+        throw new NotImplementedException();
+    }
+
     public Task CreateAsync(string database)
     {
         throw new NotImplementedException();

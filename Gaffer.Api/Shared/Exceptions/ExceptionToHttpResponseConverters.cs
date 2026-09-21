@@ -46,6 +46,41 @@ public static class ExceptionToHttpResponseConverters
                     ex.Message,
                     "Error.Facilities.Create.Validation")
             },
+            {
+                typeof(FacilityNotFoundException),
+                ex => BuildNotFoundProblemDetailsWithExtension(
+                    "Facility not found",
+                    ex.Message,
+                    "Error.Facilities.NotFound")
+            },
+            {
+                typeof(CannotDeleteFacilityNotFoundException),
+                ex => BuildNotFoundProblemDetailsWithExtension(
+                    "Cannot delete facility",
+                    $"Facility {((CannotDeleteFacilityNotFoundException)ex).Id} not found",
+                    "Error.Facilities.Delete.FacilityNotFound")
+            },
+            {
+                typeof(CannotDeleteFacilityException),
+                ex => BuildBadRequestProblemDetailsWithExtension(
+                    "Cannot delete facility",
+                    $"Facility {((CannotDeleteFacilityException)ex).Id} cannot be deleted",
+                    $"Error.Facilities.Delete.{((CannotDeleteFacilityException)ex).Reason}")
+            },
+            {
+                typeof(CannotUpdateFacilityNotFoundException),
+                ex => BuildNotFoundProblemDetailsWithExtension(
+                    "Cannot update facility",
+                    $"Facility {((CannotUpdateFacilityNotFoundException)ex).Id} not found",
+                    "Error.Facilities.Update.FacilityNotFound")
+            },
+            {
+                typeof(CannotUpdateFacilityException),
+                ex => BuildBadRequestProblemDetailsWithExtension(
+                    "Cannot update facility",
+                    $"Facility {((CannotUpdateFacilityException)ex).Id} cannot be updated",
+                    $"Error.Facilities.Update.{((CannotUpdateFacilityException)ex).Reason}")
+            },
         };
     
     // Helper methods to build ProblemDetails

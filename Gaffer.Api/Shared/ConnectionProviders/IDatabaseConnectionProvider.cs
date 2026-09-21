@@ -7,4 +7,7 @@ public interface IDatabaseConnectionProvider
     Task<T> QueryScalarAsync<T>(string query, object? parameters = null);
     Task<List<T>> QueryAsync<T>(string query, object? parameters = null);
     Task ExecuteAsync(string query, object? parameters = null);
+
+    /// <summary>Runs <paramref name="operations"/> atomically: commits on success, rolls back and rethrows on failure.</summary>
+    Task ExecuteInTransactionAsync(Func<Task> operations);
 }

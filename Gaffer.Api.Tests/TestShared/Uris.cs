@@ -9,4 +9,8 @@ public static class Uris
     public static Uri GetPlayer(string playerId) => new(BaseUri, $"players/{playerId}");
     public static Uri DeletePlayer(string playerId) => new(BaseUri, $"players/{playerId}");
     public static Uri UpdatePlayer(string playerId) => new(BaseUri, $"players/{playerId}");
+    public static Uri GetFacility(string facilityId) => new(BaseUri, $"facilities/{facilityId}");
+    public static Uri GetAllFacilities() => new(BaseUri, $"facilities/");
+    public static Uri DeleteFacility(string facilityId) => new(BaseUri, $"facilities/{facilityId}");
+    public static Uri UpdateFacility(string facilityId) => new(BaseUri, $"facilities/{facilityId}");
 }
