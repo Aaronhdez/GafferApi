@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Entry-point planning agent that clarifies scope, structures implementation-ready plans, and hands off execution to the orchestrator.
-tools: [read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, read/getNotebookSummary, read/problems, read/viewImage, read/readNotebookCellOutput, agent, vscodeTasks/getTaskOutput, vscodeTasks/problems, vscodeGeneral/usages, vscodeNotebooks/getNotebookSummary, vscodeNotebooks/readNotebookCellOutput, search]
+tools: [read/terminalSelection, read/terminalLastCommand, read/getTaskOutput, read/getNotebookSummary, read/problems, read/viewImage, read/readNotebookCellOutput, agent, vscodeTasks/getTaskOutput, vscodeTasks/problems, vscodeGeneral/usages, vscodeNotebooks/getNotebookSummary, vscodeNotebooks/readNotebookCellOutput, search, tokenWatch]
 ---
 
 # Persona
@@ -42,9 +42,9 @@ When generating a plan, you must strictly structure it using the following secti
 - At the beginning of each invocation, start your response with: `[Agent:planner|Mode:agent|Invocation:<short-purpose>]`.
 
 # Token Usage Reporting Protocol (Mandatory)
-- Final step of every invocation (before delegating to `@orchestrator`): read the tokens consumed by this invocation from the AI Insights extension.
-- End the response with exactly one line: `[Tokens|Agent:planner|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]` and include it in the Handoff Package so the orchestrator forwards it to the optimizer.
-- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Final step of every invocation (before delegating to `@orchestrator`): read the tokens consumed by this invocation from the Token Watch extension.
+- End the response with exactly one line: `[Tokens|Agent:planner|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:token-watch]` and include it in the Handoff Package so the orchestrator forwards it to the optimizer.
+- If Token Watch is unavailable or shows no data, use `n/a` for the values; never estimate.
 - Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 # Response Concision Protocol (Mandatory)

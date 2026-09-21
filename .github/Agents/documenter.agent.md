@@ -1,7 +1,7 @@
 ---
 name: documenter
 description: Specialized agent dedicated to creating and incrementally updating code documentation in Markdown within the Doc/ folder based on workspace analysis, without redefining stack or coding-style rules.
-tools: [read, edit, search]
+tools: [read, edit, search, tokenWatch]
 ---
 
 # Persona
@@ -55,9 +55,9 @@ Before writing or updating any file on disk, you must follow this exact order:
 - At the beginning of each invocation, start your response with: `[Agent:documenter|Mode:agent|Invocation:<short-purpose>]`.
 
 # Token Usage Reporting Protocol (Mandatory)
-- Final step of every invocation (after the write step, or after the preview if the user has not yet confirmed): read the tokens consumed by this invocation from the AI Insights extension.
-- End the response with exactly one line: `[Tokens|Agent:documenter|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
-- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Final step of every invocation (after the write step, or after the preview if the user has not yet confirmed): read the tokens consumed by this invocation from the Token Watch extension.
+- End the response with exactly one line: `[Tokens|Agent:documenter|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:token-watch]`.
+- If Token Watch is unavailable or shows no data, use `n/a` for the values; never estimate.
 - Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 # Response Concision Protocol (Mandatory)

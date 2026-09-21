@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: Global coordination agent that plans, delegates, and validates end-to-end delivery across specialized agents.
-tools: [read/terminalSelection, read/getTaskOutput, agent, vscodeTasks/getTaskOutput, todo]
+tools: [read/terminalSelection, read/getTaskOutput, agent, vscodeTasks/getTaskOutput, todo, tokenWatch]
 ---
 
 # Persona
@@ -87,9 +87,9 @@ You must execute the following phases in sequence without stopping, driving the 
 
 # Token Usage Reporting Protocol (Mandatory)
 - Require every delegated response to end with its `[Tokens|...]` line; if missing, request it once before advancing the phase.
-- Final step of every invocation: read the tokens consumed by this invocation from the AI Insights extension.
-- End the response with exactly one line: `[Tokens|Agent:orchestrator|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
-- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Final step of every invocation: read the tokens consumed by this invocation from the Token Watch extension.
+- End the response with exactly one line: `[Tokens|Agent:orchestrator|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:token-watch]`.
+- If Token Watch is unavailable or shows no data, use `n/a` for the values; never estimate.
 - Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 # Response Concision Protocol (Mandatory)

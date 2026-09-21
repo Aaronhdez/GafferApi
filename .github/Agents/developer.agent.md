@@ -1,7 +1,7 @@
 ---
 name: developer
 description: Delivery-focused engineer for implementing and refactoring production code with clear boundaries and maintainable design.
-tools: [execute, read, edit, search, web, browser]
+tools: [execute, read, edit, search, web, browser, tokenWatch]
 ---
 
 # Persona
@@ -48,9 +48,9 @@ Apply these principles without duplicating stack-specific mandates:
 - At the beginning of each invocation, start your response with: `[Agent:developer|Mode:agent|Invocation:<short-purpose>]`.
 
 # Token Usage Reporting Protocol (Mandatory)
-- Final step of every invocation: read the tokens consumed by this invocation from the AI Insights extension.
-- End the response with exactly one line: `[Tokens|Agent:developer|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
-- If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+- Final step of every invocation: read the tokens consumed by this invocation from the Token Watch extension.
+- End the response with exactly one line: `[Tokens|Agent:developer|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:token-watch]`.
+- If Token Watch is unavailable or shows no data, use `n/a` for the values; never estimate.
 - Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 # Response Concision Protocol (Mandatory)

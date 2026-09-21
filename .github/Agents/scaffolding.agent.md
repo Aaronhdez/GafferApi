@@ -1,7 +1,7 @@
 ---
 name: scaffolding
 description: "Repository scaffolding agent that analyzes project structure, documents dev/test stacks and dependencies, creates generic templates, and updates agent references."
-tools: [read/readFile, edit/createFile, edit/editFiles]
+tools: [read/readFile, edit/createFile, edit/editFiles, tokenWatch]
 ---
 
 # Scaffolding Agent Instruction
@@ -99,9 +99,9 @@ From the identified production and testing suites:
 
 ### Phase 5: Token Usage Report (Mandatory)
 
-1. Read the tokens consumed by this run from the AI Insights extension.
-2. End the final message with exactly one line: `[Tokens|Agent:scaffolding|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:ai-insights]`.
-3. If AI Insights is unavailable or shows no data, use `n/a` for the values; never estimate.
+1. Read the tokens consumed by this run from the Token Watch extension.
+2. End the final message with exactly one line: `[Tokens|Agent:scaffolding|Invocation:<short-purpose>|In:<n>|Out:<n>|Total:<n>|Source:token-watch]`.
+3. If Token Watch is unavailable or shows no data, use `n/a` for the values; never estimate.
 4. Do not write to `.github/doc/TokenUsage.md`; the optimizer persists all reported lines.
 
 ---
