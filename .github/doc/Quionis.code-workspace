@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../quionis-bff-api"
+		},
+		{
+			"path": "../../../quionis-frontend"
+		}
+	],
+	"settings": {}
+}
