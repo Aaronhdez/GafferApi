@@ -24,7 +24,7 @@ Antes de generar los ficheros, pregunta al usuario:
 2. ¿Hay pruebas que dependan de infraestructura de terceros (Docker, bases de datos externas, colas, servicios remotos) que BUILDER y REVIEWER deban omitir, registrando el bloqueo en vez de ejecutarlas?
 3. ¿Existe alguna otra restricción específica del proyecto que deba aplicarse a algún agente (alcance de carpetas, ramas protegidas, artefactos que no se deben tocar, etc.)?
 4. ¿Cuál es el máximo de ciclos `NEEDS_CHANGES` que el ORCHESTRATOR puede ejecutar antes de detenerse definitivamente (por defecto 3)?
-5. ¿Qué fuentes de información debe consultar el OPTIMIZER para detectar picos de consumo de tokens y proponer optimizaciones? Por ejemplo: exportaciones o logs de uso de Copilot, vista de depuración del chat de VS Code, paneles de facturación/telemetría, documentación interna o URLs de buenas prácticas de prompting. Si no hay ninguna, el OPTIMIZER trabajará solo con los ficheros de consumo de BUILDER y REVIEWER.
+5. ¿Qué fuentes de información debe consultar el OPTIMIZER para detectar picos de consumo de tokens y proponer optimizaciones? Por ejemplo: exportaciones o logs de uso de Copilot, vista de depuración del chat de VS Code, paneles de facturación/telemetría, documentación interna o URLs de buenas prácticas de prompting. Si no hay ninguna, el OPTIMIZER trabajará solo con los ficheros de consumo de BUILDER y REVIEWER. Si está instalada la extensión Token Consumer Dashboard (`joynulabedinshokal.token-eater-dashboard`), propón usarla como fuente principal y confirma la ruta de su JSONL: `tokenConsumer.dataDirectory` o, si está vacío, `%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl`. Si la ruta queda fuera del workspace, propón apuntar `tokenConsumer.dataDirectory` a una carpeta del repositorio incluida en `.gitignore`.
 6. El DOCUMENTER escribe la documentación funcional en `doc/features/` y la técnica en `doc/features/technical/`. ¿Hay alguna plantilla, formato o convención de nombres obligatoria para esos documentos? ¿Existen otras rutas de documentación ya presentes en el repositorio (README, ADRs, guías de despliegue, etc.) que el DOCUMENTER deba mantener actualizadas cuando un desarrollo les afecte?
 7. Confirma el mapa de contexto y de skills propuesto (ver "Contexto del proyecto" y "Skills").
 8. Histórico heredado (`.github/doc/TokenUsage.md`, `Stats.md`, `Memories.md`): ¿migrar a `MEMORIES.md`? Tras migrar, ¿archivar en `.github/doc/legacy/` o borrar?
@@ -88,6 +88,7 @@ PLANNER → [checkpoint humano: validar plan]
    - Lecciones que son reglas de proyecto → "Restricciones adicionales específicas del proyecto" de `AGENTS.md` (no a `MEMORIES.md`).
    - `TokenUsage.md`, `Stats.md`, `Memories.md` → archivar o borrar según la respuesta.
    - `.github/AGENTS.md` → fusionar en el `AGENTS.md` raíz y eliminarlo.
+9. Si se confirma Token Consumer Dashboard en el Paso 0: `.github/agent-harness/tools/usage-slice.mjs` (Node; si no hay Node, `usage-slice.ps1`), según "Script usage-slice". Si la carpeta de datos queda dentro del repositorio, añádela a `.gitignore`.
 
 ## Contenido que debe quedar en AGENTS.md
 
@@ -136,7 +137,22 @@ El resto de skills de `.github/skills/` no se asignan; solo se usan si la person
 | Ciclo | Tokens entrada | Tokens salida | Origen del dato | Llamadas a herramientas | Ficheros leídos (nº y mayores) | Comandos con salida grande | Observaciones |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
-- `Origen del dato`: `medido:<herramienta>` (p. ej. `medido:token-watch`, `medido:ai-insights`) si el entorno expone el consumo real; `estimado` en caso contrario (a partir del tamaño de ficheros leídos, salidas de comandos y respuestas); `n/a` si no se puede ni medir ni estimar. Nunca presentar una estimación como medida.
+- `Origen del dato`: `medido:<herramienta>` si el entorno expone el consumo real; `estimado` en caso contrario (a partir del tamaño de ficheros leídos, salidas de comandos y respuestas); `n/a` si no se puede ni medir ni estimar. Nunca presentar una estimación como medida.
+- **Ventana temporal:** BUILDER y REVIEWER anotan en `STATUS.md`, por ciclo, `Inicio` y `Fin` (ISO 8601 UTC) de su ejecución. Es la clave para atribuir el consumo medido a cada rol.
+- **Consumo medido (Token Consumer Dashboard):** lo obtiene el OPTIMIZER con `usage-slice` y lo registra en `OPTIMIZATION.md`, nunca en `usage/*.md`. Para Copilot, la extensión da un evento agregado por sesión de chat marcado como `estimated`. Por eso el origen es `estimado:token-consumer` y no puede repartirse entre roles de una misma sesión; se reporta el total de la sesión como `por rol: no disponible`.
+
+## Script usage-slice
+
+Lee el JSONL línea a línea (streaming) y **nunca imprime eventos crudos**. Parámetros: `--file <ruta o glob>`, `--repo <nombre>` (campo `meta.repository`) y `--window <rol>=<inicio>/<fin>` (repetible). Opcional: `--agent <copilot|claude-code>`.
+
+Salida: una tabla markdown con una fila por ventana y agente:
+
+| Ventana | Agente | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+- `Entrada nueva` = `inputTokens` (sin caché). La caché va en columnas propias (`cacheReadInputTokens`, `cacheWriteInputTokens`), sin sumarla a la entrada.
+- `Origen` = `medido:token-consumer` si `sourceKind` es `verified`; `estimado:token-consumer` en otro caso.
+- Sin eventos en la ventana → fila con `sin datos`, nunca ceros inventados.
 - `Observaciones`: una línea con lo que más consumió en el ciclo (p. ej. lectura completa de un fichero grande, test con log extenso, reintentos).
 
 ## Formato de MEMORIES.md
@@ -159,7 +175,7 @@ Registra este cuadro literal en el frontmatter y en la sección "Límites" de ca
 | PLANNER | `[read, search, edit]` | `[]` | Carpeta `.github/plans/<ID>/`: ficheros `NN-*.md`, `STATUS.md` y `REVIEW.md` iniciales, carpeta `usage/` vacía | Código, tests o artefactos de producto; inventar requisitos no presentes en las especificaciones; commit/push |
 | BUILDER | `[read, search, edit, execute]` | `[]` | Código y tests del plan; `STATUS.md`; `usage/BUILDER.md` | Commit/push; cliente autogenerado; artefactos fuera del alcance del plan; auto-aprobarse; editar `usage/REVIEWER.md` o `OPTIMIZATION.md` |
 | REVIEWER | `[read, search, edit, execute]` | `[]` | `REVIEW.md`, `STATUS.md` y `usage/REVIEWER.md` | Corregir código, tests o artefactos de producto; commit/push; verificar el cliente autogenerado; editar `usage/BUILDER.md` |
-| OPTIMIZER | `[read, search, edit, web]` | `[]` | `OPTIMIZATION.md` del plan y `.github/agent-harness/MEMORIES.md` (solo añadir filas aprobadas y actualizar `Estado`/`Efecto observado`) | Editar código, agentes, prompts, `AGENTS.md` o ficheros de consumo; aplicar sus propias propuestas; consultar fuentes no confirmadas en el Paso 0; cambiar el estado del plan |
+| OPTIMIZER | `[read, search, edit, web, execute]` (`execute` solo para `usage-slice`) | `[]` | `OPTIMIZATION.md` del plan y `.github/agent-harness/MEMORIES.md` (solo añadir filas aprobadas y actualizar `Estado`/`Efecto observado`) | Editar código, agentes, prompts, `AGENTS.md` o ficheros de consumo; aplicar sus propias propuestas; consultar fuentes no confirmadas en el Paso 0; cambiar el estado del plan |
 | DOCUMENTER | `[read, search, edit, execute]` | `[]` | `doc/features/`, `doc/features/technical/` y las rutas de documentación adicionales confirmadas en el Paso 0; `STATUS.md` para marcar `DONE` | Código, tests, agentes o prompts; documentar comportamiento no demostrado en `REVIEW.md`; commit/push |
 | ORCHESTRATOR | `[read, search, execute, agent]` | `[PLANNER, BUILDER, REVIEWER, OPTIMIZER, DOCUMENTER]` | Nada; solo lee los ficheros del plan para reportar | Editar cualquier fichero; decidir criterios; iniciar un ciclo o la documentación sin confirmación humana; continuar tras `BLOCKED` o el máximo de ciclos |
 
@@ -178,7 +194,7 @@ Registra este cuadro literal en el frontmatter y en la sección "Límites" de ca
 - Aplica las restricciones adicionales del proyecto confirmadas en el Paso 0 (por ejemplo, no tocar un cliente autogenerado).
 - Sigue el doble bucle de test (acceptance → unit → refactor) y parte de las plantillas de `.github/doc/resources/` cuando existan.
 - Lee solo lo necesario (fragmentos antes que ficheros completos; salidas de comandos filtradas).
-- Actualiza `STATUS.md` (ciclo, pasos demostrados, comandos, resultados y bloqueos) y añade su fila a `usage/BUILDER.md`.
+- Actualiza `STATUS.md` (ciclo, `Inicio`/`Fin`, pasos demostrados, comandos, resultados y bloqueos) y añade su fila a `usage/BUILDER.md`.
 - Termina siempre en `READY_FOR_REVIEW`; nunca se autoaprueba.
 
 ## REVIEWER
@@ -187,15 +203,16 @@ Registra este cuadro literal en el frontmatter y en la sección "Límites" de ca
 - Mismo preflight y mismas exclusiones de infraestructura de terceros / restricciones del proyecto confirmadas en el Paso 0.
 - Solo edita `REVIEW.md`, `STATUS.md` y `usage/REVIEWER.md`; nunca corrige código.
 - `CHANGES_REQUESTED` ante cualquier defecto bloqueante, criterio no demostrado o falta de evidencia red→green → `NEEDS_CHANGES`; `APPROVED` solo con todo demostrable → `APPROVED`.
-- Añade su fila a `usage/REVIEWER.md` antes de terminar.
+- Anota `Inicio`/`Fin` del ciclo en `STATUS.md` y añade su fila a `usage/REVIEWER.md` antes de terminar.
 
 ## OPTIMIZER
 
 - Actúa después del REVIEWER en cada ciclo, sea cual sea el veredicto.
 - Lee `usage/BUILDER.md`, `usage/REVIEWER.md` (histórico completo), `STATUS.md`, `REVIEW.md`, `.github/agent-harness/MEMORIES.md` y las fuentes de información confirmadas en el Paso 0.
+- Si Token Consumer Dashboard está confirmado, ejecuta `usage-slice` con las ventanas `Inicio`/`Fin` de `STATUS.md` y no lee nunca el JSONL directamente. Compara `estimado` (en `usage/*.md`) con `medido` para calibrar las estimaciones, y analiza la entrada nueva por separado de la caché.
 - Usa `MEMORIES.md` (incluidas las filas `legacy:*` migradas) como línea base para no volver a proponer optimizaciones ya aprobadas y para evaluar su efecto real (actualiza `Efecto observado`).
 - Detecta picos de consumo (ciclos o agentes que se desvían del resto, crecimiento entre ciclos, lecturas o salidas desproporcionadas, reintentos) y sus causas probables.
-- Añade a `OPTIMIZATION.md` una sección por ciclo: picos detectados (con dato y origen `medido`/`estimado`), causa probable, propuesta concreta (qué fichero de agente/prompt/plan cambiar y cómo), ahorro esperado y fuente que la respalda.
+- Añade a `OPTIMIZATION.md` una sección por ciclo: tabla de `usage-slice` (si aplica), picos detectados (con dato y origen `medido`/`estimado`), causa probable, propuesta concreta (qué fichero de agente/prompt/plan cambiar y cómo), ahorro esperado y fuente que la respalda.
 - Cada propuesta lleva un identificador provisional dentro de `OPTIMIZATION.md` para que la persona operadora pueda aprobarla o rechazarla en el checkpoint.
 - Solo propone; la persona operadora decide en el checkpoint si aplica algo. Si no hay datos suficientes, lo dice en vez de especular.
 - **Registro de aprobadas:** cuando el ORCHESTRATOR le reenvía la decisión humana del checkpoint, añade a `MEMORIES.md` una fila por cada propuesta aprobada (nuevo `OPT-NNN`, estado `pendiente`) y marca en `OPTIMIZATION.md` cuáles se aprobaron y cuáles se rechazaron. Cuando la persona operadora confirma que una ya se aplicó, cambia su estado a `aplicada`.
@@ -223,4 +240,4 @@ Registra este cuadro literal en el frontmatter y en la sección "Límites" de ca
 
 ## Entrega
 
-Entrega todos los ficheros anteriores completos y coherentes entre sí. Al final, confirma en máximo seis viñetas: restricciones adicionales aplicadas, máximo de ciclos, fuentes de información del OPTIMIZER, plantilla y rutas de documentación adicionales del DOCUMENTER, mapa de skills confirmado y resultado de la migración, y ficheros creados/eliminados.
+Entrega todos los ficheros anteriores completos y coherentes entre sí. Al final, confirma en máximo seis viñetas: restricciones adicionales aplicadas, máximo de ciclos, fuentes de información del OPTIMIZER (y ruta del JSONL de Token Consumer), plantilla y rutas de documentación adicionales del DOCUMENTER, mapa de skills confirmado y resultado de la migración, y ficheros creados/eliminados.

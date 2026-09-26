@@ -31,7 +31,10 @@ Con ello, formula cada pregunta del Paso 0 con una **respuesta propuesta** que l
 2. ¿Hay pruebas que dependan de infraestructura de terceros (Docker, bases de datos externas, colas, servicios remotos) que BUILDER y REVIEWER deban omitir, registrando el bloqueo?
 3. ¿Alguna otra restricción específica del proyecto (alcance de carpetas, artefactos intocables, etc.)?
 4. Máximo de ciclos `NEEDS_CHANGES` antes de la parada definitiva (por defecto 3).
-5. Fuentes de información del OPTIMIZER para detectar picos de consumo. Propón por defecto: los totales de tokens por subagente que el ORCHESTRATOR le pasa en cada ciclo y los transcripts `~/.claude/projects/<proyecto>/*.jsonl`. Añade las que indique la persona operadora (documentación, URLs de buenas prácticas…).
+5. Fuentes de información del OPTIMIZER para detectar picos de consumo. Propón por defecto:
+   - Token Consumer Dashboard (`joynulabedinshokal.token-eater-dashboard`) si está instalado, como fuente principal. Para Claude Code da eventos `verified` por mensaje. Confirma la ruta de su JSONL: `tokenConsumer.dataDirectory` o, si está vacío, `%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl`.
+   - Los totales de tokens por subagente que el ORCHESTRATOR le pasa en cada ciclo.
+   - Como último recurso, los transcripts `~/.claude/projects/<proyecto>/*.jsonl`. Añade las que indique la persona operadora (documentación, URLs de buenas prácticas…).
 6. El DOCUMENTER escribe la documentación funcional en `doc/features/` y la técnica en `doc/features/technical/`. ¿Hay plantilla o convención de nombres obligatoria? ¿Qué otras rutas de documentación existentes debe mantener?
 7. Carpeta raíz del harness (`HARNESS_ROOT`): si existe `.github/agent-harness/` (harness de Copilot), propón reutilizarla para compartir planes y `MEMORIES.md`; si no, `.claude/agent-harness/`.
 8. Skills: propón **referenciarlas por ruta** (`.github/skills/<nombre>/SKILL.md`, leídas con `Read` solo cuando se cumpla su disparador, sin duplicar) o, como alternativa, copiar solo las asignadas a `.claude/skills/` para usar la herramienta `Skill`. Confirma también el mapa de "Skills".
@@ -91,7 +94,8 @@ PLANNER → [checkpoint humano: validar plan]
 6. `<HARNESS_ROOT>/MEMORIES.md`: créalo con la cabecera de "Formato de MEMORIES.md" solo si no existe.
 7. `.claude/settings.json`: reglas `permissions.deny` para `Bash(git commit:*)` y `Bash(git push:*)`, y `Edit`/`Write` sobre la ruta del artefacto autogenerado confirmado en el Paso 0. Fusiona con la configuración existente sin borrar reglas ajenas.
 8. Skills, según el Paso 0: nada que crear si se referencian por ruta; si se copian, copia solo las asignadas a `.claude/skills/<nombre>/`.
-9. Migración de lo heredado, solo en lo confirmado en el Paso 0:
+9. Si se confirma Token Consumer Dashboard: `<HARNESS_ROOT>/tools/usage-slice.mjs` (Node; si no hay Node, `usage-slice.ps1`), según "Script usage-slice". Si ya existe porque `HARNESS_ROOT` se comparte con Copilot, reutilízalo. Añade a `.claude/settings.json` un `permissions.allow` para ejecutarlo y, si la carpeta de datos queda dentro del repositorio, inclúyela en `.gitignore`.
+10. Migración de lo heredado, solo en lo confirmado en el Paso 0:
    - `Stats.md` + `Memories.md` → filas `OPT-NNN` en `MEMORIES.md`, fusionando filas equivalentes; `Plan / ciclo de origen` = `legacy:<feature>`.
    - Lecciones que son reglas de proyecto → "Restricciones adicionales específicas del proyecto" de `CLAUDE.md`.
    - `TokenUsage.md`, `Stats.md`, `Memories.md` y `.github/AGENTS.md` → archivar o borrar según la respuesta.
@@ -141,7 +145,26 @@ El resto de skills no se asignan; solo se usan si la persona operadora lo pide.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 
 - `Origen del dato`: el subagente no conoce su consumo real, así que registra `estimado` (a partir del tamaño de ficheros leídos, salidas de comandos y respuestas) o `n/a`. Nunca presentar una estimación como medida.
-- El dato `medido:agent-result` (total devuelto al ORCHESTRATOR) o `medido:transcript` (JSONL) lo usa el OPTIMIZER en `OPTIMIZATION.md`, junto a la estimación, para calibrarla.
+- **Ventana temporal:** BUILDER y REVIEWER anotan en `STATUS.md`, por ciclo, `Inicio` y `Fin` (ISO 8601 UTC) de su ejecución. Es la clave para atribuir el consumo medido a cada rol.
+- **Consumo medido:** el OPTIMIZER lo registra en `OPTIMIZATION.md`, nunca en `usage/*.md`. Orden de preferencia:
+  1. `medido:token-consumer` (salida de `usage-slice`).
+  2. `medido:agent-result` (total devuelto al ORCHESTRATOR).
+  3. `medido:transcript`.
+  Lo compara con la estimación para calibrarla.
+
+## Script usage-slice
+
+Lee el JSONL línea a línea (streaming) y **nunca imprime eventos crudos**. Parámetros: `--file <ruta o glob>`, `--repo <nombre>` (campo `meta.repository`) y `--window <rol>=<inicio>/<fin>` (repetible). Opcional: `--agent <claude-code|copilot>`.
+
+Salida: una tabla markdown con una fila por ventana y agente:
+
+| Ventana | Agente | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+- `Entrada nueva` = `inputTokens` (sin caché). La caché va en columnas propias (`cacheReadInputTokens`, `cacheWriteInputTokens`), sin sumarla a la entrada. En Claude Code, la caché suele ser la mayor parte del contexto.
+- `Origen` = `medido:token-consumer` si `sourceKind` es `verified`; `estimado:token-consumer` en otro caso.
+- Sin eventos en la ventana → fila con `sin datos`, nunca ceros inventados.
+- Las ventanas de BUILDER y REVIEWER son secuenciales y no se solapan. Los eventos del ORCHESTRATOR entre ventanas no se atribuyen a ningún rol.
 - `Observaciones`: una línea con lo que más consumió en el ciclo.
 
 ## Formato de MEMORIES.md
@@ -164,7 +187,7 @@ Registra este cuadro en el frontmatter (`tools`) y en la sección "Límites" de 
 | PLANNER | `.claude/agents/planner.md` | `Read, Grep, Glob, Edit, Write` | Carpeta del plan: `NN-*.md`, `STATUS.md` y `REVIEW.md` iniciales, `usage/` vacía | Código, tests o artefactos de producto; inventar requisitos; commit/push |
 | BUILDER | `.claude/agents/builder.md` | `Read, Grep, Glob, Edit, Write, Bash` | Código y tests del plan; `STATUS.md`; `usage/BUILDER.md` | Commit/push; artefacto autogenerado; salir del alcance del plan; autoaprobarse; editar `usage/REVIEWER.md` u `OPTIMIZATION.md` |
 | REVIEWER | `.claude/agents/reviewer.md` | `Read, Grep, Glob, Edit, Write, Bash` | `REVIEW.md`, `STATUS.md`, `usage/REVIEWER.md` | Corregir código, tests o artefactos; commit/push; verificar el artefacto autogenerado; editar `usage/BUILDER.md` |
-| OPTIMIZER | `.claude/agents/optimizer.md` | `Read, Grep, Glob, Edit, Write, WebFetch, WebSearch` | `OPTIMIZATION.md` del plan; `MEMORIES.md` (solo añadir filas aprobadas y actualizar `Estado`/`Efecto observado`) | Editar código, subagentes, comandos, `CLAUDE.md` o ficheros de consumo; aplicar sus propuestas; consultar fuentes no confirmadas; cambiar el estado del plan |
+| OPTIMIZER | `.claude/agents/optimizer.md` | `Read, Grep, Glob, Edit, Write, WebFetch, WebSearch, Bash` (`Bash` solo para `usage-slice`) | `OPTIMIZATION.md` del plan; `MEMORIES.md` (solo añadir filas aprobadas y actualizar `Estado`/`Efecto observado`) | Editar código, subagentes, comandos, `CLAUDE.md` o ficheros de consumo; aplicar sus propuestas; consultar fuentes no confirmadas; cambiar el estado del plan |
 | DOCUMENTER | `.claude/agents/documenter.md` | `Read, Grep, Glob, Edit, Write, Bash` | `doc/features/`, `doc/features/technical/`, rutas adicionales del Paso 0, `.github/doc/common/*-stack*.md`; `STATUS.md` para marcar `DONE` | Código, tests, subagentes o comandos; documentar lo no demostrado en `REVIEW.md`; commit/push |
 | ORCHESTRATOR | `.claude/commands/harness-run.md` (sesión principal) | Delegación con `Agent`; lectura con `Read, Grep, Glob`; `Bash` solo para `git status`/`git diff --stat` | Nada | Editar cualquier fichero; hacer el trabajo de otro rol en lugar de delegarlo; decidir criterios; iniciar ciclo o documentación sin confirmación; continuar tras `BLOCKED` o el máximo de ciclos |
 
@@ -182,7 +205,7 @@ Registra este cuadro en el frontmatter (`tools`) y en la sección "Límites" de 
 - Hace un preflight de prerrequisitos antes de los tests. Omite, registrando el bloqueo, los que dependan de infraestructura de terceros (Paso 0).
 - Aplica las restricciones del proyecto confirmadas en el Paso 0.
 - Sigue el doble bucle de test y parte de las plantillas de `.github/doc/resources/` cuando existan.
-- Actualiza `STATUS.md` (ciclo, pasos demostrados, comandos, resultados, bloqueos) y añade su fila a `usage/BUILDER.md`.
+- Actualiza `STATUS.md` (ciclo, `Inicio`/`Fin`, pasos demostrados, comandos, resultados, bloqueos) y añade su fila a `usage/BUILDER.md`.
 - Termina siempre en `READY_FOR_REVIEW`; nunca se autoaprueba.
 
 ## REVIEWER
@@ -191,14 +214,16 @@ Registra este cuadro en el frontmatter (`tools`) y en la sección "Límites" de 
 - Aplica el mismo preflight, exclusiones y restricciones que BUILDER.
 - Solo edita `REVIEW.md`, `STATUS.md` y `usage/REVIEWER.md`; nunca corrige código.
 - Marca `CHANGES_REQUESTED` ante cualquier defecto bloqueante, criterio no demostrado o falta de evidencia red→green, y deja el estado en `NEEDS_CHANGES`. Solo marca `APPROVED` si todo es demostrable.
-- Añade su fila a `usage/REVIEWER.md` antes de terminar.
+- Anota `Inicio`/`Fin` del ciclo en `STATUS.md` y añade su fila a `usage/REVIEWER.md` antes de terminar.
 
 ## OPTIMIZER
 
 - Actúa después del REVIEWER en cada ciclo, sea cual sea el veredicto.
 - Lee `usage/*.md` (histórico completo), `STATUS.md`, `REVIEW.md`, `MEMORIES.md` (incluidas las filas `legacy:*`), los totales medidos que le pasa el ORCHESTRATOR y las fuentes confirmadas en el Paso 0.
+- Si Token Consumer Dashboard está confirmado, ejecuta `usage-slice` con las ventanas `Inicio`/`Fin` de `STATUS.md` y no lee nunca el JSONL ni los transcripts directamente. Analiza la entrada nueva por separado de la caché.
 - Detecta picos (rol o ciclo desviado, crecimiento entre ciclos, lecturas o salidas desproporcionadas, reintentos, desviación entre lo estimado y lo medido) y su causa probable.
 - Añade a `OPTIMIZATION.md` una sección por ciclo con:
+  - Tabla de `usage-slice`, si aplica.
   - Picos detectados, con el dato y su origen.
   - Causa probable.
   - Propuesta concreta: qué subagente, comando, plan o `CLAUDE.md` cambiar y cómo.
@@ -240,7 +265,7 @@ Registra este cuadro en el frontmatter (`tools`) y en la sección "Límites" de 
 
 Entrega todos los ficheros completos y coherentes entre sí. Confirma en máximo seis viñetas:
 - Restricciones aplicadas y máximo de ciclos.
-- Fuentes del OPTIMIZER.
+- Fuentes del OPTIMIZER y ruta del JSONL de Token Consumer.
 - `HARNESS_ROOT` y modo de skills.
 - Modelos por subagente.
 - Resultado de la migración.
