@@ -42,3 +42,9 @@ public class PlayerNotFoundException : Exception
     public string Id { get; set; }
     public string ErrorMessage { get; set; }
 }
+
+public class PlayerSearchFilterNotPermittedException(string fieldName)
+    : Exception("FilterNotPermitted")
+{
+    public string FieldName { get; } = fieldName;
+}

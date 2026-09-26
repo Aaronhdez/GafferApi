@@ -1,4 +1,5 @@
-﻿using DocumentFormat.OpenXml.Bibliography;
+﻿using Dapper;
+using DocumentFormat.OpenXml.Bibliography;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
@@ -7,32 +8,42 @@ namespace Gaffer.Api.Infrastructure;
 
 public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
 {
+    private static readonly IReadOnlyDictionary<string, string> AllowedFilterColumns =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { "Id", "Id" },
+            { "FirstName", "FirstName" },
+            { "LastName", "LastName" }
+        };
+
     public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
     {
-        var baseQuery = $"SELECT * FROM `Players` {AddFilters(string.Empty, criteria)};";
-        var result = await dbConnectionProvider.QueryAsync<Player>(baseQuery, cancellationToken);
-        return result.ToList();
+        var (whereClause, parameters) = BuildFilters(criteria);
+        var query = $"SELECT * FROM `Players`{whereClause};";
+        return await dbConnectionProvider.QueryAsync<Player>(query, parameters);
     }
 
-    private static string AddFilters(string query, PlayerSearchCriteria criteria)
+    private static (string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria criteria)
     {
-        if (criteria.criteriaList.Count == 0) return query;
-        return criteria.criteriaList.Aggregate(query, (current, criteriaItem)
-            => current + AddFilter(current, criteriaItem));
-    }
+        var parameters = new DynamicParameters();
+        var whereClause = string.Empty;
+        var filters = criteria.criteriaList.Where(item => item != null).ToList();
 
-    private static string AddFilter(string query, SearchCriteria? criteria)
-    {
-        if (criteria == null) return string.Empty;
-        return !query.Contains("WHERE")
-            ? "WHERE" + AppendFilter(criteria.Name, criteria)
-            : $"{criteria.CriteriaType.ToString()}" + AppendFilter(criteria.Name, criteria);
-    }
+        for (var i = 0; i < filters.Count; i++)
+        {
+            var item = filters[i];
+            if (item.Name == null || !AllowedFilterColumns.TryGetValue(item.Name, out var column))
+            {
+                throw new PlayerSearchFilterNotPermittedException(item.Name ?? string.Empty);
+            }
 
-    private static string AppendFilter(string fieldName, SearchCriteria searchCriteria)
-    {
-        var filter = $" {fieldName} IN ('{searchCriteria.Value}', ";
-        return filter.Remove(filter.Length - 2) + ") ";
+            var paramName = $"p{i}";
+            var connector = i == 0 ? "WHERE" : item.CriteriaType.ToString();
+            whereClause += $" {connector} `{column}` = @{paramName}";
+            parameters.Add(paramName, item.Value);
+        }
+
+        return (whereClause, parameters);
     }
 
     public async Task Save(Player player, CancellationToken cancellationToken)

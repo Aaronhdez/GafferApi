@@ -5,6 +5,7 @@ using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
+using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Repositories;
 
@@ -46,6 +47,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     public async Task TearDown()
     {
         await ClearDatabase(_tablesToDelete);
+        await ((IAsyncDisposable)_databaseConnectionProvider).DisposeAsync();
     }
 
     private async Task InsertAPlayerInDb(Player player)
@@ -171,6 +173,58 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         }
     }
     
+    [TestFixture]
+    public class WhenFilteringPlayersWithUntrustedInput : SqlPlayerRepositoryShould
+    {
+        [Test]
+        public async Task ReturnNoPlayersWhenTheFilterValueTriesToInjectSql()
+        {
+            var result = await _repository.Get(CriteriaFor("FirstName", "x') OR ('1'='1"), CancellationToken.None);
+
+            result.Should().BeEmpty();
+        }
+
+        [TestCase("FirstName IN ('x') OR 1=1 --")]
+        [TestCase("SecondLastName")]
+        [TestCase("Gender")]
+        [TestCase("BirthDate")]
+        public async Task ThrowWithoutQueryingWhenTheFilterFieldIsNotPermitted(string fieldName)
+        {
+            var connectionProvider = Substitute.For<IDatabaseConnectionProvider>();
+            var repository = new SqlPlayerRepository(connectionProvider);
+
+            var action = async () => await repository.Get(CriteriaFor(fieldName, "x"), CancellationToken.None);
+
+            (await action.Should().ThrowAsync<PlayerSearchFilterNotPermittedException>())
+                .Which.FieldName.Should().Be(fieldName);
+            await connectionProvider.DidNotReceiveWithAnyArgs().QueryAsync<Player>(default!, default);
+        }
+
+        [Test]
+        public async Task MatchFilterFieldNamesIgnoringCase()
+        {
+            var result = await _repository.Get(CriteriaFor("firstname", player2.FirstName), CancellationToken.None);
+
+            result.Should().ContainSingle(p => p.Id == player2.Id);
+        }
+
+        [Test]
+        public async Task FindAPlayerWhenTheFilterValueContainsASingleQuote()
+        {
+            var player = new Player(Guid.NewGuid(), "Shaun", "O'Neill", string.Empty, Gender.MALE, _birthDate);
+            await InsertAPlayerInDb(player);
+
+            var result = await _repository.Get(CriteriaFor("LastName", "O'Neill"), CancellationToken.None);
+
+            result.Should().ContainSingle(p => p.Id == player.Id);
+        }
+
+        private static PlayerSearchCriteria CriteriaFor(string fieldName, string value) => new()
+        {
+            criteriaList = [new SearchCriteria { Name = fieldName, Value = value }]
+        };
+    }
+
     [TestFixture]
     public class WhenSavingAPlayer : SqlPlayerRepositoryShould
     {

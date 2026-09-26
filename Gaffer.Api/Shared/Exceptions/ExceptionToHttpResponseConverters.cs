@@ -40,6 +40,17 @@ public static class ExceptionToHttpResponseConverters
                     $"Error.Players.Update.{((CannotUpdatePlayerException)ex).Reason}")
             },
             {
+                typeof(PlayerNotFoundException),
+                _ => BuildNotFoundProblemDetails()
+            },
+            {
+                typeof(PlayerSearchFilterNotPermittedException),
+                _ => BuildBadRequestProblemDetailsWithExtension(
+                    "Error.Search.FilterNotPermitted",
+                    "FilterNotPermitted",
+                    "Error.Search.FilterNotPermitted")
+            },
+            {
                 typeof(FacilityValidationException),
                 ex => BuildBadRequestProblemDetailsWithExtension(
                     "Cannot create facility",
@@ -84,6 +95,14 @@ public static class ExceptionToHttpResponseConverters
         };
     
     // Helper methods to build ProblemDetails
+    private static ProblemDetails BuildNotFoundProblemDetails()
+    {
+        return new ProblemDetails
+        {
+            Status = (int)HttpStatusCode.NotFound
+        };
+    }
+
     private static ProblemDetails BuildNotFoundProblemDetailsWithExtension(string title, string detail,
         string errorTranslationKey)
     {
