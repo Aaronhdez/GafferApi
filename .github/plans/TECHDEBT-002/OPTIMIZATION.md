@@ -201,7 +201,7 @@ Una única invocación: "sin datos" para `claude-code` y `copilot` en las cuatro
 | Rol | Tokens (total) | Llamadas | Duración | Origen |
 | --- | ---: | ---: | ---: | --- |
 | BUILDER ciclo 4 | 64 836 | 41 | 345 s | medido:agent-result |
-| REVIEWER ciclo 4 | 53 606 | 13 (el ORCHESTRATOR reportó 14 en un recuento paralelo; discrepancia no resuelta, ver "Brechas de datos") | 151 s | medido:agent-result |
+| REVIEWER ciclo 4 | 53 606 | 14 (corregido; el "13" inicial fue un error tipográfico del ORCHESTRATOR, confirmado 14 por el harness) | 151 s | medido:agent-result |
 | OPTIMIZER (registro entre ciclos 3→4) | 50 838 | 6 | 75 s | medido:agent-result |
 
 Comparación con ciclos anteriores (mismo origen, `medido:agent-result`):
@@ -212,7 +212,7 @@ Comparación con ciclos anteriores (mismo origen, `medido:agent-result`):
 | BUILDER llamadas | 52 | 58 | 33 | 41 | +24,2 % |
 | BUILDER duración | 409 s | 446 s | 270 s | 345 s | +27,8 % |
 | REVIEWER tokens | 42 817 | 53 990 | 43 360 | 53 606 | +23,6 % |
-| REVIEWER llamadas | 12 | 13 | 11 | 13(-14) | +18,2 %/+27,3 % |
+| REVIEWER llamadas | 12 | 13 | 11 | 14 | +27,3 % |
 | REVIEWER duración | 104 s | 158 s | 112 s | 151 s | +34,8 % |
 | OPTIMIZER registro (tokens) | 30 202 (1→2) | 34 858 (2→3) | 50 838 (3→4) | — | +45,8 % (2→3 fue +15,4 %) |
 
@@ -247,7 +247,7 @@ Cuarta confirmación consecutiva: **1 sola llamada** a `usage-slice`/`Bash` este
 | REVIEWER | Ciclo 1 | 42 817 | 12 | 104 s |
 | REVIEWER | Ciclo 2 | 53 990 | 13 | 158 s |
 | REVIEWER | Ciclo 3 | 43 360 | 11 | 112 s |
-| REVIEWER | Ciclo 4 | 53 606 | 13(-14) | 151 s |
+| REVIEWER | Ciclo 4 | 53 606 | 14 | 151 s |
 | OPTIMIZER | Análisis ciclo 1 | 51 203 | n/a | n/a |
 | OPTIMIZER | Análisis ciclo 2 | 60 931 | n/a | n/a |
 | OPTIMIZER | Análisis ciclo 3 | 73 129 | n/a | n/a |
@@ -270,19 +270,19 @@ Totales por rol (excluyendo el análisis del ciclo 4, no medible desde dentro de
 
 ### Cobertura de MEMORIES.md
 
-`P4-1` amplía el ámbito de `OPT-013` (ya registrada) con un criterio de corte concreto para `MEMORIES.md`; no se abre ID nuevo por instrucción de la tarea (evidencia de refuerzo, mismo ámbito). Ninguna otra entrada existente cubre el hallazgo de cierre (coste de OPTIMIZER ≈ coste de BUILDER a escala de plan).
+`P4-1` amplía el ámbito de `OPT-013` (ya registrada) con un criterio de corte concreto para `MEMORIES.md`; tras aprobación del operador se registró como entrada nueva `OPT-014` (ver "Estado de aprobación" abajo), en vez de reformular `OPT-013`, porque el ámbito de `MEMORIES.md` es distinto (fichero compartido entre planes) del de `OPTIMIZATION.md` por plan que cubre `OPT-013`. Ninguna otra entrada existente cubre el hallazgo de cierre (coste de OPTIMIZER ≈ coste de BUILDER a escala de plan).
 
 ### Brechas de datos
 
-- Discrepancia sin resolver en las llamadas a herramienta de REVIEWER ciclo 4 (13 según el dato pasado a OPTIMIZER, 14 según "el harness reportó" en la misma entrada): no se puede determinar cuál es la cifra correcta desde esta sesión; se reportan ambas.
+- Discrepancia de llamadas a herramienta de REVIEWER ciclo 4 resuelta: el "13" inicialmente pasado a OPTIMIZER era un error tipográfico del ORCHESTRATOR; el harness confirma 14. Corregido en la tabla de este ciclo y en el resumen de todo el plan.
 - Cuarto ciclo sin desglose de entrada/caché-lectura/caché-escritura/salida (vacío total de telemetría del dashboard); todas las cifras de BUILDER/REVIEWER/OPTIMIZER de este ciclo son `medido:agent-result` (totales sin desglosar), no `medido:token-consumer`.
 - El coste de la propia sesión de análisis de OPTIMIZER en el ciclo 4 (este documento) no es medible desde dentro de la sesión; el resumen de todo el plan lo excluye explícitamente y por tanto subestima el total real en, al menos, el orden de magnitud de los análisis de ciclos anteriores (~51 000-73 000 tokens).
 - No se puede aislar cuánto del +24,2 % de llamadas de BUILDER en el ciclo 4 corresponde al doble rebote de compilación (NUnit1032 por `_logs` sin liberar, luego CS1729 por el constructor de 2 argumentos) frente al alcance propio del paso (logger de test nuevo, cambio de `StartApiServer`); solo se dispone de la secuencia de comandos registrada en `STATUS.md`.
 
 ### Estado de aprobación
 
-Pendiente de checkpoint del operador (cierre del plan; sin decisión registrada todavía en esta sesión):
+Aprobada por el operador ("plica b y luego a", interpretado como "aplica b y luego a"; `b` = opción de checkpoint "aprobar o rechazar antes `P4-1`", consistente con el mismo patrón usado en los checkpoints de los ciclos 1-3 de este plan, donde `b` significó aprobar las propuestas pendientes):
 
-- **P4-1** → propuesta, no registrada aún en `MEMORIES.md`. Amplía el ámbito de `OPT-013` (ya `pendiente`) a un criterio de corte explícito para `MEMORIES.md`. Pendiente de aprobación explícita del operador antes de registrar cualquier cambio de ámbito.
+- **P4-1** → aprobada, registrada como `OPT-014` en `MEMORIES.md`. Amplía el ámbito de `OPT-013` (ya `pendiente`) a un criterio de corte explícito para `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/agent-harness/MEMORIES.md`.
 
-Ninguna propuesta ha sido aplicada por OPTIMIZER.
+Ninguna propuesta ha sido aplicada por OPTIMIZER; queda en estado `pendiente` hasta que el operador o el agente correspondiente aplique la compresión.

@@ -32,3 +32,4 @@ This document covers how `Gaffer.Api` manages its database connection: one conne
 - Technical detail: [`doc/features/technical/database-connection-lifecycle.md`](./technical/database-connection-lifecycle.md).
 - This mechanism underlies every database-backed feature, including [player search](./player-search.md).
 - How the connection string itself is supplied (User Secrets / environment variables, no password in versioned files): [`database-configuration.md`](./database-configuration.md).
+- What a request sees when the database is unreachable mid-request (not just at startup) for Delete/Update on Players and Facilities: [`error-handling.md`](./error-handling.md).

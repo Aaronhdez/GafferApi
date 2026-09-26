@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
+| Estado | DONE |
 | Ciclo | 4 |
 | Pasos completados | 01 (aprobado por REVIEWER en el ciclo 1); 02 (aprobado por REVIEWER en el ciclo 2); 03 (aprobado por REVIEWER en el ciclo 3); 04 (aprobado por REVIEWER en el ciclo 4). Todos los pasos del plan aprobados. |
 | Pasos bloqueados | Ninguno. Q0-Q6 y Q4.1 resueltas (Q0, Q2, Q5 por default; Q1 = reemplazo de `secondLastName` según 2ª respuesta del operador; Q4.1 = `"Internal Server Error"`). |
@@ -134,4 +134,18 @@ Filtro F1 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerFeatu
 
 ## Documentación modificada
 
-Pendiente (DOCUMENTER).
+DOCUMENTER, 2026-09-26. Basado solo en código aprobado, `STATUS.md` y `REVIEW.md` (ciclos 1-4, todos `APPROVED`).
+
+| Tipo | Fichero | Motivo |
+| --- | --- | --- |
+| Creado | `doc/features/player-update.md` | Funcional: update parcial de Player (paso 01) — `secondLastName` siempre se reemplaza, `birthDate`/`gender` opcionales y anulables, 404 en id desconocido. |
+| Creado | `doc/features/technical/player-update.md` | Técnico: `UpdatePlayerCommandHandler`, contrato `UpdatePlayerRequest`/`UpdatePlayerCommand`, cómo probarlo. |
+| Creado | `doc/features/error-handling.md` | Funcional: fallos de infraestructura en Delete/Update → 500 (pasos 02/04), filtro no permitido en Facilities → 400 (paso 03), logging del middleware (paso 04). |
+| Creado | `doc/features/technical/error-handling.md` | Técnico: `ExceptionHandlingMiddleware` (constructor con `ILogger`, `LogException`), catálogo de excepciones (`Cannot*Exception` genéricas conservadas pero no lanzadas), `FacilitySearchFilterNotPermittedException`, `RecordingLoggerProvider`, `TestFixture.StartApiServer(..., ILoggerProvider?)`. |
+| Actualizado (directo) | `doc/features/technical/player-search-and-persistence.md` | Nota sobre el helper compartido `BuildSearchFilterNotPermittedProblemDetails()` (ahora también usado por Facility) y referencias cruzadas a los documentos nuevos. |
+| Actualizado (indirecto) | `doc/features/player-search.md` | Referencia cruzada: Facility ahora replica el mismo rechazo de filtro y el logging del middleware. |
+| Actualizado (indirecto) | `doc/features/database-connection-reliability.md` | Referencia cruzada: fallo de BD a mitad de request (Delete/Update) además del fallback de arranque ya documentado. |
+| Actualizado (indirecto) | `doc/features/technical/database-connection-lifecycle.md` | Referencia cruzada al mismo comportamiento. |
+| Actualizado (indirecto) | `doc/features/technical/api-client-versioning.md` | Nota sobre el cambio de contrato de `UpdatePlayerRequest` (relajación de esquema vs. cambio de comportamiento en `secondLastName`) a valorar en el próximo bump. |
+
+Sin cambios en `.github/doc/common/*-stack*.md`: ningún paquete ni herramienta de test nuevos (confirmado en `STATUS.md`/`REVIEW.md`: `RecordingLoggerProvider.cs` no añade paquetes). `Gaffer.Api.Client` no regenerado (fuera de alcance de DOCUMENTER).
