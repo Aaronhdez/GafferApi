@@ -1,10 +1,12 @@
 ﻿using System.Linq.Expressions;
+using System.Net;
 using AwesomeAssertions;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Tests.TestShared;
+using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Acceptance;
 
@@ -47,6 +49,22 @@ public class PlayerFeaturesShould
         response.Gender.Should().Be(Player1.Gender);
     }
     
+    [Test]
+    public async Task ReturnNotFoundWhenGettingAnUnknownPlayer()
+    {
+        var uri = Uris.GetPlayer(Guid.NewGuid().ToString());
+
+        var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        body["Status"]!.Value<int>().Should().Be(404);
+        body["Instance"]!.Value<string>().Should().Be(uri.AbsolutePath);
+        body["Title"]?.Value<string>().Should().BeNull();
+        body["Detail"]?.Value<string>().Should().BeNull();
+        (body["Extensions"] as JObject)?.ContainsKey("ErrorTranslationKey").Should().BeFalse();
+    }
+
     [Test]
     public async Task DeleteAPlayer()
     {

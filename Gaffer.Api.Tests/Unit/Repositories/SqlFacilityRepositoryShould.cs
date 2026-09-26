@@ -33,6 +33,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
     public async Task TearDown()
     {
         await ClearDatabase(_tablesToDelete);
+        await ((IAsyncDisposable)_databaseConnectionProvider).DisposeAsync();
     }
 
     [TestFixture]

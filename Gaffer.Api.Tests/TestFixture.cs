@@ -67,6 +67,8 @@ public class TestFixture
     private static async Task<TestServer> InitializeApiServer(string? baseAddress, string testDatabase)
     {
         if (baseAddress == null) throw new NullReferenceException(nameof(baseAddress));
+        // Unregistered instance used only by ClearDatabase; each DI scope gets its own provider.
+        SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
 
         var host = new HostBuilder()
             .ConfigureWebHost(webHostBuilder =>
@@ -108,8 +110,7 @@ public class TestFixture
                         });
                     services.AddRouting();
                     services.AddControllers();
-                    SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
-                    services.AddScoped<IDatabaseConnectionProvider>(_ => SqlConnectionProviderTest);
+                    services.AddScoped<IDatabaseConnectionProvider>(_ => new SqlConnectionProvider(testDatabase));
                     services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
                     services.AddScoped<IFacilityRepository, SqlFacilityRepository>();
                     services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();

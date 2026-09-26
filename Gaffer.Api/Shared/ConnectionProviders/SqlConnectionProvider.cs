@@ -1,13 +1,18 @@
 using System.Data;
+using System.Data.Common;
+using System.Net.Sockets;
 using Dapper;
 using MySql.Data.MySqlClient;
 
 namespace Gaffer.Api.Shared.ConnectionProviders;
 
-public class SqlConnectionProvider : IDatabaseConnectionProvider
+public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposable, IDisposable
 {
     private readonly MySqlConnection _sqlConnection;
     private MySqlTransaction? _currentTransaction;
+
+    public bool IsDisposed { get; private set; }
+    public ConnectionState ConnectionState => _sqlConnection.State;
 
     public SqlConnectionProvider(string? dbConnection)
     {
@@ -15,14 +20,31 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
         _sqlConnection = new MySqlConnection(dbConnection);
     }
 
+    /// <summary>Checks connectivity with a schema-independent query. Connectivity failures yield <c>false</c> instead of throwing.</summary>
     public async Task<bool> TestConnection()
     {
-        _sqlConnection.Open();
-        var query = "SELECT (0) FROM Parameters";
-        var command = new MySqlCommand(query, _sqlConnection);
-        await command.ExecuteReaderAsync();
-        await _sqlConnection.CloseAsync();
-        return true;
+        var ownsConnection = _sqlConnection.State != ConnectionState.Open;
+        try
+        {
+            if (ownsConnection)
+            {
+                await _sqlConnection.OpenAsync();
+            }
+            await using var command = new MySqlCommand("SELECT 1;", _sqlConnection);
+            await command.ExecuteScalarAsync();
+            return true;
+        }
+        catch (Exception ex) when (ex is DbException or TimeoutException or SocketException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (ownsConnection)
+            {
+                await _sqlConnection.CloseAsync();
+            }
+        }
     }
 
     public async Task ClearAsync(List<string> tablesToDelete)
@@ -122,6 +144,28 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider
                 await _sqlConnection.DisposeAsync();
             }
         }
+    }
+
+    /// <summary>Closes and releases the connection (and any pending transaction) when the owning DI scope ends. Idempotent.</summary>
+    public async ValueTask DisposeAsync()
+    {
+        if (IsDisposed) return;
+        IsDisposed = true;
+        if (_currentTransaction != null)
+        {
+            await _currentTransaction.DisposeAsync();
+        }
+        await _sqlConnection.CloseAsync();
+        await _sqlConnection.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        if (IsDisposed) return;
+        IsDisposed = true;
+        _currentTransaction?.Dispose();
+        _sqlConnection.Close();
+        _sqlConnection.Dispose();
     }
 
     /// <summary>Opens the connection if not already open. Returns whether the caller is responsible for closing it.</summary>

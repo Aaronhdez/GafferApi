@@ -15,6 +15,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using NSwag.AspNetCore;
 
@@ -46,7 +47,14 @@ public class Startup(IConfiguration configuration)
         services.AddAuthorization();
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
-        services.ConfigureDatabase(configuration);
+        // The host's logging pipeline is not resolvable while services are being registered,
+        // so a short-lived bootstrap logger reports the startup database check.
+        using (var startupLoggerFactory = LoggerFactory.Create(builder => builder
+                   .AddConfiguration(configuration.GetSection("Logging"))
+                   .AddConsole()))
+        {
+            services.ConfigureDatabase(configuration, startupLoggerFactory.CreateLogger(typeof(DatabaseStartup)));
+        }
         services.ConfigureRepositories(configuration);
         services.ConfigureActions();
         //services.AddHealthChecks(_configuration);

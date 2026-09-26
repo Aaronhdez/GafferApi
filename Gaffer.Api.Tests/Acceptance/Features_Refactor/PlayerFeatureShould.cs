@@ -56,6 +56,7 @@ public class PlayerFeatureShould
     public async Task TearDown()
     {
         await _connectionProvider.ClearAsync([TestDefaultValues.PlayersTableName]);
+        await ((IAsyncDisposable)_connectionProvider).DisposeAsync();
     }
 
     protected async Task InsertAPlayerInDb(Player player)
