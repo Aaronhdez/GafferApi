@@ -1,5 +1,4 @@
-﻿using DocumentFormat.OpenXml.Drawing.Charts;
-using Gaffer.Api.Commands;
+﻿using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 
 namespace Gaffer.Api.Shared.Repositories;

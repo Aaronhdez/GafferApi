@@ -11,7 +11,8 @@ public class GafferApiClientTest(HttpClient client) : IGafferApiClient
     {
             var formattedRequest = Newtonsoft.Json.JsonConvert.SerializeObject(body);
             var result = await client.PostAsync(uri, new StringContent(formattedRequest, Encoding.UTF8, "application/json"));
-            if (result.StatusCode == HttpStatusCode.OK) return await result.Content.ReadFromJsonAsync<TResult>();
+            if (result.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created)
+                return await result.Content.ReadFromJsonAsync<TResult>(TestJson.Options);
             var content = await result.Content.ReadAsStringAsync();
             throw new GafferApiClientException(result.StatusCode, content);
     }
@@ -19,7 +20,7 @@ public class GafferApiClientTest(HttpClient client) : IGafferApiClient
     public async Task<TResult?> GetAsync<TResult>(Uri uri)
     {
         var result = await client.GetAsync(uri);
-        if (result.StatusCode == HttpStatusCode.OK) return await result.Content.ReadFromJsonAsync<TResult>();
+        if (result.StatusCode == HttpStatusCode.OK) return await result.Content.ReadFromJsonAsync<TResult>(TestJson.Options);
         var content = await result.Content.ReadAsStringAsync();
         throw new GafferApiClientException(result.StatusCode, content);
     }

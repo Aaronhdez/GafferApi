@@ -1,6 +1,4 @@
 ﻿using System.Net.Http.Headers;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Asp.Versioning.Conventions;
@@ -22,6 +20,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using NSwag.AspNetCore;
 
 namespace Gaffer.Api.Tests;
@@ -40,8 +39,9 @@ public class TestFixture
     public async Task OneTimeSetup()
     {
         UseCasesMock = new UseCasesMock();
-        Configuration = PrepareConfiguration(new ConfigurationBuilder()).Build();
-        TestServer = await InitializeApiServer(Configuration["ApiUrl"], Configuration["ConnectionStrings:Database"]);
+        Configuration = TestConfiguration.Build();
+        var testDatabase = TestConfiguration.RequireDatabaseConnectionString(Configuration);
+        TestServer = await InitializeApiServer(Configuration["ApiUrl"], testDatabase);
         GafferApiClientTest = InitializeGafferHttpClient(TestServer, Configuration["ApiUrl"]);
         await ClearDatabase();
     }
@@ -76,21 +76,17 @@ public class TestFixture
                 webHostBuilder.UseTestServer();
                 webHostBuilder.UseEnvironment("Test");
                 webHostBuilder.UseUrls(baseAddress);
-                webHostBuilder.ConfigureAppConfiguration((builderContext, config) => { PrepareConfiguration(config); });
+                webHostBuilder.ConfigureAppConfiguration((builderContext, config) => TestConfiguration.AddSources(config));
                 webHostBuilder.ConfigureServices(services =>
                 {
                     services.AddMvcCore()
                         .AddMvcOptions(options =>
                             options.Filters.Add(new ProducesAttribute("application/json"))
                         )
-                        .AddJsonOptions(options =>
-                        {
-                            options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                            options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-                        })
                         .AddNewtonsoftJson(options =>
                         {
                             options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
+                            options.SerializerSettings.Converters.Add(new StringEnumConverter());
                         });
                     var apiVersionsDefinition = new GafferApiVersioningDefinition();
                     services.AddSingleton(apiVersionsDefinition);
@@ -130,14 +126,10 @@ public class TestFixture
         return host.GetTestServer();
     }
 
-    private static IConfigurationBuilder PrepareConfiguration(IConfigurationBuilder configurationBuilder)
-    {
-        return configurationBuilder.SetBasePath(TestContext.CurrentContext.TestDirectory)
-            .AddJsonFile("testsettings.json", optional: false);
-    }
-
     private static async Task ClearDatabase()
     {
+        // Null when OneTimeSetUp failed before connecting (e.g. missing credentials); keep that failure visible.
+        if (SqlConnectionProviderTest is null) return;
         await SqlConnectionProviderTest.ClearAsync(DbTableNames.TablesToDelete);
     }
 }
@@ -161,11 +153,7 @@ public class TestStartup
                     }
                 })
                 .UseRouting()
-                .UseEndpoints(endpoints =>
-                {
-                    endpoints.MapControllers();
-                    //.RequireAuthorization();
-                });
+                .UseEndpoints(endpoints => endpoints.MapControllers());
         }
     }
 }

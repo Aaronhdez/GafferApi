@@ -1,0 +1,19 @@
+<Project>
+
+    <!--
+        Gaffer.Api.Client package version (SemVer 2.0.0). Applies only to Gaffer.Api.Client.
+        Default 1.0.0; override with /p:GlobalPackageVersion=<version>.
+        Keep Gaffer.Api/nswag.json "infoVersion" equal to this version.
+    -->
+    <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Gaffer.Api.Client'">
+        <GlobalPackageVersion Condition="'$(GlobalPackageVersion)' == ''">1.0.0</GlobalPackageVersion>
+    </PropertyGroup>
+
+    <Target Name="ValidateClientSemVer"
+            BeforeTargets="BeforeBuild;GenerateNuspec"
+            Condition="'$(MSBuildProjectName)' == 'Gaffer.Api.Client'">
+        <Error Condition="!$([System.Text.RegularExpressions.Regex]::IsMatch('$(Version)', '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(\+([0-9a-zA-Z-]+(\.[0-9a-zA-Z-]+)*))?$'))"
+               Text="Gaffer.Api.Client version '$(Version)' is not a valid Semantic Version 2.0.0 (MAJOR.MINOR.PATCH[-prerelease][+build], e.g. 1.0.0). Set GlobalPackageVersion in Directory.Build.props or pass /p:GlobalPackageVersion=&lt;version&gt;." />
+    </Target>
+
+</Project>

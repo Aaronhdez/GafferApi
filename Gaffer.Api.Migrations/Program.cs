@@ -3,6 +3,7 @@ using Azure.Identity;
 using FluentMigrator;
 using FluentMigrator.Runner;
 using Gaffer.Api.Migrations.Migrations;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
 
@@ -10,27 +11,65 @@ namespace Gaffer.Api.Migrations;
 
 public class Program
 {
-    public static void Main(string[] args)
+    private const string ConnectionStringsSection = "ConnectionStrings";
+    private const string TargetKey = "Target";
+    private const int ConfigurationErrorExitCode = 2;
+
+    public static int Main(string[] args)
     {
         Console.WriteLine("Gaffer Api Migrations");
-        List<DatabaseSettings> databaseSettings = new List<DatabaseSettings>(){
-            new()
-            {
-                ConnectionString = "Server=127.0.0.1;Port=3306;Database=GafferDB;Uid=root;Pwd=toor;",
-                Name = "GafferDB"
-            },
-            new()
-            {
-                ConnectionString = "Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=toor;",
-                Name = "GafferDB_Test"
-            }
-        };
+        var configuration = BuildConfiguration(args);
+        List<DatabaseSettings> databaseSettings;
+        try
+        {
+            databaseSettings = ResolveDatabases(configuration);
+        }
+        catch (InvalidOperationException e)
+        {
+            Console.Error.WriteLine(e.Message);
+            return ConfigurationErrorExitCode;
+        }
+
         foreach (var databaseSetting in databaseSettings)
         {
             var serviceCollection = new ServiceCollection();
             ApplyMigrationsIn(databaseSetting.ConnectionString, databaseSetting.Name, serviceCollection);
             serviceCollection.Clear();
         }
+
+        return 0;
+    }
+
+    // Precedence (last wins): User Secrets, environment variables, command line.
+    private static IConfigurationRoot BuildConfiguration(string[] args) => new ConfigurationBuilder()
+        .AddUserSecrets<Program>(optional: true, reloadOnChange: false)
+        .AddEnvironmentVariables()
+        .AddCommandLine(args)
+        .Build();
+
+    // Every non-empty ConnectionStrings:<DatabaseName> is migrated; --Target <DatabaseName> restricts the run to one.
+    private static List<DatabaseSettings> ResolveDatabases(IConfiguration configuration)
+    {
+        var configured = configuration.GetSection(ConnectionStringsSection).GetChildren()
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
+            .Select(entry => new DatabaseSettings { Name = entry.Key, ConnectionString = entry.Value! })
+            .ToList();
+        var target = configuration[TargetKey];
+        if (!string.IsNullOrWhiteSpace(target))
+        {
+            configured = configured
+                .Where(database => string.Equals(database.Name, target, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        if (configured.Count > 0) return configured;
+
+        var missing = string.IsNullOrWhiteSpace(target) ? "any database" : $"the target database '{target}'";
+        throw new InvalidOperationException(
+            $"No connection string is configured for {missing}. Configure {ConnectionStringsSection}:<DatabaseName> " +
+            "(e.g. GafferDB, GafferDB_Test) with " +
+            "dotnet user-secrets set \"ConnectionStrings:GafferDB_Test\" \"Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=<user>;Pwd=<password>;\" --project Gaffer.Api.Migrations " +
+            "or the environment variable ConnectionStrings__GafferDB_Test. Use --Target <DatabaseName> to migrate a single database.");
     }
 
     private static void ApplyMigrationsIn(string connectionString, string databaseName,

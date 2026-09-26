@@ -14,7 +14,7 @@
 - Mocking/substitution: NSubstitute
 - Coverage collector: coverlet.collector
 - Integration host testing: Microsoft.AspNetCore.TestHost
-- Data access used in tests: Dapper, MySql.Data
+- Data access used in tests: Dapper (indirectly, via `Gaffer.Api`'s `SqlConnectionProvider`); the test project no longer references `MySql.Data` directly (removed as an unused direct dependency)
 
 ## Test Types Observed in Repository History
 
@@ -29,3 +29,4 @@
 - Features are validated with a double loop:
   - Acceptance loop for behavior-level verification.
   - Unit loop for focused logic verification.
+- MySQL-backed tests require a configured connection string (User Secrets or environment variable, no password in `testSettings.json`); they are never skipped, and fail with a guidance message if it is missing. Details: [`doc/features/technical/database-configuration.md`](../../../doc/features/technical/database-configuration.md).

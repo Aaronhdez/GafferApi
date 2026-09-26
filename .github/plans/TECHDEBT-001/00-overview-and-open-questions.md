@@ -24,7 +24,7 @@ Saldar exactamente esos 8 puntos de deuda técnica sin cambiar comportamiento ob
 | 07 | `07-authentication-authorization.md` | Autenticación por cookie sin autorización | - | 03, 06 |
 | 08 | `08-database-credentials.md` | Credenciales en el código y la configuración versionada | - | 03 |
 | 09 | `09-rename-adresses-table.md` | Tabla `Adresses` | - | 08 |
-| 10 | `10-client-semantic-versioning.md` | Proceso de versionado SemVer del cliente, versión 1.0.0 | Q13 (solo publicación), Q14, Q15 | 04, 05, 06 |
+| 10 | `10-client-semantic-versioning.md` | Proceso de versionado SemVer del cliente, versión 1.0.0 | Q13 (solo publicación de cierre) | 04, 05, 06 |
 | 11 | `11-final-refactor-and-regression.md` | Refactor transversal y regresión completa | - | 01-10 |
 
 Orden elegido para minimizar el riesgo: limpieza sin comportamiento primero (01-04), después cambios de contrato HTTP (05-07), luego configuración de credenciales (08, que cambia cómo arrancan migraciones y tests), el cambio de esquema (09), que necesita el runner de migraciones ya configurado, y el versionado del cliente (10) cuando el contrato ya está cerrado.
@@ -72,16 +72,19 @@ Respuesta literal: "1. Ok / 2. Ok / 3. Ok / 4. Ok, aunque los enums que tengan s
 | Q10 | "Ok." | b) BUILDER ejecuta el runner solo en `GafferDB_Test`; el operador migra `GafferDB`. | Resuelta |
 | Q11 | "Ok." | b) También se recrea la FK como `FK_Facilities_Addresses_Addresses`. | Resuelta |
 | Q12 | "Ok." | b) `Down` reversible, revisado sin ejecutarlo; no se amplía el runner. | Resuelta |
+| Q14 | "Q14. Opción B" | b) `Directory.Build.props` nuevo en la raíz con `GlobalPackageVersion` = `1.0.0` por defecto (solo si viene vacío; `/p:GlobalPackageVersion=` sigue siendo override) + target MSBuild de validación SemVer 2.0.0. `Gaffer.Api.Client.csproj` no cambia. Como la pregunta trataba la versión del paquete `Gaffer.Api.Client`, propiedad y target se condicionan a ese proyecto y no afectan a los otros 3 (ver paso 10, AC10.9-AC10.11 y Q16). | Resuelta |
+| Q15 | "Q15. a)+c)" | a) `infoVersion` de `nswag.json` alineada con la versión del paquete (1.0.0) y sigue la misma regla SemVer. c) DOCUMENTER documenta la regla y el procedimiento en `doc/features/technical/` (p. ej. `api-client-versioning.md`) y añade una línea en `.github/doc/common/dev-stack.md`, "Build and Packaging Notes". | Resuelta |
 
-## Preguntas abiertas (nuevas, petición de versionado del cliente)
+## Preguntas abiertas (petición de versionado del cliente)
 
 Verificado (solo lectura): `Gaffer.Api.Client.csproj` tiene `<Version>$(GlobalPackageVersion)</Version>` y `GeneratePackageOnBuild` solo en Release. `GlobalPackageVersion` no se define en ningún fichero del repositorio (no hay `Directory.Build.props`, `NuGet.config` ni workflows de CI). Si nadie pasa `/p:GlobalPackageVersion=...`, `Version` queda vacío y el SDK aplica su valor por defecto (1.0.0; inferido, no verificado). `nswag.json` tiene `infoVersion: "1.0.0"` e `infoTitle: "My Title"`. Ningún proyecto de `quionis-bff-api` ni de `quionis-frontend` referencia `Gaffer.Api.Client`. El proyecto cliente no referencia a `Gaffer.Api`, así que compilarlo o empaquetarlo por separado no dispara el target `NSwag`.
 
 | ID | Paso | Pregunta | Opciones | Recomendación PLANNER (no vinculante) | Bloquea |
 | --- | --- | --- | --- | --- | --- |
 | Q13 | 10 (cierre) | ¿Cómo se publica y consume el paquete `Gaffer.Api.Client` (feed NuGet, carpeta local, referencia de proyecto) y quién pasa hoy `GlobalPackageVersion`? ¿Se publicó ya alguna vez una versión 1.0.0 (por el valor por defecto) que chocaría con la nueva 1.0.0? | a) El operador lo indica y el paso 10 lo documenta. b) La publicación queda fuera del plan: solo se fija la versión y la regla, y el operador publica como hasta ahora. | b): la publicación es acción del operador y no hay rastro de ella en el repositorio. Si ya existe una 1.0.0 publicada, el operador decide si usar otra versión o sustituirla. | No bloquea el cambio de configuración; sí la acción de cierre |
-| Q14 | 10 | ¿Dónde vive la versión y cómo se garantiza que es SemVer? | a) `GlobalPackageVersion` con valor por defecto `1.0.0` en `Gaffer.Api.Client.csproj` (condicionado a que venga vacío, así `/p:GlobalPackageVersion=` sigue sirviendo de override) + un target MSBuild que falla con un error claro si la versión no cumple SemVer 2.0.0. b) Lo mismo en un `Directory.Build.props` nuevo en la raíz. c) `<Version>1.0.0</Version>` fijo en el csproj, sin validación. | a): un único sitio, sin afectar a otros proyectos, compatible con el override actual y comprobable sin generar código. | 10 |
-| Q15 | 10 | ¿Se alinea `infoVersion` de `nswag.json` (versión del documento OpenAPI) con la versión del paquete, y dónde se documenta la regla SemVer? | Versión OpenAPI: a) Alinearla con el paquete (hoy ya es 1.0.0) y seguir la misma regla. b) Independiente. Documento: c) DOCUMENTER en `doc/features/technical/` (p. ej. `api-client-versioning.md`) más una línea en `.github/doc/common/dev-stack.md` ("Build and Packaging Notes"). d) Solo en `.github/doc/work-guidelines.md`. | a) + c): un solo número de versión para el contrato y su cliente, y la documentación donde AGENTS.md la pone. | 10 (solo `infoVersion`); la documentación la hace DOCUMENTER al cerrar |
+| Q16 | 10 | Un `Directory.Build.props` en la raíz se importa en los 4 proyectos (`Gaffer.Api`, `Gaffer.Api.Client`, `Gaffer.Api.Migrations`, `Gaffer.Api.Tests`). ¿La versión por defecto y la validación SemVer deben aplicarse solo a `Gaffer.Api.Client` o a todos? | a) Solo a `Gaffer.Api.Client` (condición `'$(MSBuildProjectName)' == 'Gaffer.Api.Client'`); los demás proyectos no cambian. b) A todos: todos los ensamblados llevan la misma versión y se validan (cambia `Version`/`AssemblyVersion`/`FileVersion` de API, Migrations y Tests). | a): Q14 trata la versión del paquete del cliente y b) añade un cambio no pedido. El paso 10 está redactado con a). | No bloquea: se aplica a) salvo que el operador elija b) antes de que BUILDER empiece el paso 10 |
+
+Q14 y Q15 resueltas (ver tabla de preguntas resueltas).
 
 ## Preguntas (propuesta original, ya resueltas arriba)
 
@@ -118,11 +121,13 @@ Recomendación PLANNER: A + B + E en este plan; D como acción opcional del oper
 
 | Cuándo | Acción |
 | --- | --- |
-| Antes del ciclo 1 | Crear la rama del plan y responder Q13-Q15 (Q1-Q12 ya están resueltas). |
+| Antes del ciclo 1 | Crear la rama del plan (Q1-Q12, Q14 y Q15 ya están resueltas). |
+| Antes de que BUILDER empiece el paso 10 | Opcional: responder Q16 si se quiere b); si no, se aplica a). |
+| Antes de la publicación de cierre | Responder Q13. |
 | Tras el paso 01 | `git rm --cached build.log test.log facility-test.log gaffer-api.sln.DotSettings.user` y commit (los ficheros se conservan en disco). |
 | Paso 08 | Configurar sus User Secrets o variables de entorno con los comandos que BUILDER documente en `STATUS.md`; opcionalmente D y el cambio de contraseña del contenedor. |
 | Paso 09 | Ejecutar el runner de migraciones en `GafferDB` (Q10 = b). |
-| Al cerrar, tras aprobarse los pasos 05, 06 y 10 | Regenerar `Gaffer.Api.Client` con NSwag y versionarlo como **1.0.0** (petición del operador). El contrato OpenAPI cambia: 201 en Create y enums como texto. Empaquetar y publicar según Q13. Los futuros cambios siguen la regla SemVer del paso 10. Revisar los consumidores del cliente, que hoy esperan 200 en Create y enums como entero (no se han encontrado en `quionis-bff-api` ni en `quionis-frontend`). |
+| Al cerrar, tras aprobarse los pasos 05, 06 y 10 | Regenerar `Gaffer.Api.Client` con NSwag y versionarlo como **1.0.0** (petición del operador; versión por defecto en `Directory.Build.props` de la raíz, Q14 = b). El contrato OpenAPI cambia: 201 en Create y enums como texto. Empaquetar y publicar según Q13. Los futuros cambios siguen la regla SemVer del paso 10. Revisar los consumidores del cliente, que hoy esperan 200 en Create y enums como entero (no se han encontrado en `quionis-bff-api` ni en `quionis-frontend`). |
 
 ## Fuera de alcance (anotado, no se planifica)
 

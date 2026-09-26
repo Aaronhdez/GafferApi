@@ -79,7 +79,7 @@ public class CannotUpdatePlayerException(string message, Guid id) : Exception(me
     public string Reason { get; }
 }
 
-public class UpdatePlayerCommand : ICommand<UpdatePlayerResult>, ICommand
+public class UpdatePlayerCommand : ICommand
 {
     public Guid Id { get; set; }
     public string FirstName { get; set; }
@@ -87,8 +87,4 @@ public class UpdatePlayerCommand : ICommand<UpdatePlayerResult>, ICommand
     public string SecondLastName { get; set; }
     public string BirthDate { get; set; }
     public string Gender { get; set; }
-}
-
-public class UpdatePlayerResult
-{
 }

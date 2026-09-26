@@ -4,7 +4,7 @@ public static class DbTableNames
 {
     public static readonly string PlayersTable = "Players";
     public static readonly string FacilitiesTable = "Facilities";
-    public static readonly string AddressesTable = "Adresses";
+    public static readonly string AddressesTable = "Addresses";
     public static readonly string StandsTable = "Stands";
     public static readonly string FacilitiesAddressesTable = "Facilities_Addresses";
     public static readonly string FacilitiesStandsTable = "Facilities_Stands";

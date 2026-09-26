@@ -63,7 +63,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     private async Task<Address> GetAddress(Guid facilityId, CancellationToken cancellationToken)
     {
         const string query =
-            "SELECT a.* FROM `Adresses` a " +
+            "SELECT a.* FROM `Addresses` a " +
             "INNER JOIN `Facilities_Addresses` fa ON fa.AddressId = a.Id " +
             "WHERE fa.FacilityId = @FacilityId;";
         var rows = await dbConnectionProvider.QueryAsync<AddressRow>(query, new { FacilityId = facilityId });
@@ -162,7 +162,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     private async Task InsertAddress(Facility facility, CancellationToken cancellationToken)
     {
         const string insertAddressQuery =
-            "INSERT INTO `Adresses` (" +
+            "INSERT INTO `Addresses` (" +
             "Id, " +
             "Street, " +
             "StreetNumber, " +
@@ -235,7 +235,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     private async Task DeleteAddress(Guid facilityId, CancellationToken cancellationToken)
     {
         const string deleteAddressQuery =
-            "DELETE FROM `Adresses` WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
+            "DELETE FROM `Addresses` WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
         await dbConnectionProvider.ExecuteAsync(deleteAddressQuery, new { FacilityId = facilityId });
 
         const string deleteAddressRelationQuery = "DELETE FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId;";

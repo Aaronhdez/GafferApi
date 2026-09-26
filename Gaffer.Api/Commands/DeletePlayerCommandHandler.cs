@@ -53,7 +53,3 @@ public class CannotDeletePlayerException(string message, Guid id) : Exception(me
 }
 
 public record DeletePlayerCommand(Guid Id) : ICommand;
-
-public class DeletePlayerResult
-{
-}

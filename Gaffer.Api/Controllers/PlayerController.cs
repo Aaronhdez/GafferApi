@@ -3,6 +3,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gaffer.Api.Controllers;
@@ -28,12 +29,13 @@ public class PlayerController(
     }
 
     [HttpPost("")]
-    public async Task<Guid> Create([FromBody] CreatePlayerRequest request)
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Guid>> Create([FromBody] CreatePlayerRequest request)
     {
         var createResult = await createPlayerCommandHandler.Handle(
             new CreatePlayerCommand(request.FirstName, request.LastName, request.SecondLastName, request.BirthDate,
                 request.Gender), CancellationToken.None);
-        return createResult.Id;
+        return CreatedAtAction(nameof(GetBy), new { id = createResult.Id }, createResult.Id);
     }
 
     [HttpPost("search")]
@@ -112,8 +114,3 @@ public record CreatePlayerRequest(
     string? SecondLastName,
     DateTime BirthDate,
     Gender Gender);
-
-public class DeletePlayerRequest(Guid id)
-{
-    public Guid Id { get; } = id;
-}

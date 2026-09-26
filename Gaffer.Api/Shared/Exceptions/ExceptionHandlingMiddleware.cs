@@ -81,18 +81,4 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
         if (problemDetailsStatus.HasValue) return problemDetailsStatus.Value;
         return (int)HttpStatusCode.InternalServerError;
     }
-
-    private ProblemDetails GetProblemDetails(Exception exception)
-    {
-        return exception switch
-        {
-            _ => new ProblemDetails
-            {
-                Title = "Unknown error",
-                Status = (int)HttpStatusCode.InternalServerError,
-                Type = exception.GetType().FullName,
-                Detail = { }
-            }
-        };
-    }
 }

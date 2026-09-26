@@ -74,8 +74,7 @@ public class SqlConnectionProviderShould
     [Test]
     public async Task ReportAnUnreachableDatabaseWithoutThrowing()
     {
-        await using var provider = new SqlConnectionProvider(
-            "Server=127.0.0.1;Port=1;Database=GafferDB_Test;Uid=root;Pwd=toor;Connection Timeout=2;");
+        await using var provider = new SqlConnectionProvider(TestConfiguration.UnreachableDatabaseConnectionString);
 
         var testConnection = async () => await provider.TestConnection();
 

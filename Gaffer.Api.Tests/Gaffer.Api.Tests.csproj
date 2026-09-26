@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
+        <UserSecretsId>gaffer-api-tests-9423e01b-aca7-40a3-9649-8746b49b2c6e</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -14,7 +15,6 @@
         <PackageReference Include="Dapper" Version="2.1.79" />
         <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.10" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.0"/>
-        <PackageReference Include="MySql.Data" Version="26.7.0" />
         <PackageReference Include="NSubstitute" Version="6.0.0" />
         <PackageReference Include="NUnit" Version="4.3.2"/>
         <PackageReference Include="NUnit.Analyzers" Version="4.7.0"/>
@@ -27,10 +27,6 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Gaffer.Api\Gaffer.Api.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <None Include="bin\Debug\net10.0\testSettings.json" />
     </ItemGroup>
 
 </Project>

@@ -4,3 +4,10 @@ obj/
 riderModule.iml
 /_ReSharper.Caches/
 .idea
+
+# Logs
+*.log
+
+# IDE user-specific files
+*.user
+*.DotSettings.user

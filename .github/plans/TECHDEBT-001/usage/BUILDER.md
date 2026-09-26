@@ -1,0 +1,6 @@
+# Usage - BUILDER
+
+| Ciclo | Tokens entrada | Tokens salida | Origen del dato | Llamadas a herramientas | Ficheros leídos (nº y mayores) | Comandos con salida grande | Observaciones |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ~230000 (acumulado de contexto, incluye caché) | ~40000 | estimado | ~110 | ~45; mayores: `00-overview-and-open-questions.md` (26 KB), `TestFixture.cs`, `FacilitiesController.cs`, `DatabaseStartupShould.cs` | 1 `grep -E Gender` con `-A12` volcó ~15 líneas de advertencias CS8618; build `--no-incremental` repetido 6 veces para contar advertencias | Pasos 01-09 y 11 en un ciclo; paso 10 bloqueado por Q14/Q15. Suite en ~8 s por ejecución. |
+| 2 | ~70000 (acumulado de contexto, incluye caché; ~35 KB de STATUS/REVIEW/paso 10 leídos una vez) | ~9000 | estimado | ~22 | ~6; mayores: `STATUS.md` (~20 KB), `REVIEW.md`, `10-client-semantic-versioning.md` | 1 build `--no-incremental` con salida completa a scratchpad (solo resumen por código al contexto, OPT-006); un log `-v d` de AC10.10 volcado a fichero y leído parcialmente (12 líneas) | Paso 10 implementado (`Directory.Build.props`) y AC11.3/AC11.4 revalidados; 159/159. OPT-007 aplicado: resultados referenciados vía STATUS. |
