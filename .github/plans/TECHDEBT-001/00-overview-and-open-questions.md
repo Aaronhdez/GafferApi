@@ -3,7 +3,7 @@
 ## Petición del operador (literal)
 
 > "vale, genera la planificación para estos puntos de desuda técnica:
-> Paquetes sobrantes o desalineados / Varios paquetes 9.x conviven con net10. / NSwag / Credenciales root/toor escritas en 4 sitios. Propón alguna mejora para esto. / Serialización: Usar Newtonsoft / Seguridad y respuestas HTTP: la autenticación por cookie está activada, pero no se exige autorización en ningún endpoint. Create devuelve 200 en lugar de 201. / Ficheros que no deberían estar versionados: los .log de la raíz y gaffer-api.sln.DotSettings.user. / Restos sin uso: LoggingStartup está vacío (la plantilla de arranque crea ahora su propio logger aparte) y quedan clases de resultado sin uso. / Tabla mal escrita: se llama Adresses; corregirlo requiere una migración."
+> Paquetes sobrantes o desalineados / Varios paquetes 9.x conviven con net10. / NSwag / Credenciales de BD escritas en 4 sitios. Propón alguna mejora para esto. / Serialización: Usar Newtonsoft / Seguridad y respuestas HTTP: la autenticación por cookie está activada, pero no se exige autorización en ningún endpoint. Create devuelve 200 en lugar de 201. / Ficheros que no deberían estar versionados: los .log de la raíz y gaffer-api.sln.DotSettings.user. / Restos sin uso: LoggingStartup está vacío (la plantilla de arranque crea ahora su propio logger aparte) y quedan clases de resultado sin uso. / Tabla mal escrita: se llama Adresses; corregirlo requiere una migración."
 
 Petición adicional (literal): "Regenera el cliente con nueva version 1.0.0, ajusta el proceso para que use Semantic Versioning"
 

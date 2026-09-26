@@ -136,7 +136,7 @@
           "x-position": 1
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -259,7 +259,7 @@
           "x-position": 1
         },
         "responses": {
-          "200": {
+          "201": {
             "description": "",
             "content": {
               "application/json": {
@@ -348,7 +348,7 @@
         }
       },
       "FacilityType": {
-        "type": "integer",
+        "type": "string",
         "description": "",
         "x-enumNames": [
           "Stadium",
@@ -357,10 +357,10 @@
           "Training"
         ],
         "enum": [
-          0,
-          1,
-          2,
-          3
+          "Stadium",
+          "Arena",
+          "Pitch",
+          "Training"
         ]
       },
       "SearchFacilityAddressResult": {
@@ -584,7 +584,7 @@
         }
       },
       "Gender": {
-        "type": "integer",
+        "type": "string",
         "description": "",
         "x-enumNames": [
           "MALE",
@@ -592,9 +592,9 @@
           "OTHER"
         ],
         "enum": [
-          0,
-          1,
-          2
+          "MALE",
+          "FEMALE",
+          "OTHER"
         ]
       },
       "CreatePlayerRequest": {
