@@ -27,13 +27,13 @@
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
-        <Content Update="appsettings.Development.json">
+        <None Update="appsettings.Development.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <CopyToPublishDirectory>Never</CopyToPublishDirectory>
-        </Content>
-        <Content Update="appsettings.json">
+        </None>
+        <None Update="appsettings.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
+        </None>
     </ItemGroup>
     <ItemGroup>
         <Content Remove="nswag.json" />

@@ -15,6 +15,7 @@ namespace Gaffer.Api
         public static void Main(string[] args)
         {
             var host = Host.CreateDefaultBuilder(args)
+                .UseContentRoot(AppContext.BaseDirectory)
                 .UseEnvironment(ProductContext.Environment ?? Development)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
