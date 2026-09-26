@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using NSwag.AspNetCore;
@@ -67,8 +68,12 @@ public class TestFixture
         return new GafferApiClientTest(httpClient);
     }
 
-    /// <summary>Starts the test API host (same DI as the shared fixture) against the given connection string.</summary>
-    internal static async Task<TestServer> StartApiServer(string? baseAddress, string testDatabase)
+    /// <summary>
+    /// Starts the test API host (same DI as the shared fixture) against the given connection string.
+    /// An optional <paramref name="loggerProvider"/> captures the host logs (e.g. the exception middleware).
+    /// </summary>
+    internal static async Task<TestServer> StartApiServer(string? baseAddress, string testDatabase,
+        ILoggerProvider? loggerProvider = null)
     {
         if (baseAddress == null) throw new NullReferenceException(nameof(baseAddress));
 
@@ -78,6 +83,7 @@ public class TestFixture
                 webHostBuilder.UseTestServer();
                 webHostBuilder.UseEnvironment("Test");
                 webHostBuilder.UseUrls(baseAddress);
+                if (loggerProvider != null) webHostBuilder.ConfigureLogging(logging => logging.AddProvider(loggerProvider));
                 webHostBuilder.ConfigureAppConfiguration((builderContext, config) => TestConfiguration.AddSources(config));
                 webHostBuilder.ConfigureServices(services =>
                 {

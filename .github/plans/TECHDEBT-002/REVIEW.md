@@ -140,3 +140,54 @@ Veredicto: **APPROVED** (estado del plan → `APPROVED` para el paso 03).
 | 3 | Limitación de la revisión | REVIEWER no reprodujo el red, porque habría tenido que revertir código de producto. Acepta la evidencia de BUILDER, que incluye los mensajes exactos. |
 
 Sin defectos bloqueantes. Los pasos 01 y 02 no presentan regresión: `PlayerFeaturesShould`, `DatabaseFailureShould`, los handlers y los conversores están en verde dentro de la suite de 210.
+
+## Ciclo 4 - Paso 04 (Log en ExceptionHandlingMiddleware)
+
+Veredicto: **APPROVED** (estado del plan → `APPROVED`; paso 04 es el último, los cuatro pasos quedan aprobados).
+
+### Alcance revisado
+
+| Elemento | Resultado |
+| --- | --- |
+| `git status` | Modificados: `ExceptionHandlingMiddleware.cs`, `ExceptionHandlingMiddlewareShould.cs`, `DatabaseFailureShould.cs`, `TestFixture.cs`, ficheros del plan, `MEMORIES.md`/`OPTIMIZATION.md` (OPTIMIZER, no revisados como producto). Nuevo: `Gaffer.Api.Tests/TestShared/RecordingLoggerProvider.cs`. Sin cambios en `Gaffer.Api.Client` (output generado no verificado, fuera de alcance). |
+| Fichero no listado (`RecordingLoggerProvider.cs`) | **Dentro del alcance**. El paso pide "un logger de test propio (sin paquetes nuevos)" en unitario y aceptación. Un único proveedor en `TestShared` evita duplicarlo en dos ficheros. Solo es código de test, sin paquetes nuevos. |
+| `TestFixture.StartApiServer(..., ILoggerProvider? loggerProvider = null)` | **Dentro del alcance**. El plan permite tocar `TestFixture.cs` "solo si el registro del logging del host de test necesita cambios", y aquí los necesita. Parámetro opcional: el fixture compartido no lo pasa (sin cambio de comportamiento). No hay handlers nuevos, así que no hacen falta registros DI. `ILogger<T>` lo aporta el host, y `UseMiddleware<ExceptionHandlingMiddleware>()` (`Startup.cs:66`, `TestFixture.cs:153`) lo resuelve. |
+| Producto | Constructor primario `(next, ILogger<>)`; se elimina el campo sin asignar. `TryGetValue` sin copiar el diccionario. Un conversor que devuelve `null` sigue produciendo `UnknownError` (igual que antes). `LogException`: 404 → sin log; resto → `LogError(exception, ...)`. La respuesta no expone la excepción: solo se registra en el servidor. |
+| MySQL | Docker `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo; 0 omitidos. |
+
+### Ejecución del REVIEWER
+
+| Comando | Resultado |
+| --- | --- |
+| `dotnet build gaffer-api.sln --no-incremental -v q` | 0 errores, 57 advertencias. Sin CS0169. En los ficheros tocados solo aparece la CS8618 preexistente de `TestFixture.cs:35`. |
+| `dotnet test gaffer-api.sln --no-build --verbosity quiet --filter "FullyQualifiedName~ExceptionHandlingMiddleware\|FullyQualifiedName~DatabaseFailure"` | 12/12, 0 omitidos |
+| `dotnet test gaffer-api.sln --no-build --verbosity quiet` | **215/215**, 0 omitidos, exit 0 |
+| `grep -rn "Unkwnown" Gaffer.Api Gaffer.Api.Tests --include=*.cs \| wc -l` | 0 |
+
+### Criterios de aceptación
+
+| ID | Evidencia | Red → green | Estado |
+| --- | --- | --- | --- |
+| AC4.1 | `ReturnAnUnknownErrorForAnUnmappedException`: 500, `application/json`, `Status`, `Title = "Unknown error"`, `Instance = /facilities`. | Red "differ at index 3" (errata) → green | Demostrado |
+| AC4.2 | `LogAnUnmappedExceptionOnceAsAnErrorWithTheException`: `ContainSingle`, `LogLevel.Error`, `Exception` `BeSameAs` la lanzada. | Red "collection is empty" → green | Demostrado |
+| AC4.3 (a) | `LogAnExceptionMappedToBadRequestOnceAsAnError`: 400 con `Title`/`Detail`/`Instance` sin cambios; una entrada `Error`. | Red "collection is empty" → green | Demostrado |
+| AC4.3 (b) | `NotLogAnExceptionMappedToNotFound`: 404; cero entradas de la categoría del middleware. | Guarda (verde desde el inicio, registrado) | Demostrado |
+| AC4.4 | `DatabaseFailureShould.ReturnAnUnknownErrorAndLogItWhenGettingAPlayer`: 500, `Title = "Unknown error"`, exactamente una entrada nueva `Error` con excepción (el test cuenta las entradas previas porque el servidor es compartido). | Red por el título; ver hallazgo 1 | Demostrado |
+| AC4.5 | Build sin CS0169 (59 → 57 advertencias según BUILDER; 57 reproducidas); grep `Unkwnown` = 0. | Línea base 59 con CS0169 registrada por BUILDER | Demostrado |
+| AC4.6 | Suite 215/215. Ningún test dependía de la errata (grep = 0). | Guarda de regresión | Demostrado |
+
+### Plan completo (pasos 01-03 sin regresión)
+
+La suite completa (215/215, contra MySQL en Docker) incluye `PlayerFeaturesShould`, `OpenApiContractShould`, `UpdatePlayerCommandHandlerShould` (paso 01), `DatabaseFailureShould`, los handlers de Delete/Update y los conversores (paso 02), y `SqlFacilityRepositoryShould`, `ExceptionToHttpResponseConvertersShould` y la ruta del middleware para el filtro de Facility (paso 03). Todos están en verde. Los ACs de los pasos 01-03 siguen demostrados.
+
+### Hallazgos
+
+| # | Severidad | Hallazgo |
+| --- | --- | --- |
+| 1 | Informativo | En AC4.4, el red de aceptación falló por el título, antes de llegar a la aserción del log. La parte del log de ese test no se ha visto fallar por sí sola. La mitiga que antes del cambio el middleware no tenía logger (el constructor era de un argumento), y los reds unitarios AC4.2/AC4.3 cubren el comportamiento. |
+| 2 | Informativo | `RecordingLoggerProvider.CreateLogger<T>()` crea un `LoggerFactory` que nunca se libera. Es inocuo en tests. |
+| 3 | Informativo | Por Q6, las 400 mapeadas se registran a nivel `Error`, lo que puede generar ruido en producción ante errores de cliente. Es una decisión del operador y no un defecto. |
+| 4 | Informativo | Siguen los `using` sin uso preexistentes en el middleware (`Gaffer.Api.Commands`, `Gaffer.Api.Shared.Repositories`) y el nombre `PlayerConverters`. Candidatos para TECHDEBT-003. |
+| 5 | Limitación de la revisión | REVIEWER no reprodujo el red, porque habría tenido que revertir código de producto. Acepta la evidencia de BUILDER, que incluye los mensajes exactos y los reds de compilación CS1729/NUnit1032. |
+
+Sin defectos bloqueantes.

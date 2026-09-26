@@ -1,9 +1,12 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Tests.TestShared;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Acceptance;
 
@@ -16,12 +19,14 @@ public class DatabaseFailureShould
 {
     private TestServer _server;
     private HttpClient _client;
+    private RecordingLoggerProvider _logs;
 
     [OneTimeSetUp]
     public async Task OneTimeSetUp()
     {
         var baseAddress = TestFixture.Configuration["ApiUrl"];
-        _server = await TestFixture.StartApiServer(baseAddress, TestConfiguration.UnreachableDatabaseConnectionString);
+        _logs = new RecordingLoggerProvider();
+        _server = await TestFixture.StartApiServer(baseAddress, TestConfiguration.UnreachableDatabaseConnectionString, _logs);
         _client = _server.CreateClient();
         _client.BaseAddress = new Uri(baseAddress!);
     }
@@ -31,6 +36,7 @@ public class DatabaseFailureShould
     {
         _client?.Dispose();
         _server?.Dispose();
+        _logs?.Dispose();
     }
 
     [Test]
@@ -39,6 +45,22 @@ public class DatabaseFailureShould
         var response = await _client.GetAsync(Uris.GetPlayer(Guid.NewGuid().ToString()));
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+    }
+
+    [Test]
+    public async Task ReturnAnUnknownErrorAndLogItWhenGettingAPlayer()
+    {
+        var logsBefore = _logs.EntriesFor<ExceptionHandlingMiddleware>().Count;
+
+        var response = await _client.GetAsync(Uris.GetPlayer(Guid.NewGuid().ToString()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        body["Title"]!.Value<string>().Should().Be("Unknown error");
+        var newLogs = _logs.EntriesFor<ExceptionHandlingMiddleware>().Skip(logsBefore).ToList();
+        newLogs.Should().ContainSingle();
+        newLogs[0].Level.Should().Be(LogLevel.Error);
+        newLogs[0].Exception.Should().NotBeNull();
     }
 
     [Test]

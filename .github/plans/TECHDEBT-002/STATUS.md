@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 3 |
-| Pasos completados | 01 (aprobado por REVIEWER en el ciclo 1); 02 (aprobado por REVIEWER en el ciclo 2); 03 (aprobado por REVIEWER en el ciclo 3) |
+| Ciclo | 4 |
+| Pasos completados | 01 (aprobado por REVIEWER en el ciclo 1); 02 (aprobado por REVIEWER en el ciclo 2); 03 (aprobado por REVIEWER en el ciclo 3); 04 (aprobado por REVIEWER en el ciclo 4). Todos los pasos del plan aprobados. |
 | Pasos bloqueados | Ninguno. Q0-Q6 y Q4.1 resueltas (Q0, Q2, Q5 por default; Q1 = reemplazo de `secondLastName` según 2ª respuesta del operador; Q4.1 = `"Internal Server Error"`). |
 | Bloqueos | Ninguno de entorno. |
 | Aprobación del plan | Aprobado por el operador el 2026-09-26: "I approve the plan". Listo para el ciclo 1 (BUILDER, paso 01). |
@@ -18,7 +18,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 1 | 01 - Update parcial de Player | APPROVED |
 | 2 | 02 - Fallos de infraestructura → 500 (Q3 = a) | APPROVED |
 | 3 | 03 - Filtro no permitido en Facilities → 400 | APPROVED |
-| 4 | 04 - Log en el middleware | - |
+| 4 | 04 - Log en el middleware (Q6: 400 Error, 404 sin log) | APPROVED |
 | 5 | Reserva | - |
 | 6 | Reserva | - |
 
@@ -33,6 +33,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 2 | 2026-09-26T21:02:46Z | 2026-09-26T21:04:51Z |
 | BUILDER | 3 | 2026-09-26T21:11:41Z | 2026-09-26T21:15:10Z |
 | REVIEWER | 3 | 2026-09-26T21:16:17Z | 2026-09-26T21:17:53Z |
+| BUILDER | 4 | 2026-09-26T21:28:57Z | 2026-09-26T21:33:40Z |
+| REVIEWER | 4 | 2026-09-26T21:34:49Z | 2026-09-26T21:36:52Z |
 
 ## Prerrequisitos
 
@@ -46,6 +48,9 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | Ciclo 3 - Docker | `docker ps`: `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo |
 | Ciclo 3 - línea base | `dotnet build gaffer-api.sln --verbosity quiet`: 0 errores; `dotnet test gaffer-api.sln --no-build --verbosity quiet`: 203/203, 0 omitidos |
 | Ciclo 3 - hora UTC | `date -u` = `[DateTime]::UtcNow` de PowerShell (21:14:57Z en ambos; OPT-009) |
+| Ciclo 4 - Docker | `docker ps`: `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo |
+| Ciclo 4 - línea base de avisos | `dotnet build gaffer-api.sln --no-incremental -v q`: 0 errores, **59** advertencias, incluida CS0169 `ExceptionHandlingMiddleware.logger` (línea 14) |
+| Ciclo 4 - hora UTC | `date -u` = `(Get-Date).ToUniversalTime()` de PowerShell (21:29:13Z y 21:33:40Z en ambos; OPT-009) |
 
 ## Comandos y resultados
 
@@ -73,6 +78,13 @@ Filtro F1 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerFeatu
 | 3 | 03 | Green | `dotnet test gaffer-api.sln --verbosity quiet` + F3 | 44/44. |
 | 3 | 03 | Refactor + revalidación | `dotnet build gaffer-api.sln --verbosity quiet`; F3 + `FacilityFeaturesShould` + `SearchPlayersEndpoint` (`--no-build`); `dotnet test gaffer-api.sln --no-build --verbosity quiet`; `grep -n "ArgumentException" Gaffer.Api/Infrastructure/SqlFacilityRepository.cs \| wc -l` | 0 errores; 64/64 (AC3.5: tests existentes de repositorio y `FacilityFeaturesShould` en verde); **210/210** (203 + 7 nuevos: 2 middleware, 2 repositorio, 3 conversor), 0 omitidos; grep = 0. |
 | 3 | 03 | Revisión (REVIEWER) | `docker ps`; `dotnet build gaffer-api.sln --verbosity quiet`; F3 + `FacilityFeaturesShould` + `SearchPlayersEndpoint` `--no-build`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; grep `ArgumentException` | Docker activo; 0 errores / 0 advertencias; 64/64; suite 210/210, 0 omitidos; grep = 0. Veredicto APPROVED (ver `REVIEW.md`; refactor `BuildSearchFilterNotPermittedProblemDetails()` en alcance y con la misma salida). |
+| 4 | 04 | Aceptación red compilación | `dotnet test ... --filter "FullyQualifiedName~DatabaseFailure"` | NUnit1032 (analizador como error): el campo `_logs` debía liberarse en `[OneTimeTearDown]`; añadido `_logs?.Dispose()`. |
+| 4 | 04 | Aceptación red (AC4.4) | `dotnet test gaffer-api.sln --logger "console;verbosity=normal" --filter "FullyQualifiedName~DatabaseFailure"` | 1 fallo / 6: `ReturnAnUnknownErrorAndLogItWhenGettingAPlayer` "Expected body[\"Title\"]!.Value<string>() to be the same string, but they differ at index 3" (500 con "Unkwnown error"; la aserción de log queda detrás y la cubre el red unitario). Los 5 de 500 del paso 02 en verde. |
+| 4 | 04 | Unitario red compilación | `dotnet build Gaffer.Api.Tests/Gaffer.Api.Tests.csproj -v q` | CS1729 ×3: `ExceptionHandlingMiddleware` no tiene constructor de 2 argumentos. Se cambió solo el constructor primario (`next`, `logger`) para obtener el red de comportamiento. |
+| 4 | 04 | Unitario red (AC4.1-AC4.3) | `dotnet test gaffer-api.sln --logger "console;verbosity=normal" --filter "FullyQualifiedName~ExceptionHandlingMiddleware"` | 3 fallos / 6: `LogAnExceptionMappedToBadRequestOnceAsAnError` y `LogAnUnmappedExceptionOnceAsAnErrorWithTheException` ("Expected entries to contain a single item, but the collection is empty"); `ReturnAnUnknownErrorForAnUnmappedException` (título, "differ at index 3"). `NotLogAnExceptionMappedToNotFound` verde desde el inicio (guarda AC4.3 b). |
+| 4 | 04 | Green | F4 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~ExceptionHandlingMiddleware\|FullyQualifiedName~DatabaseFailure"` | 12/12, exit 0. |
+| 4 | 04 | Refactor + revalidación | `dotnet build gaffer-api.sln --no-incremental -v q`; `grep -rn "Unkwnown" Gaffer.Api Gaffer.Api.Tests --include=*.cs \| wc -l`; `dotnet test gaffer-api.sln` | 0 errores, **57** advertencias (59 → 57; sin CS0169 de `ExceptionHandlingMiddleware`; ninguna nueva en ficheros tocados salvo la CS8618 preexistente de `TestFixture.cs`, desplazada a la línea 35); grep = 0; **215/215** (210 + 5 nuevos: 4 unitarios del middleware, 1 de aceptación), 0 omitidos, exit 0. |
+| 4 | 04 | Revisión (REVIEWER) | `docker ps`; `dotnet build gaffer-api.sln --no-incremental -v q`; F4 `--no-build`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; grep `Unkwnown` | Docker activo; 0 errores, 57 advertencias (sin CS0169); F4 12/12; suite **215/215**, 0 omitidos, exit 0; grep = 0. Veredicto APPROVED (ver `REVIEW.md`; `RecordingLoggerProvider.cs` y el parámetro opcional de `StartApiServer` dentro del alcance). |
 
 ## Notas del ciclo 1 (paso 01)
 
@@ -107,6 +119,18 @@ Filtro F1 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerFeatu
 | AC3.4 | `NotMapGenericArgumentExceptionsSoFacilitySearchKeepsItsBehaviour` renombrado a `NotMapGenericArgumentExceptions` (misma aserción). Además, `ExceptionHandlingMiddlewareShould.KeepReturningAnUnknownErrorForAGenericArgumentException` → 500. |
 | Rojo de compilación | Antes de crear la excepción: CS0246 `FacilitySearchFilterNotPermittedException` no encontrada (4 usos en tests). Se añadió solo el tipo para obtener el rojo de comportamiento registrado abajo. |
 | Fuera de alcance | Sin rutas HTTP nuevas; sin handlers nuevos (`TestFixture.cs` no requiere cambios). Cliente NSwag no regenerado. Avisos de compilación en `SqlFacilityRepository.cs` preexistentes (CS8618 en clases *Row, CS8603 línea 71). |
+
+## Notas del ciclo 4 (paso 04)
+
+| Tema | Detalle |
+| --- | --- |
+| Middleware | Constructor primario `(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)`; eliminados el campo sin asignar y el comentario. `LogException`: 404 → sin log; resto (400 mapeado, 500 no mapeado o conversor que devuelve `null`) → `LogError(exception, "Request failed with status {Status}: {Title}", ...)`. Título `"Unknown error"`. |
+| Refactor | `HandleExceptionAsync` usa `PlayerConverters.TryGetValue` directamente (se elimina `GetConverterDictionary`, que copiaba el diccionario en cada excepción); `UnknownError` pasa a `static`. Respuestas sin cambios (suite en verde). |
+| Logger de test | Nuevo `Gaffer.Api.Tests/TestShared/RecordingLoggerProvider.cs` (`ILoggerProvider` en memoria, sin paquetes nuevos), compartido por el unitario y la aceptación. **Fichero no listado en el alcance del paso** (el paso pide "un logger de test propio"); se ubicó en `TestShared` para no duplicarlo en los dos tests. Punto a validar por REVIEWER. |
+| Host de test | `TestFixture.StartApiServer` acepta `ILoggerProvider? loggerProvider = null` y lo añade con `ConfigureLogging(AddProvider)`. Sin handlers ni registros DI nuevos; `ILogger<T>` lo aporta el `HostBuilder`. El fixture compartido no pasa proveedor (sin cambio de comportamiento). |
+| AC4.4 | `DatabaseFailureShould.ReturnAnUnknownErrorAndLogItWhenGettingAPlayer`: 500, `Title = "Unknown error"`, exactamente una entrada nueva `Error` de la categoría `ExceptionHandlingMiddleware` con excepción adjunta (se cuentan las entradas previas porque el servidor es compartido en la clase). |
+| AC4.6 | Ningún test existente dependía de la errata (grep `Unkwnown` = 0 en código y tests). Cambio de contrato menor visible en el cuerpo de los 500. |
+| Fuera de alcance | Cliente NSwag no regenerado. Los `using` sin uso preexistentes del middleware (`Gaffer.Api.Commands`, `Gaffer.Api.Shared.Repositories`) no se tocaron. |
 
 ## Documentación modificada
 

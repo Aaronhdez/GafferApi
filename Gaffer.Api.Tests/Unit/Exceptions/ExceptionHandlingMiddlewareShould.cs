@@ -3,7 +3,9 @@ using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Tests.TestShared;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using NSubstitute;
 
@@ -13,6 +15,13 @@ public class ExceptionHandlingMiddlewareShould
 {
     private const string FilterNotPermittedKey = "Error.Search.FilterNotPermitted";
     private const string RequestPath = "/facilities";
+    private RecordingLoggerProvider logs;
+
+    [SetUp]
+    public void SetUp() => logs = new RecordingLoggerProvider();
+
+    [TearDown]
+    public void TearDown() => logs.Dispose();
 
     // No HTTP route sends arbitrary Facility filters, so the chain repository -> middleware is closed here:
     // the request pipeline runs the real SqlFacilityRepository with a filter field that is not permitted.
@@ -24,7 +33,7 @@ public class ExceptionHandlingMiddlewareShould
         var middleware = new ExceptionHandlingMiddleware(async _ => await repository.Get(new FacilitySearchCriteria
         {
             criteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
-        }, CancellationToken.None));
+        }, CancellationToken.None), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
         await middleware.Invoke(context);
@@ -42,13 +51,76 @@ public class ExceptionHandlingMiddlewareShould
     [Test]
     public async Task KeepReturningAnUnknownErrorForAGenericArgumentException()
     {
-        var middleware = new ExceptionHandlingMiddleware(_ => throw new ArgumentException("boom"));
+        var middleware = new ExceptionHandlingMiddleware(_ => throw new ArgumentException("boom"), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
         await middleware.Invoke(context);
 
         context.Response.StatusCode.Should().Be(500);
     }
+
+    [Test]
+    public async Task ReturnAnUnknownErrorForAnUnmappedException()
+    {
+        var middleware = CreateMiddleware(new InvalidOperationException("boom"));
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(500);
+        context.Response.ContentType.Should().Be("application/json");
+        var body = await ReadBody(context);
+        body["Status"]!.Value<int>().Should().Be(500);
+        body["Title"]!.Value<string>().Should().Be("Unknown error");
+        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+    }
+
+    [Test]
+    public async Task LogAnUnmappedExceptionOnceAsAnErrorWithTheException()
+    {
+        var exception = new InvalidOperationException("boom");
+        var middleware = CreateMiddleware(exception);
+
+        await middleware.Invoke(CreateContext());
+
+        var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+        entries[0].Exception.Should().BeSameAs(exception);
+    }
+
+    [Test]
+    public async Task LogAnExceptionMappedToBadRequestOnceAsAnError()
+    {
+        var middleware = CreateMiddleware(new PlayerSearchFilterNotPermittedException("Street"));
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        var body = await ReadBody(context);
+        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+        var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+    }
+
+    [Test]
+    public async Task NotLogAnExceptionMappedToNotFound()
+    {
+        var middleware = CreateMiddleware(new PlayerNotFoundException("not found", Guid.NewGuid()));
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(404);
+        logs.EntriesFor<ExceptionHandlingMiddleware>().Should().BeEmpty();
+    }
+
+    private ExceptionHandlingMiddleware CreateMiddleware(Exception exception) =>
+        new(_ => throw exception, logs.CreateLogger<ExceptionHandlingMiddleware>());
 
     private static DefaultHttpContext CreateContext()
     {

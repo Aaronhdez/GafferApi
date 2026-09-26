@@ -184,4 +184,105 @@ Ninguna entrada existente cubre el crecimiento acumulado de `OPTIMIZATION.md`/`M
 
 ### Estado de aprobación
 
-Pendiente de decisión del operador en el checkpoint de este ciclo. Ninguna propuesta de este ciclo (`P3-1`) ha sido aprobada, rechazada ni registrada en `MEMORIES.md` todavía.
+Aprobada por el operador ("procede con b y luego con a"; `b` = opción de checkpoint "aprobar o rechazar `P3-1`", interpretada como aprobación por consistencia con el mismo patrón usado en los checkpoints de los ciclos 1 y 2 de este plan, donde `b` significó aprobar las propuestas pendientes):
+
+- **P3-1** → aprobada, registrada como `OPT-013` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/plans/TECHDEBT-002/OPTIMIZATION.md` (patrón "Hierarchical Summary" de la skill `context-engineering`).
+
+Ninguna propuesta ha sido aplicada por OPTIMIZER; queda en estado `pendiente` hasta que el operador o el agente correspondiente aplique la compresión.
+
+## Ciclo 4 (paso 04 - Log en el middleware, veredicto APPROVED; último paso planificado, plan completo aprobado)
+
+### usage-slice (medido:token-consumer) — sin datos, regla de corte aplicada (OPT-011)
+
+`node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=2026-09-26T21:28:57Z/2026-09-26T21:33:40Z --window REVIEWER=2026-09-26T21:34:49Z/2026-09-26T21:36:52Z`
+
+Una única invocación: "sin datos" para `claude-code` y `copilot` en las cuatro combinaciones rol/agente. Siguiendo `OPT-011`, no se hizo bisección adicional (cuarto ciclo consecutivo con vacío total de telemetría en las ventanas de subagentes, tras los ciclos 2 y 3; el ciclo 1 fue un caso distinto de desfase horario). Se usan los totales `medido:agent-result` que pasó el ORCHESTRATOR:
+
+| Rol | Tokens (total) | Llamadas | Duración | Origen |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER ciclo 4 | 64 836 | 41 | 345 s | medido:agent-result |
+| REVIEWER ciclo 4 | 53 606 | 13 (el ORCHESTRATOR reportó 14 en un recuento paralelo; discrepancia no resuelta, ver "Brechas de datos") | 151 s | medido:agent-result |
+| OPTIMIZER (registro entre ciclos 3→4) | 50 838 | 6 | 75 s | medido:agent-result |
+
+Comparación con ciclos anteriores (mismo origen, `medido:agent-result`):
+
+| Rol | Ciclo 1 | Ciclo 2 | Ciclo 3 | Ciclo 4 | Variación 3→4 |
+| --- | ---: | ---: | ---: | ---: | --- |
+| BUILDER tokens | 76 757 | 100 198 | 63 486 | 64 836 | +2,1 % |
+| BUILDER llamadas | 52 | 58 | 33 | 41 | +24,2 % |
+| BUILDER duración | 409 s | 446 s | 270 s | 345 s | +27,8 % |
+| REVIEWER tokens | 42 817 | 53 990 | 43 360 | 53 606 | +23,6 % |
+| REVIEWER llamadas | 12 | 13 | 11 | 13(-14) | +18,2 %/+27,3 % |
+| REVIEWER duración | 104 s | 158 s | 112 s | 151 s | +34,8 % |
+| OPTIMIZER registro (tokens) | 30 202 (1→2) | 34 858 (2→3) | 50 838 (3→4) | — | +45,8 % (2→3 fue +15,4 %) |
+
+### Observación sobre OPT-011 (efecto, sin editar `MEMORIES.md`)
+
+Cuarta confirmación consecutiva: **1 sola llamada** a `usage-slice`/`Bash` este ciclo (frente a las ~10 del ciclo 1 sin la regla). El vacío total de telemetría para ventanas de subagentes ya se repite en 3 de 4 ciclos (2, 3 y 4); solo el ciclo 1 tuvo datos (desplazados por huso horario). Efecto observado: **ahorro confirmado y sostenido** de la regla de corte; sigue `pendiente` de aplicación formal en `CLAUDE.md`.
+
+### Observación sobre OPT-009, OPT-010 y OPT-012 (efecto, sin editar `MEMORIES.md`)
+
+- OPT-009: `STATUS.md` registra de nuevo el contraste `date -u`/PowerShell en UTC (fila "Ciclo 4 - hora UTC"), pero el vacío total de telemetría (no un desfase) impide de nuevo confirmar si la instrucción formal evitaría bisección. `sin datos`.
+- OPT-010: el paso 04 no toca contrato OpenAPI ni nulabilidad. `sin datos` (no aplica).
+- OPT-012: el paso 04 no tiene fallos de MySQL que sondear. `sin datos` (no aplica).
+
+### Spike 1 - Crecimiento acelerado del registro de OPTIMIZER entre ciclos (evidencia adicional para OPT-013)
+
+- **Valor y origen**: el registro de OPTIMIZER entre ciclos 3→4 (50 838 tokens / 6 llamadas / 75 s, `medido:agent-result`) crece +45,8 % sobre el registro 2→3 (34 858), que a su vez creció +15,4 % sobre el registro 1→2 (30 202). El crecimiento se acelera (no es lineal): +15,4 % → +45,8 %. Al mismo tiempo, el número de llamadas a herramienta apenas crece (5→5→6), lo que descarta que el coste extra venga de más trabajo de registro y apunta de nuevo a más contexto leído por llamada.
+- **Causa probable**: la misma de `OPT-013` (`Spike 2`, ciclo 3), agravada: `OPTIMIZATION.md` pasó de 121 líneas (tras el ciclo 3) a 191 líneas (tras añadir la sección del ciclo 3 completa), y `MEMORIES.md` de 15 a 17 filas; ambos de lectura obligatoria íntegra en el paso 1 del modo Análisis, sin compresión de las secciones de ciclos ya cerrados.
+- **Propuesta concreta (P4-1)**: dado que este es el último ciclo de desarrollo planificado del plan (STATUS: paso 04 aprobado, plan completo), `OPTIMIZATION.md` de TECHDEBT-002 no tendrá más ciclos futuros que se beneficien de comprimirlo a sí mismo; el coste que sí sigue creciendo entre plan y plan es `MEMORIES.md` (archivo compartido, leído íntegro por OPTIMIZER al inicio de cada análisis en cualquier plan futuro). Se propone extender explícitamente `OPT-013` a `MEMORIES.md` ahora: una vez que una fila tenga `Estado = aplicada` (o `revertida`) y su `Efecto observado` ya no vaya a actualizarse (p. ej. `OPT-001`-`OPT-004`, cerradas desde 2026-08-13/09-21), colapsarla a una línea de una sola tabla-resumen al principio del fichero (`ID | Plan | Problema (1 línea) | Estado`), moviendo el detalle completo a un `MEMORIES-archive.md` o al historial de Git. Las filas `pendiente` (actualmente 9 de 13: `OPT-005` a `OPT-013`) permanecen con el detalle completo hasta que se resuelvan.
+- **Ahorro esperado**: no medible para este plan (no habrá ciclo 5); aplicable de inmediato al primer análisis de cualquier plan futuro, cuando `MEMORIES.md` ya acumula 17 filas y seguirá creciendo con cada plan cerrado. Sirve como refuerzo cuantitativo de `OPT-013`, no como ID nuevo (mismo ámbito, ampliado a `MEMORIES.md` con un criterio de corte explícito: filas cerradas y sin more `Efecto observado` pendiente).
+- **Fuente**: tabla de comparación arriba (`medido:agent-result`, registros 1→2, 2→3, 3→4); `wc -l` de `MEMORIES.md` (17 filas + cabecera) y de `OPTIMIZATION.md` (191 líneas antes de esta sección), esta sesión.
+
+### Resumen de todo el plan (medido:agent-result, cierre de desarrollo)
+
+| Agente | Detalle | Tokens | Llamadas | Duración |
+| --- | --- | ---: | ---: | ---: |
+| PLANNER | Ronda 1 (pre-ciclo) | 58 081 | 33 | n/a |
+| PLANNER | Ronda 2 (pre-ciclo, revisión) | 46 888 | 20 | n/a |
+| BUILDER | Ciclo 1 | 76 757 | 52 | 409 s |
+| BUILDER | Ciclo 2 | 100 198 | 58 | 446 s |
+| BUILDER | Ciclo 3 | 63 486 | 33 | 270 s |
+| BUILDER | Ciclo 4 | 64 836 | 41 | 345 s |
+| REVIEWER | Ciclo 1 | 42 817 | 12 | 104 s |
+| REVIEWER | Ciclo 2 | 53 990 | 13 | 158 s |
+| REVIEWER | Ciclo 3 | 43 360 | 11 | 112 s |
+| REVIEWER | Ciclo 4 | 53 606 | 13(-14) | 151 s |
+| OPTIMIZER | Análisis ciclo 1 | 51 203 | n/a | n/a |
+| OPTIMIZER | Análisis ciclo 2 | 60 931 | n/a | n/a |
+| OPTIMIZER | Análisis ciclo 3 | 73 129 | n/a | n/a |
+| OPTIMIZER | Análisis ciclo 4 | no medible (el subagente no ve su propio consumo; se conocerá solo si el ORCHESTRATOR lo reporta después) | — | — |
+| OPTIMIZER | Registro 1→2 | 30 202 | 5 | 46 s |
+| OPTIMIZER | Registro 2→3 | 34 858 | 5 | 37 s |
+| OPTIMIZER | Registro 3→4 | 50 838 | 6 | 75 s |
+
+Totales por rol (excluyendo el análisis del ciclo 4, no medible desde dentro de esta sesión):
+
+| Rol | Total tokens | % del total medido |
+| --- | ---: | ---: |
+| PLANNER | 104 969 | 11,6 % |
+| BUILDER | 305 277 | 33,7 % |
+| REVIEWER | 193 773 | 21,4 % |
+| OPTIMIZER (análisis c1-c3 + registros) | 301 161 | 33,3 % |
+| **Total** | **905 180** | 100 % |
+
+**Hallazgo de cierre**: el coste medido de OPTIMIZER a lo largo del plan (301 161 tokens, análisis + registros, sin contar este mismo análisis de cierre) es prácticamente equivalente al de BUILDER (305 277 tokens), pese a que OPTIMIZER no escribe código de producto ni tests — solo lee `usage/*.md`, `STATUS.md`, `REVIEW.md`, `MEMORIES.md` y el propio `OPTIMIZATION.md` creciente, y redacta propuestas. Esto confirma a escala de todo el plan la hipótesis de `OPT-013`/`P4-1`: el coste de OPTIMIZER está dominado por la lectura de contexto acumulado (que crece con cada ciclo) y no por el trabajo de análisis en sí (los ciclos con menos cambio de producto, como el ciclo 3, no redujeron proporcionalmente el coste de OPTIMIZER). Es la evidencia más fuerte reunida en este plan para priorizar `OPT-013`/`P4-1` en el próximo checkpoint.
+
+### Cobertura de MEMORIES.md
+
+`P4-1` amplía el ámbito de `OPT-013` (ya registrada) con un criterio de corte concreto para `MEMORIES.md`; no se abre ID nuevo por instrucción de la tarea (evidencia de refuerzo, mismo ámbito). Ninguna otra entrada existente cubre el hallazgo de cierre (coste de OPTIMIZER ≈ coste de BUILDER a escala de plan).
+
+### Brechas de datos
+
+- Discrepancia sin resolver en las llamadas a herramienta de REVIEWER ciclo 4 (13 según el dato pasado a OPTIMIZER, 14 según "el harness reportó" en la misma entrada): no se puede determinar cuál es la cifra correcta desde esta sesión; se reportan ambas.
+- Cuarto ciclo sin desglose de entrada/caché-lectura/caché-escritura/salida (vacío total de telemetría del dashboard); todas las cifras de BUILDER/REVIEWER/OPTIMIZER de este ciclo son `medido:agent-result` (totales sin desglosar), no `medido:token-consumer`.
+- El coste de la propia sesión de análisis de OPTIMIZER en el ciclo 4 (este documento) no es medible desde dentro de la sesión; el resumen de todo el plan lo excluye explícitamente y por tanto subestima el total real en, al menos, el orden de magnitud de los análisis de ciclos anteriores (~51 000-73 000 tokens).
+- No se puede aislar cuánto del +24,2 % de llamadas de BUILDER en el ciclo 4 corresponde al doble rebote de compilación (NUnit1032 por `_logs` sin liberar, luego CS1729 por el constructor de 2 argumentos) frente al alcance propio del paso (logger de test nuevo, cambio de `StartApiServer`); solo se dispone de la secuencia de comandos registrada en `STATUS.md`.
+
+### Estado de aprobación
+
+Pendiente de checkpoint del operador (cierre del plan; sin decisión registrada todavía en esta sesión):
+
+- **P4-1** → propuesta, no registrada aún en `MEMORIES.md`. Amplía el ámbito de `OPT-013` (ya `pendiente`) a un criterio de corte explícito para `MEMORIES.md`. Pendiente de aprobación explícita del operador antes de registrar cualquier cambio de ámbito.
+
+Ninguna propuesta ha sido aplicada por OPTIMIZER.

@@ -8,11 +8,8 @@ using Newtonsoft.Json;
 
 namespace Gaffer.Api.Shared.Exceptions;
 
-public class ExceptionHandlingMiddleware(RequestDelegate next)
+public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
 {
-    private readonly RequestDelegate next = next;
-    private readonly ILogger<ExceptionHandlingMiddleware> logger;
-
     public async Task Invoke(HttpContext context)
     {
         try
@@ -21,42 +18,39 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
         }
         catch (Exception ex)
         {
-            //logger.LogError(ex, ex.Message);
             await HandleExceptionAsync(context, ex);
         }
     }
 
     private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
-        ProblemDetails problemDetails;
-        var converters = GetConverterDictionary();
-        if (!converters.ContainsKey(exception.GetType()))
+        var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters.TryGetValue(exception.GetType(), out var converter)
+            ? converter(exception)
+            : null;
+        if (problemDetails == null)
         {
             problemDetails = UnknownError(context);
         }
         else
         {
-            problemDetails = converters[exception.GetType()](exception);
-            if (problemDetails == null)
-            {
-                problemDetails = UnknownError(context);
-            }
-            else
-            {
-                problemDetails.Instance = context.Request.Path.Value;
-            }
+            problemDetails.Instance = context.Request.Path.Value;
         }
 
+        LogException(exception, problemDetails);
         return WriteErrorResponse(context, problemDetails);
-        
-        
     }
-    
-    private ProblemDetails UnknownError(HttpContext context)
+
+    private void LogException(Exception exception, ProblemDetails problemDetails)
+    {
+        if (problemDetails.Status == (int)HttpStatusCode.NotFound) return;
+        logger.LogError(exception, "Request failed with status {Status}: {Title}", problemDetails.Status, problemDetails.Title);
+    }
+
+    private static ProblemDetails UnknownError(HttpContext context)
     {
         return new ProblemDetails
         {
-            Title = "Unkwnown error",
+            Title = "Unknown error",
             Status = (int)HttpStatusCode.InternalServerError,
             Instance = context.Request.Path.Value,
         };
@@ -68,12 +62,6 @@ public class ExceptionHandlingMiddleware(RequestDelegate next)
         context.Response.StatusCode = GetResponseStatus(problemDetails.Status);
         var result = JsonConvert.SerializeObject(problemDetails);
         return context.Response.WriteAsync(result);
-    }
-
-    private static Dictionary<Type, Func<Exception, ProblemDetails>> GetConverterDictionary()
-    {
-        return ExceptionToHttpResponseConverters.PlayerConverters
-            .ToDictionary(converter => converter.Key, converter => converter.Value);
     }
 
     private static int GetResponseStatus(int? problemDetailsStatus)
