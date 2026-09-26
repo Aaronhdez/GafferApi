@@ -41,7 +41,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdId = await response.Content.ReadFromJsonAsync<Guid>();
         createdId.Should().NotBeEmpty();
     }
@@ -76,9 +76,25 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdId = await response.Content.ReadFromJsonAsync<Guid>();
         createdId.Should().NotBeEmpty();
+    }
+
+    [Test]
+    public async Task ReturnTheLocationOfTheCreatedFacility()
+    {
+        var response = await SendCreateFacilityRequest(BuildCityArenaRequestBody());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdId = await response.Content.ReadFromJsonAsync<Guid>();
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.AbsolutePath.Should().Be($"/api/v1.0/facilities/{createdId}");
+        var getResponse = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, response.Headers.Location));
+        getResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+        var facility = await getResponse.Content.ReadFromJsonAsync<SearchFacilityResult>(TestJson.Options);
+        facility!.Id.Should().Be(createdId);
+        facility.Name.Should().Be("City Arena");
     }
 
     [Test]
@@ -145,7 +161,7 @@ public class FacilityFeaturesShould
         var response = await SendGetFacilityRequest(createdId);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var facility = await response.Content.ReadFromJsonAsync<SearchFacilityResult>();
+        var facility = await response.Content.ReadFromJsonAsync<SearchFacilityResult>(TestJson.Options);
         facility.Should().NotBeNull();
         facility!.Id.Should().Be(createdId);
         facility.Name.Should().Be("City Arena");
@@ -172,7 +188,7 @@ public class FacilityFeaturesShould
         var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, Uris.GetAllFacilities()));
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var facilities = await response.Content.ReadFromJsonAsync<List<SearchFacilityResult>>();
+        var facilities = await response.Content.ReadFromJsonAsync<List<SearchFacilityResult>>(TestJson.Options);
         facilities.Should().NotBeNull();
         facilities!.Should().Contain(f => f.Id == firstId);
         facilities.Should().Contain(f => f.Id == secondId);
@@ -230,7 +246,7 @@ public class FacilityFeaturesShould
 
         updateResponse.StatusCode.Should().Be(HttpStatusCode.OK);
         var getResponse = await SendGetFacilityRequest(createdId);
-        var facility = await getResponse.Content.ReadFromJsonAsync<SearchFacilityResult>();
+        var facility = await getResponse.Content.ReadFromJsonAsync<SearchFacilityResult>(TestJson.Options);
         facility.Should().NotBeNull();
         facility!.Name.Should().Be("Renovated Arena");
         facility.Active.Should().BeFalse();

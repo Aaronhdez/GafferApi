@@ -461,7 +461,7 @@ namespace Gaffer.Api.Client
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 201)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<System.Guid>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
@@ -983,7 +983,7 @@ namespace Gaffer.Api.Client
                         ProcessResponse(client_, response_);
 
                         var status_ = (int)response_.StatusCode;
-                        if (status_ == 200)
+                        if (status_ == 201)
                         {
                             var objectResponse_ = await ReadObjectResponseAsync<System.Guid>(response_, headers_, cancellationToken).ConfigureAwait(false);
                             if (objectResponse_.Object == null)
@@ -1244,6 +1244,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BuildDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public FacilityType Type { get; set; }
 
         [Newtonsoft.Json.JsonProperty("capacity", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -1261,12 +1262,16 @@ namespace Gaffer.Api.Client
     public enum FacilityType
     {
 
+        [System.Runtime.Serialization.EnumMember(Value = @"Stadium")]
         Stadium = 0,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"Arena")]
         Arena = 1,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"Pitch")]
         Pitch = 2,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"Training")]
         Training = 3,
 
     }
@@ -1327,6 +1332,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BuildDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public FacilityType Type { get; set; }
 
         [Newtonsoft.Json.JsonProperty("capacity", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -1390,6 +1396,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BuildDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("type", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public FacilityType Type { get; set; }
 
         [Newtonsoft.Json.JsonProperty("capacity", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
@@ -1459,6 +1466,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BirthDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("gender", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public Gender Gender { get; set; }
 
     }
@@ -1467,10 +1475,13 @@ namespace Gaffer.Api.Client
     public enum Gender
     {
 
+        [System.Runtime.Serialization.EnumMember(Value = @"MALE")]
         MALE = 0,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"FEMALE")]
         FEMALE = 1,
 
+        [System.Runtime.Serialization.EnumMember(Value = @"OTHER")]
         OTHER = 2,
 
     }
@@ -1492,6 +1503,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BirthDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("gender", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public Gender Gender { get; set; }
 
     }
@@ -1534,6 +1546,7 @@ namespace Gaffer.Api.Client
         public System.DateTime BirthDate { get; set; }
 
         [Newtonsoft.Json.JsonProperty("gender", Required = Newtonsoft.Json.Required.DisallowNull, NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public Gender Gender { get; set; }
 
     }

@@ -105,20 +105,19 @@ public class DatabaseStartupShould
         logger.Entries.Should().BeEmpty();
     }
 
-    [TestCase(false, ReachableConnectionString)]
-    [TestCase(true, "")]
-    public async Task KeepRegisteringTheDummyProviderWhenTheDatabaseIsDisabledOrNotConfigured(bool enabled, string connectionString)
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    public async Task KeepRegisteringTheDummyProviderWhenTheDatabaseIsDisabledOrNotConfigured(bool enabled, bool configured)
     {
-        await using var serviceProvider = BuildServiceProvider(enabled, connectionString);
+        await using var serviceProvider = BuildServiceProvider(enabled, configured ? ReachableConnectionString : "");
         await using var scope = serviceProvider.CreateAsyncScope();
 
         scope.ServiceProvider.GetRequiredService<IDatabaseConnectionProvider>()
             .Should().BeOfType<DummyConnectionProvider>();
     }
 
-    private const string ReachableConnectionString = "Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=toor;";
-    private const string UnreachableConnectionString =
-        "Server=127.0.0.1;Port=1;Database=GafferDB_Test;Uid=root;Pwd=toor;Connection Timeout=2;";
+    private static string ReachableConnectionString => TestConfiguration.DatabaseConnectionString;
+    private static string UnreachableConnectionString => TestConfiguration.UnreachableDatabaseConnectionString;
 
     private static ServiceProvider BuildServiceProvider(bool enabled, string? connectionString, ILogger? logger = null)
     {

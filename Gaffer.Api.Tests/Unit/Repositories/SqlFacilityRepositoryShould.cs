@@ -65,7 +65,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 "SELECT Id, Name, Active, BuildDate, Type, Capacity FROM `Facilities`;"
             );
             var savedAddresses = await _databaseConnectionProvider.QueryAsync<AddressRow>(
-                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Adresses`;"
+                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Addresses`;"
             );
             var addressLinks = await _databaseConnectionProvider.QueryAsync<FacilityAddressRow>(
                 "SELECT FacilityId, AddressId FROM `Facilities_Addresses`;"
@@ -262,7 +262,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
             result[0].Stands.Should().Contain(s => s.Id == newStands[0].Id && s.StandName == newStands[0].StandName);
 
             var remainingAddresses = await _databaseConnectionProvider.QueryAsync<AddressRow>(
-                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Adresses`;");
+                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Addresses`;");
             remainingAddresses.Should().ContainSingle();
             remainingAddresses[0].Id.Should().Be(updated.Address.Id);
 
@@ -334,7 +334,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
             result.Should().BeEmpty();
 
             var remainingAddresses = await _databaseConnectionProvider.QueryAsync<AddressRow>(
-                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Adresses`;");
+                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Addresses`;");
             remainingAddresses.Should().BeEmpty();
 
             var remainingStands = await _databaseConnectionProvider.QueryAsync<StandRow>(

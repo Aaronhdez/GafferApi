@@ -63,6 +63,7 @@ sequenceDiagram
 - `IDatabaseConnectionProvider` consumers: `SqlPlayerRepository`, `SqlFacilityRepository` (any repository using `QueryAsync`/`ExecuteAsync`/`ExecuteInTransactionAsync` is bound to the same per-request instance and lifecycle described here — see [`player-search-and-persistence.md`](./player-search-and-persistence.md)).
 - `Gaffer.Api.Tests/TestFixture.cs`: registers `IDatabaseConnectionProvider` per scope with a factory that creates `new SqlConnectionProvider(testDatabase)`, mirroring the production `AddScoped` registration for test isolation between requests hitting the in-memory `TestServer`.
 - `DummyConnectionProvider`: the no-op fallback; `TestConnection()` always returns `true`, and mutating operations throw `NotImplementedException` (used only when the database is disabled/unreachable).
+- `DatabaseConfig:ConnectionString` is now expected to come from User Secrets or an environment variable rather than a committed password; see [`database-configuration.md`](./database-configuration.md) for the exact keys and precedence.
 
 ## Usage Examples
 

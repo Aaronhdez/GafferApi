@@ -50,6 +50,28 @@ public class PlayerFeaturesShould
     }
     
     [Test]
+    public async Task ReturnCreatedWithTheLocationOfTheCreatedPlayer()
+    {
+        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
+        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreatePlayer())
+        {
+            Content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(createPlayerRequest),
+                System.Text.Encoding.UTF8, "application/json")
+        };
+
+        var response = await _client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var createdId = await response.Content.ReadFromJsonAsync<Guid>();
+        createdId.Should().NotBeEmpty();
+        response.Headers.Location.Should().NotBeNull();
+        response.Headers.Location!.AbsolutePath.Should().Be($"/api/v1.0/players/{createdId}");
+        var player = await _client.GetAsync<SearchPlayerResponse>(response.Headers.Location);
+        player!.Id.Should().Be(createdId);
+        player.FirstName.Should().Be(Player1.FirstName);
+    }
+
+    [Test]
     public async Task ReturnNotFoundWhenGettingAnUnknownPlayer()
     {
         var uri = Uris.GetPlayer(Guid.NewGuid().ToString());

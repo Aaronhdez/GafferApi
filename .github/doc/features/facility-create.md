@@ -22,21 +22,23 @@ sequenceDiagram
     CreateFacilityCommandHandler->>IFacilityRepository: Save(facility, cancellationToken)
     IFacilityRepository->>SqlFacilityRepository: Save implementation
     SqlFacilityRepository->>Database: INSERT Facilities
-    SqlFacilityRepository->>Database: INSERT Adresses
+    SqlFacilityRepository->>Database: INSERT Addresses
     SqlFacilityRepository->>Database: INSERT Facilities_Addresses
     loop each stand
         SqlFacilityRepository->>Database: INSERT Stands
         SqlFacilityRepository->>Database: INSERT Facilities_Stands
     end
     CreateFacilityCommandHandler-->>FacilitiesController: CreateFacilityResponse(Id)
-    FacilitiesController-->>Client: 200 OK + Guid
+    FacilitiesController-->>Client: 201 Created, Location: /api/v{version}/facilities/{id}, body: Guid
 ```
+
+> Updated by TECHDEBT-001: the `Adresses` table was renamed to `Addresses` (migration `M0003_RenameAdressesToAddresses`), and `Create` now returns `201 Created` with a `Location` header instead of `200 OK`. See [`doc/features/api-contract-and-access.md`](../../../doc/features/api-contract-and-access.md) and [`doc/features/technical/api-contract-and-access.md`](../../../doc/features/technical/api-contract-and-access.md).
 
 ## Methods & Properties Table (Tabla de Metodos/Propiedades)
 
 | Component | Member | Signature / Type | Return | Description |
 |---|---|---|---|---|
-| FacilitiesController | Create | Task<Guid> Create([FromBody] CreateFacilityRequest request) | Task<Guid> | Maps request to command and returns created facility Id. |
+| FacilitiesController | Create | Task<ActionResult\<Guid\>> Create([FromBody] CreateFacilityRequest request) | Task<ActionResult\<Guid\>> (201) | Maps request to command; returns `CreatedAtAction(nameof(GetBy), new { id }, id)` — `201 Created` with `Location` and the created facility Id as body. |
 | CreateFacilityRequest | Name | string | string | Facility name. |
 | CreateFacilityRequest | Active | bool | bool | Active flag for facility state. |
 | CreateFacilityRequest | BuildDate | DateTime | DateTime | Construction/build date. |

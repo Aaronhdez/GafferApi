@@ -1,5 +1,5 @@
 ﻿{
-  "runtime": "Net90",
+  "runtime": "Net100",
   "defaultVariables": "ClientOutputPath=..\\Gaffer.Api.Client",
   "documentGenerator": {
     "aspNetCoreToOpenApi": {
@@ -17,7 +17,7 @@
       "defaultReferenceTypeNullHandling": "Null",
       "defaultDictionaryValueReferenceTypeNullHandling": "NotNull",
       "defaultResponseReferenceTypeNullHandling": "NotNull",
-      "defaultEnumHandling": "Integer",
+      "defaultEnumHandling": "String",
       "flattenInheritanceHierarchy": false,
       "generateKnownTypes": true,
       "generateEnumMappingDescription": false,

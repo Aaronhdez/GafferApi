@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Serialization;
-using Asp.Versioning;
+﻿using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
@@ -17,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
 using NSwag.AspNetCore;
 
 namespace Gaffer.Api;
@@ -26,25 +25,18 @@ public class Startup(IConfiguration configuration)
     public void ConfigureServices(IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.ConfigureLogging(configuration, Program.ProductContext);
         services.ConfigureOptions(configuration, Program.ProductContext.StartupSettingsFileName);
         services.AddMemoryCache();
         services.AddMvcCore()
             .AddMvcOptions(options =>
                 options.Filters.Add(new ProducesAttribute("application/json"))
             )
-            .AddJsonOptions(options =>
-            {
-                options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-                options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
-            })
             .AddNewtonsoftJson(options =>
             {
                 options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
+                options.SerializerSettings.Converters.Add(new StringEnumConverter());
             });
 
-        services.ConfigureAuthentication(configuration);
-        services.AddAuthorization();
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         // The host's logging pipeline is not resolvable while services are being registered,
@@ -82,12 +74,6 @@ public class Startup(IConfiguration configuration)
                 }
             })
             .UseRouting()
-            .UseAuthentication()
-            .UseAuthorization()
-            .UseEndpoints(endpoints =>
-            {
-                endpoints.MapControllers();
-                //.RequireAuthorization();
-            });
+            .UseEndpoints(endpoints => endpoints.MapControllers());
     }
 }

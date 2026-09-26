@@ -53,7 +53,3 @@ public class CannotDeleteFacilityException(string message, Guid id) : Exception(
 }
 
 public record DeleteFacilityCommand(Guid Id) : ICommand;
-
-public class DeleteFacilityResult
-{
-}

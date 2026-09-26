@@ -4,9 +4,10 @@ using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Tests.TestShared;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using NuGet.Protocol.Core.Types;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;
 
@@ -102,7 +103,11 @@ public class PlayerControllerShould
 
         var createResult = await _controller.Create(request);
 
-        createResult.Should().Be(newGuid);
+        var created = createResult.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
+        created.StatusCode.Should().Be(StatusCodes.Status201Created);
+        created.ActionName.Should().Be(nameof(PlayerController.GetBy));
+        created.RouteValues.Should().Contain("id", newGuid);
+        created.Value.Should().Be(newGuid);
         await _createPlayerCommandHandler.Received(1).Handle(Arg.Is<CreatePlayerCommand>(command =>
             command != null
             && command.FirstName == request.FirstName

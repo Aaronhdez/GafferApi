@@ -4,6 +4,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Gaffer.Api.Controllers;
@@ -35,7 +36,8 @@ public class FacilitiesController(
     }
 
     [HttpPost("")]
-    public async Task<Guid> Create([FromBody] CreateFacilityRequest request)
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    public async Task<ActionResult<Guid>> Create([FromBody] CreateFacilityRequest request)
     {
         var command = new CreateFacilityCommand(
             request.Name,
@@ -53,7 +55,7 @@ public class FacilitiesController(
             request.Stands?.Select(stand => new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
 
         var result = await createFacilityCommandHandler.Handle(command, CancellationToken.None);
-        return result.Id;
+        return CreatedAtAction(nameof(GetBy), new { id = result.Id }, result.Id);
     }
 
     [HttpDelete("{id}")]

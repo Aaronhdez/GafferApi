@@ -11,7 +11,7 @@ public abstract class BaseSqlTest
 
    protected BaseSqlTest()
    {
-      _dbConnection = "Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=toor;";
+      _dbConnection = TestConfiguration.DatabaseConnectionString;
       _connectionProvider = new SqlConnectionProvider(_dbConnection);
    }
    

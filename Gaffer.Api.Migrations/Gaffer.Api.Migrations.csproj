@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
+        <UserSecretsId>gaffer-api-migrations-e73209ac-b174-4df6-958e-bd246bbe0cf9</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,6 +13,9 @@
       <PackageReference Include="FluentMigrator.Abstractions" Version="8.0.1" />
       <PackageReference Include="FluentMigrator.Console" Version="8.0.1" />
       <PackageReference Include="FluentMigrator.Runner" Version="8.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="10.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.10" />
       <PackageReference Include="MySqlConnector" Version="2.6.1" />
     </ItemGroup>
 

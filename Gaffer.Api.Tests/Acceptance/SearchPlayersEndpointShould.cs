@@ -38,7 +38,7 @@ public class SearchPlayersEndpointShould
         var response = await SendSearch("FirstName", "x') OR ('1'='1");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>();
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
         players.Should().BeEmpty();
     }
 
@@ -65,7 +65,7 @@ public class SearchPlayersEndpointShould
         var response = await SendSearch("LastName", "O'Neill");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>();
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
         players.Should().ContainSingle(p => p.LastName == "O'Neill");
     }
 
@@ -75,7 +75,7 @@ public class SearchPlayersEndpointShould
         var response = await SendSearch("firstname", "Paul");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>();
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
         players.Should().ContainSingle(p => p.FirstName == "Paul");
     }
 

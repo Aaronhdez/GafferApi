@@ -1,7 +1,5 @@
 ﻿using System.Globalization;
 using AwesomeAssertions;
-using DocumentFormat.OpenXml.Office2010.ExcelAc;
-using DocumentFormat.OpenXml.Wordprocessing;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
