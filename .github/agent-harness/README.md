@@ -69,3 +69,20 @@ ORCHESTRATOR owns the sequence and pauses at both approval points. Each developm
 | `/harness-run` | ORCHESTRATOR | `planPath` or `specs`, `maxCycles` |
 
 Standalone prompts are for explicit manual, single-role requests. Normal feature work uses `/harness-run` so human checkpoints cannot be bypassed accidentally.
+
+## Claude Code
+
+Same plans, states, `MEMORIES.md` and `tools/usage-slice.mjs` as Copilot. Claude-specific differences live in [CLAUDE.md](../../CLAUDE.md), which imports `AGENTS.md`.
+
+| Command | Role | Input |
+| --- | --- | --- |
+| `/harness-plan` | `planner` subagent | `<ID> <specs>` |
+| `/harness-build` | `builder` subagent | `<plan folder>` |
+| `/harness-review` | `reviewer` subagent | `<plan folder>` |
+| `/harness-optimize` | `optimizer` subagent | `<plan folder> [approved/rejected IDs]` |
+| `/harness-document` | `documenter` subagent | `<plan folder>` |
+| `/harness-run` | ORCHESTRATOR (main session) | `<plan folder or specs> [max cycles]` |
+
+- Subagents (`.claude/agents/`) cannot spawn subagents, so the ORCHESTRATOR runs in the main session and each checkpoint ends its turn.
+- Subagents write `estimado`/`n/a` usage rows; OPTIMIZER adds measured data (`medido:token-consumer`, `medido:agent-result`, `medido:transcript`) to `OPTIMIZATION.md`.
+- `.claude/settings.json` denies `git commit`/`git push` and edits to the generated client files, and allows running `usage-slice`.

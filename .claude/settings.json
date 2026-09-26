@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node .github/agent-harness/tools/usage-slice.mjs:*)"
+    ],
+    "deny": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Edit(Gaffer.Api.Client/GafferApiClient.cs)",
+      "Write(Gaffer.Api.Client/GafferApiClient.cs)",
+      "Edit(Gaffer.Api.Client/OpenApiSpecs.json)",
+      "Write(Gaffer.Api.Client/OpenApiSpecs.json)"
+    ]
+  }
+}
