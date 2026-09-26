@@ -48,7 +48,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             var item = criteria.criteriaList[i];
             if (!AllowedFilterColumns.Contains(item.Name))
             {
-                throw new ArgumentException($"Field '{item.Name}' is not a valid filter field", nameof(criteria));
+                throw new FacilitySearchFilterNotPermittedException(item.Name ?? string.Empty);
             }
 
             var paramName = $"p{i}";

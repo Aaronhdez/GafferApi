@@ -96,3 +96,47 @@ Veredicto: **APPROVED** (estado del plan → `APPROVED` para el paso 02).
 | 5 | Limitación de la revisión | REVIEWER no reprodujo el red, porque habría tenido que revertir código de producto. Acepta la evidencia de BUILDER, que incluye los mensajes exactos. |
 
 Sin defectos bloqueantes. El paso 01 no presenta regresión (`PlayerFeaturesShould` y `UpdatePlayerCommandHandlerShould` en verde dentro de F2 y de la suite).
+
+## Ciclo 3 - Paso 03 (Filtro no permitido en Facilities → 400)
+
+Veredicto: **APPROVED** (estado del plan → `APPROVED` para el paso 03).
+
+### Alcance revisado
+
+| Elemento | Resultado |
+| --- | --- |
+| `git status` | Producto: `IFacilityRepository.cs` (nueva `FacilitySearchFilterNotPermittedException`), `SqlFacilityRepository.cs` (1 línea), `ExceptionToHttpResponseConverters.cs`. Tests: `SqlFacilityRepositoryShould.cs`, `ExceptionToHttpResponseConvertersShould.cs`, nuevo `Unit/Exceptions/ExceptionHandlingMiddlewareShould.cs`. Plan: `STATUS.md`, `usage/BUILDER.md`; `OPTIMIZATION.md` y `MEMORIES.md` son del OPTIMIZER (fuera de la revisión de producto). Todo dentro del alcance de ficheros del paso. `Gaffer.Api.Client` no tocado ni verificado. |
+| Excepción / repositorio | Análoga a `PlayerSearchFilterNotPermittedException` (mensaje `"FilterNotPermitted"`, `FieldName`). `BuildFilters` la lanza antes de cualquier acceso a `dbConnectionProvider`. `grep -rn ArgumentException Gaffer.Api` = 0, así que ningún llamador dependía de capturar `ArgumentException`. |
+| Refactor `BuildSearchFilterNotPermittedProblemDetails()` | Dentro del alcance (fase 3 del paso: "valorar compartir la construcción del ProblemDetails ... sin cambiar la salida"). Conserva el comportamiento: delega en `BuildBadRequestProblemDetailsWithExtension` con los mismos 3 literales que antes (la constante `SearchFilterNotPermittedKey` = `"Error.Search.FilterNotPermitted"`). Crea un `ProblemDetails` nuevo en cada llamada, así que no se comparte estado mutable (el middleware muta `Instance`). Cubierto por `ConvertEachExceptionIntoItsExpectedResponse(PlayerSearchFilterNotPermitted...)` y `SearchPlayersEndpointShould`, ambos en verde. |
+| Middleware | Sin cambios; resuelve por tipo exacto en `PlayerConverters`, así que la entrada 13 basta. |
+| DI / `TestFixture.cs` | No hay handlers nuevos, así que no hacen falta registros. |
+| MySQL | Docker `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo; 0 omitidos. |
+
+### Ejecución del REVIEWER
+
+| Comando | Resultado |
+| --- | --- |
+| `dotnet build gaffer-api.sln --verbosity quiet` | 0 errores, 0 advertencias |
+| F3 + `FacilityFeaturesShould` + `SearchPlayersEndpoint` (`--no-build`) | 64/64, 0 omitidos |
+| `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 210/210, 0 omitidos |
+| `grep -n "ArgumentException" Gaffer.Api/Infrastructure/SqlFacilityRepository.cs` | 0 |
+
+### Criterios de aceptación
+
+| ID | Evidencia | Red → green | Estado |
+| --- | --- | --- | --- |
+| AC3.1 | `SqlFacilityRepositoryShould.WhenGettingFacilities.ThrowWithoutQueryingWhenTheFilterFieldIsNotPermitted` (`Street` y un nombre de campo con inyección): `ThrowExactlyAsync<FacilitySearchFilterNotPermittedException>` con `FieldName`; `ReceivedCalls()` vacío (sin SQL). | Red de compilación CS0246 → red de comportamiento "found System.ArgumentException" → green | Demostrado |
+| AC3.2 | `ConvertANotPermittedFacilitySearchFilterIntoTheSameBadRequestAsPlayers` + caso en `ConvertEachExceptionIntoItsExpectedResponse`/`NeverProduceATranslationKeyEndingWithADot`; `CoverEveryConverter` ahora con 13. | Red: KeyNotFoundException; "13 item(s)" → green | Demostrado |
+| AC3.3 | `ExceptionHandlingMiddlewareShould.ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted`: el `RequestDelegate` ejecuta el `SqlFacilityRepository` real; aserciones 400, `application/json`, `Status`/`Title`/`Detail`/`Instance` = `/facilities`/`ErrorTranslationKey`. | Red: "Expected ... 400, but found 500" (ArgumentException → "Unkwnown error") → green | Demostrado |
+| AC3.4 | `NotMapGenericArgumentExceptions` (renombrado, misma aserción) + `KeepReturningAnUnknownErrorForAGenericArgumentException` → 500. | Guarda de regresión (verde desde el inicio, registrado) | Demostrado |
+| AC3.5 | Tests existentes de `SqlFacilityRepositoryShould` (filtros permitidos, contra MySQL) y `FacilityFeaturesShould` en verde (64/64); suite 210/210. | Guarda de regresión | Demostrado |
+
+### Hallazgos
+
+| # | Severidad | Hallazgo |
+| --- | --- | --- |
+| 1 | Informativo | El diccionario se sigue llamando `PlayerConverters` aunque ya contiene conversores de Facility. El nombre ya era impreciso antes de este ciclo y renombrarlo queda fuera del alcance. Candidato para TECHDEBT-003. |
+| 2 | Informativo | AC3.3 cierra la cadena repositorio → middleware sin ruta HTTP, como dice el plan. No existe ninguna ruta pública que pueda producir este 400 hoy. |
+| 3 | Limitación de la revisión | REVIEWER no reprodujo el red, porque habría tenido que revertir código de producto. Acepta la evidencia de BUILDER, que incluye los mensajes exactos. |
+
+Sin defectos bloqueantes. Los pasos 01 y 02 no presentan regresión: `PlayerFeaturesShould`, `DatabaseFailureShould`, los handlers y los conversores están en verde dentro de la suite de 210.

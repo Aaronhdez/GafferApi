@@ -8,6 +8,8 @@ namespace Gaffer.Api.Shared.Exceptions;
 
 public static class ExceptionToHttpResponseConverters
 {
+    private const string SearchFilterNotPermittedKey = "Error.Search.FilterNotPermitted";
+
     public static readonly IReadOnlyDictionary<Type, Func<Exception, ProblemDetails>> PlayerConverters =
         new Dictionary<Type, Func<Exception, ProblemDetails>>
         {
@@ -45,10 +47,11 @@ public static class ExceptionToHttpResponseConverters
             },
             {
                 typeof(PlayerSearchFilterNotPermittedException),
-                _ => BuildBadRequestProblemDetailsWithExtension(
-                    "Error.Search.FilterNotPermitted",
-                    "FilterNotPermitted",
-                    "Error.Search.FilterNotPermitted")
+                _ => BuildSearchFilterNotPermittedProblemDetails()
+            },
+            {
+                typeof(FacilitySearchFilterNotPermittedException),
+                _ => BuildSearchFilterNotPermittedProblemDetails()
             },
             {
                 typeof(FacilityValidationException),
@@ -95,6 +98,14 @@ public static class ExceptionToHttpResponseConverters
         };
     
     // Helper methods to build ProblemDetails
+    private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails()
+    {
+        return BuildBadRequestProblemDetailsWithExtension(
+            SearchFilterNotPermittedKey,
+            "FilterNotPermitted",
+            SearchFilterNotPermittedKey);
+    }
+
     private static ProblemDetails BuildNotFoundProblemDetails()
     {
         return new ProblemDetails

@@ -3,8 +3,8 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 2 |
-| Pasos completados | 01 (aprobado por REVIEWER en el ciclo 1); 02 (aprobado por REVIEWER en el ciclo 2) |
+| Ciclo | 3 |
+| Pasos completados | 01 (aprobado por REVIEWER en el ciclo 1); 02 (aprobado por REVIEWER en el ciclo 2); 03 (aprobado por REVIEWER en el ciclo 3) |
 | Pasos bloqueados | Ninguno. Q0-Q6 y Q4.1 resueltas (Q0, Q2, Q5 por default; Q1 = reemplazo de `secondLastName` según 2ª respuesta del operador; Q4.1 = `"Internal Server Error"`). |
 | Bloqueos | Ninguno de entorno. |
 | Aprobación del plan | Aprobado por el operador el 2026-09-26: "I approve the plan". Listo para el ciclo 1 (BUILDER, paso 01). |
@@ -17,7 +17,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | --- | --- | --- |
 | 1 | 01 - Update parcial de Player | APPROVED |
 | 2 | 02 - Fallos de infraestructura → 500 (Q3 = a) | APPROVED |
-| 3 | 03 - Filtro no permitido en Facilities → 400 | - |
+| 3 | 03 - Filtro no permitido en Facilities → 400 | APPROVED |
 | 4 | 04 - Log en el middleware | - |
 | 5 | Reserva | - |
 | 6 | Reserva | - |
@@ -31,6 +31,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 1 | 2026-09-26T20:36:13Z | 2026-09-26T20:37:28Z |
 | BUILDER | 2 | 2026-09-26T20:55:12Z | 2026-09-26T21:02:17Z |
 | REVIEWER | 2 | 2026-09-26T21:02:46Z | 2026-09-26T21:04:51Z |
+| BUILDER | 3 | 2026-09-26T21:11:41Z | 2026-09-26T21:15:10Z |
+| REVIEWER | 3 | 2026-09-26T21:16:17Z | 2026-09-26T21:17:53Z |
 
 ## Prerrequisitos
 
@@ -41,6 +43,9 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | Ciclo 1 - línea base revalidada | `dotnet build gaffer-api.sln --verbosity quiet`: 0 errores; `dotnet test gaffer-api.sln --verbosity quiet --no-build`: 159/159 |
 | Ciclo 2 - Docker | `docker ps`: `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo |
 | Ciclo 2 - hora UTC | `date -u` contrastado con `[DateTime]::UtcNow` de PowerShell (mismo valor; OPT-009) |
+| Ciclo 3 - Docker | `docker ps`: `Gaffer.Database 0.0.0.0:3306->3306/tcp` activo |
+| Ciclo 3 - línea base | `dotnet build gaffer-api.sln --verbosity quiet`: 0 errores; `dotnet test gaffer-api.sln --no-build --verbosity quiet`: 203/203, 0 omitidos |
+| Ciclo 3 - hora UTC | `date -u` = `[DateTime]::UtcNow` de PowerShell (21:14:57Z en ambos; OPT-009) |
 
 ## Comandos y resultados
 
@@ -62,6 +67,12 @@ Filtro F1 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerFeatu
 | 2 | 02 | Greps del plan | `grep -rn "Reason" Gaffer.Api`; `grep -rn "new Cannot\(Delete\|Update\)\(Player\|Facility\)Exception" Gaffer.Api` | 4 `Reason { get; } = InternalServerErrorReason` (constante `"Internal Server Error"` en cada clase) y 4 usos en los conversores; 0 lanzamientos de las genéricas. |
 | 2 | 02 | Refactor + suite completa | `dotnet build gaffer-api.sln --verbosity quiet`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 0 errores; **203/203** (171 + 32 nuevos: 5 `DatabaseFailureShould`, 1 AC2.4, 26 de conversores), 0 omitidos, exit 0. |
 | 2 | 02 | Revisión (REVIEWER) | `docker ps`; `dotnet build gaffer-api.sln --verbosity quiet`; F2 `--no-build`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; greps del plan | Docker activo; 0 errores / 0 advertencias; F2 88/88; suite 203/203, 0 omitidos; grep genéricas = 0. Veredicto APPROVED (ver `REVIEW.md`; AC2.5: la clave del plan es una errata, el 400 viene de `[MaxLength(4)]`, que ya existía; no bloqueante). |
+| 3 | 03 | Aceptación red (AC3.3) | `dotnet test gaffer-api.sln --logger "console;verbosity=normal" --filter "FullyQualifiedName~ExceptionHandlingMiddleware"` | 1 fallo: `ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted` "Expected context.Response.StatusCode to be 400, but found 500" (`ArgumentException` del repositorio real → "Unkwnown error"). `KeepReturningAnUnknownErrorForAGenericArgumentException` verde (guarda AC3.4). |
+| 3 | 03 | Unitario red compilación | `dotnet build gaffer-api.sln --verbosity quiet` | CS0246 `FacilitySearchFilterNotPermittedException` (ExceptionToHttpResponseConvertersShould.cs ×3, SqlFacilityRepositoryShould.cs ×1). |
+| 3 | 03 | Unitario red (AC3.1, AC3.2) | F3 = `--filter "FullyQualifiedName~SqlFacilityRepository\|FullyQualifiedName~ExceptionToHttpResponseConverters\|FullyQualifiedName~ExceptionHandlingMiddleware"` con `--logger "console;verbosity=normal"`, solo con el tipo de excepción añadido | 7 fallos: 2 `ThrowWithoutQueryingWhenTheFilterFieldIsNotPermitted` ("Expected type to be ...FacilitySearchFilterNotPermittedException, but found System.ArgumentException"); `ConvertANotPermittedFacilitySearchFilterIntoTheSameBadRequestAsPlayers`, `ConvertEachExceptionIntoItsExpectedResponse(Facility...)`, `NeverProduceATranslationKeyEndingWithADot(Facility...)` (KeyNotFoundException); `CoverEveryConverter` ("to be a collection with 13 item(s)", había 12); el de aceptación (500). |
+| 3 | 03 | Green | `dotnet test gaffer-api.sln --verbosity quiet` + F3 | 44/44. |
+| 3 | 03 | Refactor + revalidación | `dotnet build gaffer-api.sln --verbosity quiet`; F3 + `FacilityFeaturesShould` + `SearchPlayersEndpoint` (`--no-build`); `dotnet test gaffer-api.sln --no-build --verbosity quiet`; `grep -n "ArgumentException" Gaffer.Api/Infrastructure/SqlFacilityRepository.cs \| wc -l` | 0 errores; 64/64 (AC3.5: tests existentes de repositorio y `FacilityFeaturesShould` en verde); **210/210** (203 + 7 nuevos: 2 middleware, 2 repositorio, 3 conversor), 0 omitidos; grep = 0. |
+| 3 | 03 | Revisión (REVIEWER) | `docker ps`; `dotnet build gaffer-api.sln --verbosity quiet`; F3 + `FacilityFeaturesShould` + `SearchPlayersEndpoint` `--no-build`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; grep `ArgumentException` | Docker activo; 0 errores / 0 advertencias; 64/64; suite 210/210, 0 omitidos; grep = 0. Veredicto APPROVED (ver `REVIEW.md`; refactor `BuildSearchFilterNotPermittedProblemDetails()` en alcance y con la misma salida). |
 
 ## Notas del ciclo 1 (paso 01)
 
@@ -84,6 +95,18 @@ Filtro F1 = `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerFeatu
 | AC2.3 | NotFound de Player/Facility sigue 404 (tests de aceptación existentes en verde). Las claves de Facility (`Error.Facilities.Delete/Update.FacilityNotFound`) se verifican en los tests de conversores; los tests de aceptación de Facility existentes solo assertan el estado. |
 | AC2.5 (discrepancia para REVIEWER) | `PUT /facilities/{id}` con 5 gradas devuelve **400**, pero por validación de modelo (`[MaxLength(4)]` en `FacilitiesController`, `ValidationProblemDetails` "One or more validation errors occurred"), **no** con `Error.Facilities.Create.Validation`. Comprobado al endurecer la aserción (fallo: body `{"errors":{"Stands":[...maximum length of '4'.]}...}`). No se cambia comportamiento de producto: `RejectUpdatingAFacilityWithMoreThanFourStands` pasa de `BeOneOf(400, 422)` a exactamente 400. La clave `Error.Facilities.Create.Validation` sí se cubre en los tests de conversores y en `PropagateValidationExceptionWhenStandsExceedFour` (unitario). |
 | Fuera de alcance | Cliente NSwag no regenerado. `ExceptionHandlingMiddleware` sin tocar (título "Unkwnown error" → paso 04). |
+
+## Notas del ciclo 3 (paso 03)
+
+| Tema | Detalle |
+| --- | --- |
+| Excepción | `FacilitySearchFilterNotPermittedException(string fieldName) : Exception("FilterNotPermitted")` con `FieldName`, en `IFacilityRepository.cs` (análoga a la de Player). `SqlFacilityRepository.BuildFilters` la lanza en lugar de `ArgumentException` (grep `ArgumentException` en el repositorio = 0). |
+| Conversor (Q5 = a) | 13.ª entrada del diccionario: 400, `Title`/clave `Error.Search.FilterNotPermitted`, `Detail` `FilterNotPermitted`. Refactor: Player y Facility comparten `BuildSearchFilterNotPermittedProblemDetails()` + constante `SearchFilterNotPermittedKey`; salida idéntica (tests de conversor y `SearchPlayersEndpointShould` en verde). |
+| AC3.3 (aceptación) | `ExceptionHandlingMiddlewareShould.ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted`: `DefaultHttpContext` (ruta `/facilities`) + `RequestDelegate` que ejecuta el `SqlFacilityRepository` **real** (proveedor de conexión sustituido) con filtro `Street`. Más fuerte que lanzar la excepción a mano: cierra repositorio → middleware. Assert: 400, `application/json`, `Status`/`Title`/`Detail`/`Instance`/`Extensions.ErrorTranslationKey`. |
+| AC3.1 | `SqlFacilityRepositoryShould.WhenGettingFacilities.ThrowWithoutQueryingWhenTheFilterFieldIsNotPermitted` (`Street` y un intento de inyección en el nombre de campo): `ThrowExactlyAsync<FacilitySearchFilterNotPermittedException>` con `FieldName`, y `connectionProvider.ReceivedCalls()` vacío (no se ejecuta SQL; `FacilityRow` es privado, por eso no se usa `DidNotReceive().QueryAsync<T>`). Corre dentro del fixture MySQL (Docker). |
+| AC3.4 | `NotMapGenericArgumentExceptionsSoFacilitySearchKeepsItsBehaviour` renombrado a `NotMapGenericArgumentExceptions` (misma aserción). Además, `ExceptionHandlingMiddlewareShould.KeepReturningAnUnknownErrorForAGenericArgumentException` → 500. |
+| Rojo de compilación | Antes de crear la excepción: CS0246 `FacilitySearchFilterNotPermittedException` no encontrada (4 usos en tests). Se añadió solo el tipo para obtener el rojo de comportamiento registrado abajo. |
+| Fuera de alcance | Sin rutas HTTP nuevas; sin handlers nuevos (`TestFixture.cs` no requiere cambios). Cliente NSwag no regenerado. Avisos de compilación en `SqlFacilityRepository.cs` preexistentes (CS8618 en clases *Row, CS8603 línea 71). |
 
 ## Documentación modificada
 

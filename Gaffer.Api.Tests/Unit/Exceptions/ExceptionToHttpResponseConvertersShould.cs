@@ -48,7 +48,20 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void NotMapGenericArgumentExceptionsSoFacilitySearchKeepsItsBehaviour()
+    public void ConvertANotPermittedFacilitySearchFilterIntoTheSameBadRequestAsPlayers()
+    {
+        var converter = ExceptionToHttpResponseConverters.PlayerConverters[typeof(FacilitySearchFilterNotPermittedException)];
+
+        var problemDetails = converter(new FacilitySearchFilterNotPermittedException("Street"));
+
+        problemDetails.Status.Should().Be(400);
+        problemDetails.Title.Should().Be("Error.Search.FilterNotPermitted");
+        problemDetails.Detail.Should().Be("FilterNotPermitted");
+        problemDetails.Extensions["ErrorTranslationKey"].Should().Be("Error.Search.FilterNotPermitted");
+    }
+
+    [Test]
+    public void NotMapGenericArgumentExceptions()
     {
         ExceptionToHttpResponseConverters.PlayerConverters.Should().NotContainKey(typeof(ArgumentException));
     }
@@ -76,6 +89,8 @@ public class ExceptionToHttpResponseConvertersShould
         [typeof(PlayerNotFoundException)] = new(id => new PlayerNotFoundException("Player not found", id),
             404, null, _ => null, null),
         [typeof(PlayerSearchFilterNotPermittedException)] = new(_ => new PlayerSearchFilterNotPermittedException("Gender"),
+            400, "Error.Search.FilterNotPermitted", _ => "FilterNotPermitted", "Error.Search.FilterNotPermitted"),
+        [typeof(FacilitySearchFilterNotPermittedException)] = new(_ => new FacilitySearchFilterNotPermittedException("Street"),
             400, "Error.Search.FilterNotPermitted", _ => "FilterNotPermitted", "Error.Search.FilterNotPermitted"),
         [typeof(FacilityValidationException)] = new(_ => new FacilityValidationException("Stands cannot exceed 4"),
             400, "Cannot create facility", _ => "Stands cannot exceed 4", "Error.Facilities.Create.Validation"),

@@ -15,6 +15,12 @@ public class FacilitySearchCriteria
     public List<SearchCriteria> criteriaList { get; set; } = [];
 }
 
+public class FacilitySearchFilterNotPermittedException(string fieldName)
+    : Exception("FilterNotPermitted")
+{
+    public string FieldName { get; } = fieldName;
+}
+
 public class FacilityNotFoundException : Exception
 {
     public FacilityNotFoundException(string message, Guid id) : base(message)

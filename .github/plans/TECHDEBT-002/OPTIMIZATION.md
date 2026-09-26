@@ -113,4 +113,75 @@ Ninguna entrada existente cubre el vacío total de telemetría (distinto de OPT-
 
 ### Estado de aprobación
 
-Pendiente de decisión del operador para P2-1 y P2-2 (registro en `MEMORIES.md` fuera de alcance de OPTIMIZER hasta esa aprobación).
+Aprobadas por el operador ambas propuestas de este ciclo ("procede con b aprobando ambas y luego a"):
+
+- **P2-1** → aprobada, registrada como `OPT-011` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `CLAUDE.md` (sección "Measured Usage (Claude)").
+- **P2-2** → aprobada, registrada como `OPT-012` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/doc/common/test-stack.md` (o `dev-stack.md`).
+
+Ninguna propuesta ha sido aplicada por OPTIMIZER; ambas quedan en estado `pendiente` hasta que el operador o el agente correspondiente edite los ficheros de ámbito.
+
+## Ciclo 3 (paso 03 - Filtro no permitido en Facilities → 400, veredicto APPROVED)
+
+### usage-slice (medido:token-consumer) — sin datos, regla de corte aplicada (OPT-011)
+
+`node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=2026-09-26T21:11:41Z/2026-09-26T21:15:10Z --window REVIEWER=2026-09-26T21:16:17Z/2026-09-26T21:17:53Z`
+
+Una única invocación (ventanas literales de `STATUS.md`, ya en UTC según el ciclo 3 contrastó `date -u` con PowerShell): "sin datos" para `claude-code` y `copilot` en las cuatro combinaciones rol/agente. Siguiendo la regla propuesta en `OPT-011` (parar tras la primera comprobación sin eventos en absoluto, sin desplazar ±huso horario), no se hizo bisección adicional; se usan directamente los totales de `medido:agent-result` que pasó el ORCHESTRATOR:
+
+| Rol | Tokens (total) | Llamadas | Duración | Origen |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER ciclo 3 | 63 486 | 33 | 270 s | medido:agent-result |
+| REVIEWER ciclo 3 | 43 360 | 11 | 112 s | medido:agent-result |
+| OPTIMIZER (registro entre ciclos 2→3) | 34 858 | 5 | 37 s | medido:agent-result |
+
+Comparación con ciclos anteriores (mismo origen, `medido:agent-result`):
+
+| Rol | Ciclo 1 | Ciclo 2 | Ciclo 3 | Variación 2→3 |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER tokens | 76 757 | 100 198 | 63 486 | −36,6 % |
+| BUILDER llamadas | 52 | 58 | 33 | −43,1 % |
+| BUILDER duración | 409 s | 446 s | 270 s | −39,5 % |
+| REVIEWER tokens | 42 817 | 53 990 | 43 360 | −19,7 % |
+| REVIEWER llamadas | 12 | 13 | 11 | −15,4 % |
+| REVIEWER duración | 104 s | 158 s | 112 s | −29,1 % |
+
+### Observación sobre OPT-011 (efecto, sin editar `MEMORIES.md`)
+
+Este mismo análisis es la primera medición directa del efecto esperado: siguiendo la regla de corte de `OPT-011` (parar tras la primera comprobación de ventana literal sin ningún evento, en vez de desplazar ±huso horario u otras bisecciones), OPTIMIZER usó **1 sola llamada** a `usage-slice`/`Bash` este ciclo, frente a las **8** del ciclo 2 (vacío total similar) y las **~10** del ciclo 1 (caso de desfase, distinto). El patrón de "sin datos en absoluto" para las ventanas de BUILDER/REVIEWER se repite por tercer ciclo consecutivo (ciclos 2 y 3 sin ningún evento; ciclo 1 con desfase de huso horario), lo que sugiere que el vacío no es un incidente puntual sino un patrón recurrente para las ventanas de subagentes BUILDER/REVIEWER en este proyecto — hipótesis no confirmable desde este entorno (fuera de alcance leer el JSONL crudo). Efecto observado: **ahorro confirmado** de ~7 llamadas a herramienta en esta sesión de OPTIMIZER al aplicar la regla, aunque `OPT-011` sigue `pendiente` de aplicación formal en `CLAUDE.md`.
+
+### Observación sobre OPT-009 (efecto, sin editar `MEMORIES.md`)
+
+No evaluable de nuevo: el ciclo 3 registró `Inicio`/`Fin` ya contrastados con UTC real (`STATUS.md`, "Ciclo 3 - hora UTC"), pero el problema de este ciclo no fue desfase sino ausencia total de eventos (igual que ciclo 2), así que no hay caso positivo con datos desplazados que confirme si la instrucción de OPT-009, aplicada, habría evitado bisección. `sin datos`.
+
+### Observación sobre OPT-010 y OPT-012 (efecto, sin editar `MEMORIES.md`)
+
+El paso 03 no repite el patrón de OPT-010 (sin volcado de esquema OpenAPI; el cambio de contrato ya existía como patrón conocido de `PlayerSearchFilterNotPermittedException`) ni el de OPT-012 (`usage/BUILDER.md` fila ciclo 3: "OPT-012 no aplicó (sin fallos MySQL)"). Ambos `sin datos` este ciclo, no por regresión sino porque el paso no tocó esas áreas.
+
+### Spike 1 - Descenso de BUILDER/REVIEWER explicado por alcance del paso, no por optimización
+
+- **Valor y origen**: BUILDER −36,6 % tokens / −43,1 % llamadas y REVIEWER −19,7 % tokens / −15,4 % llamadas frente al ciclo 2 (`medido:agent-result`, tabla arriba).
+- **Causa probable**: el paso 03 añade un solo tipo de excepción y una línea de repositorio (`STATUS.md`, "Notas del ciclo 3": "`FacilitySearchFilterNotPermittedException`... `SqlFacilityRepository.BuildFilters` la lanza en lugar de `ArgumentException`"), con 7 tests nuevos frente a los 32 del ciclo 2 (4 handlers + `TestFixture.cs` + `DatabaseFailureShould.cs`). El descenso es proporcional a la reducción real de alcance, no evidencia de que una optimización ya aplicada haya reducido coste a igualdad de trabajo. Se registra para evitar atribuir erróneamente esta caída a `OPT-009`/`OPT-011`/`OPT-012` (ninguno de los tres se aplicó formalmente todavía) en una lectura futura de este documento.
+- **Propuesta**: ninguna; es una nota de atribución, no un spike accionable. No se abre ID nuevo.
+- **Fuente**: `usage/BUILDER.md` fila ciclo 3; `STATUS.md` "Notas del ciclo 3 (paso 03)".
+
+### Spike 2 - Coste de lectura de OPTIMIZER crece cada ciclo por el tamaño acumulado de `OPTIMIZATION.md`/`MEMORIES.md`
+
+- **Valor y origen**: el registro de OPTIMIZER entre ciclos 2→3 (34 858 tokens / 5 llamadas / 37 s) consumió más tokens que el registro entre ciclos 1→2 (30 202 tokens / 5 llamadas / 46 s) pese a menos duración y el mismo número de llamadas a herramienta — el crecimiento de tokens con menos tiempo activo es consistente con más lectura de contexto ya acumulado en vez de más trabajo nuevo. `OPTIMIZATION.md` medía 121 líneas antes de esta edición (crecido de 0 en el ciclo 1 a 121 tras dos ciclos completos) y `MEMORIES.md` 15 líneas (12 filas `OPT-NNN` + cabecera + legado), ambos ficheros de lectura obligatoria en cada análisis (paso 1 del modo Análisis).
+- **Causa probable**: cada ciclo añade una sección completa de detalle (tablas `usage-slice`, spikes, brechas de datos, estado de aprobación) a `OPTIMIZATION.md` sin comprimir las secciones de ciclos ya cerrados; `MEMORIES.md` crece de forma similar con cada `OPT-NNN` aprobado. El coste de leer ambos ficheros es fijo y creciente por ciclo, independiente del tamaño real del paso revisado ese ciclo (ver Spike 1: el ciclo 3 tuvo menos trabajo de BUILDER/REVIEWER, pero el registro de OPTIMIZER no bajó en la misma proporción).
+- **Propuesta concreta (P3-1)**: aplicar el patrón "Hierarchical Summary" de la skill `context-engineering` a `OPTIMIZATION.md`: mantener el detalle completo (tablas `usage-slice`, spikes, brechas) solo para los 2 ciclos más recientes de cada plan; para ciclos más antiguos, colapsar la sección a una fila compacta en una tabla resumen al inicio del fichero (`Ciclo | Paso | Veredicto | ID(s) de propuesta | Ahorro esperado | Estado de aprobación`), conservando el detalle íntegro en el historial de Git. Aplicable también a `MEMORIES.md` si el número de filas `pendiente`/`aplicada` de planes ya cerrados crece mucho, aunque este fichero es más pequeño (15 líneas) y su beneficio es menor por ahora.
+- **Ahorro esperado**: evita que la lectura obligatoria de `OPTIMIZATION.md` en el paso 1 del modo Análisis crezca linealmente con el número de ciclos del plan (actualmente +60 líneas por ciclo aprox.); en un plan de hasta 6 ciclos, sin compresión, el fichero podría alcanzar ~350-400 líneas para el ciclo 6, frente a un tamaño acotado si se resumen los ciclos 1-2 al llegar al ciclo 4. Magnitud exacta de ahorro en tokens no medible este ciclo (spike de telemetría global, ver arriba); se puede confirmar comparando el tamaño de "registro OPTIMIZER" en ciclos futuros antes/después de aplicar la compresión.
+- **Fuente**: `wc -l` sobre `.github/plans/TECHDEBT-002/OPTIMIZATION.md` (121 líneas) y `.github/agent-harness/MEMORIES.md` (15 líneas), esta sesión; comparación de totales `medido:agent-result` del registro de OPTIMIZER entre ciclos 1→2 y 2→3 (tabla arriba); `.github/skills/context-engineering/SKILL.md`, sección "The Hierarchical Summary".
+
+### Cobertura de MEMORIES.md
+
+Ninguna entrada existente cubre el crecimiento acumulado de `OPTIMIZATION.md`/`MEMORIES.md` como coste fijo de lectura de OPTIMIZER; `P3-1` es una propuesta nueva. `OPT-011` no se reformula (solo se registra su efecto observado arriba, sin editar `MEMORIES.md`).
+
+### Brechas de datos
+
+- Sin desglose de entrada/caché-lectura/caché-escritura/salida para BUILDER, REVIEWER ni OPTIMIZER en este ciclo (tercer ciclo consecutivo con vacío total o desfase en el dashboard); todas las cifras son `medido:agent-result` (totales sin desglosar).
+- No se puede confirmar si el vacío total de telemetría es un patrón permanente para ventanas de subagentes BUILDER/REVIEWER en este proyecto o una coincidencia de tres ciclos; se necesitaría un ciclo con datos íntegros del dashboard para descartarlo.
+- El ahorro exacto en tokens de la propuesta `P3-1` no es medible sin una tercera comparación de "registro OPTIMIZER" con `OPTIMIZATION.md` ya comprimido frente a sin comprimir, a igualdad de otros factores.
+
+### Estado de aprobación
+
+Pendiente de decisión del operador en el checkpoint de este ciclo. Ninguna propuesta de este ciclo (`P3-1`) ha sido aprobada, rechazada ni registrada en `MEMORIES.md` todavía.
