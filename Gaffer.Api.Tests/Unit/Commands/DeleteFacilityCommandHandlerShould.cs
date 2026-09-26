@@ -51,21 +51,22 @@ public class DeleteFacilityCommandHandlerShould
     }
 
     [Test]
-    public async Task ThrowExceptionIfRepositoryFailsWhileFindingFacility()
+    public async Task PropagateTheRepositoryFailureWhileFindingFacility()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = new DeleteFacilityCommand(Guid.NewGuid());
         _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("database unavailable"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotDeleteFacilityException>()
-            .WithMessage("*database unavailable*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task ThrowExceptionIfRepositoryFailsWhileDeletingFacility()
+    public async Task PropagateTheRepositoryFailureWhileDeletingFacility()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = new DeleteFacilityCommand(Guid.NewGuid());
         var facility = new Facility(
             command.Id,
@@ -78,11 +79,10 @@ public class DeleteFacilityCommandHandlerShould
             null);
         _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([facility]);
         _repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("delete failed"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotDeleteFacilityException>()
-            .WithMessage("*delete failed*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 }

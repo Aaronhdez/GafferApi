@@ -112,21 +112,22 @@ public class UpdatePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task ThrowExceptionWhenRepositoryFailsWhileGettingPlayer()
+    public async Task PropagateTheRepositoryFailureWhileGettingPlayer()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = new UpdatePlayerCommand { Id = _playerId, FirstName = NewName };
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("repository unavailable"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotUpdatePlayerException>()
-            .WithMessage("*repository unavailable*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task ThrowExceptionWhenRepositoryFailsWhileUpdatingPlayer()
+    public async Task PropagateTheRepositoryFailureWhileUpdatingPlayer()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var player = AnExistingPlayer();
         var command = new UpdatePlayerCommand
         {
@@ -140,12 +141,11 @@ public class UpdatePlayerCommandHandlerShould
 
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
         _repository.Update(Arg.Any<Player>(), Arg.Any<CancellationToken>())
-            .Throws(new Exception("update failed"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotUpdatePlayerException>()
-            .WithMessage("*update failed*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     private Player AnExistingPlayer() => new(

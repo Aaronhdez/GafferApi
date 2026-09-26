@@ -13,15 +13,9 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
             if (player == null) throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
             await playerRepository.Delete(command.Id, cancellationToken);
         }
-        catch (Exception ex)
+        catch (PlayerNotFoundException ex)
         {
-            switch (ex)
-            {
-                case PlayerNotFoundException:
-                    throw new CannotDeletePlayerNotFoundException(ex.Message, command.Id);
-                default:
-                    throw new CannotDeletePlayerException(ex.Message, command.Id);
-            }
+            throw new CannotDeletePlayerNotFoundException(ex.Message, command.Id);
         }
     }
 
@@ -49,7 +43,8 @@ public class CannotDeletePlayerNotFoundException(string message, Guid id) : Exce
 public class CannotDeletePlayerException(string message, Guid id) : Exception(message)
 {
     public Guid Id { get; } = id;
-    public string Reason { get; }
+    public const string InternalServerErrorReason = "Internal Server Error";
+    public string Reason { get; } = InternalServerErrorReason;
 }
 
 public record DeletePlayerCommand(Guid Id) : ICommand;

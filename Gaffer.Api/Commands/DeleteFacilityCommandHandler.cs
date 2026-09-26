@@ -13,15 +13,9 @@ public class DeleteFacilityCommandHandler(IFacilityRepository facilityRepository
             if (facility == null) throw new FacilityNotFoundException($"Facility with id {command.Id} not found", command.Id);
             await facilityRepository.Delete(command.Id, cancellationToken);
         }
-        catch (Exception ex)
+        catch (FacilityNotFoundException ex)
         {
-            switch (ex)
-            {
-                case FacilityNotFoundException:
-                    throw new CannotDeleteFacilityNotFoundException(ex.Message, command.Id);
-                default:
-                    throw new CannotDeleteFacilityException(ex.Message, command.Id);
-            }
+            throw new CannotDeleteFacilityNotFoundException(ex.Message, command.Id);
         }
     }
 
@@ -49,7 +43,8 @@ public class CannotDeleteFacilityNotFoundException(string message, Guid id) : Ex
 public class CannotDeleteFacilityException(string message, Guid id) : Exception(message)
 {
     public Guid Id { get; } = id;
-    public string Reason { get; }
+    public const string InternalServerErrorReason = "Internal Server Error";
+    public string Reason { get; } = InternalServerErrorReason;
 }
 
 public record DeleteFacilityCommand(Guid Id) : ICommand;

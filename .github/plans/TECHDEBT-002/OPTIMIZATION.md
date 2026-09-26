@@ -44,4 +44,73 @@ Ninguna entrada existente (`OPT-001`..`OPT-008`) cubre el desfase horario de `In
 
 ### Estado de aprobación
 
-Pendiente: sin decisión del operador todavía. Ninguna propuesta se ha aplicado ni registrado en `MEMORIES.md`.
+Aprobadas por el operador ambas propuestas de este ciclo ("ejecuta b aprobando ambas y luego a"):
+
+- **P1-1** → aprobada, registrada como `OPT-009` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `CLAUDE.md` (sección "Measured Usage (Claude)") o en los prompts `.claude/agents/builder.md` / `reviewer.md`.
+- **P1-2** → aprobada, registrada como `OPT-010` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/doc/common/dev-stack.md`.
+
+Ninguna propuesta ha sido aplicada por OPTIMIZER; ambas quedan en estado `pendiente` hasta que el operador o el agente correspondiente edite los ficheros de ámbito.
+
+## Ciclo 2 (paso 02 - Fallos de infraestructura → 500, veredicto APPROVED)
+
+### usage-slice (medido:token-consumer) — sin datos; bisección de todo el día
+
+`node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=2026-09-26T20:55:12Z/2026-09-26T21:02:17Z --window REVIEWER=2026-09-26T21:02:46Z/2026-09-26T21:04:51Z`
+
+Las ventanas literales de `STATUS.md` (ya en UTC real según instrucción del ORCHESTRATOR, OPT-009 aplicado) devolvieron "sin datos" en `claude-code` y `copilot`. A diferencia del ciclo 1, el desfase de −2h tampoco tiene datos (comprobado con las mismas ventanas menos 2h, y también +2h). Se bisectó el día completo para descartar cualquier huso horario:
+
+| Ventana | Eventos (claude-code) | Caché lectura | Caché escritura | Coste USD |
+| --- | ---: | ---: | ---: | ---: |
+| 2026-09-26T00:00:00Z/23:59:59Z (día completo) | 530 | 53 910 198 | 2 232 758 | 142,37 |
+| 2026-09-26T00:00:00Z/18:29:17Z (mañana, previa a ciclo 1) | 508 | 49 735 513 | 2 043 968 | 129,31 |
+| 2026-09-26T18:29:17Z/18:37:28Z (ciclo 1 B+R, confirma fila previa) | 3 | 399 444 | 168 380 | 5,72 |
+| 2026-09-26T18:37:28Z/19:05:00Z (sesión propia de OPTIMIZER ciclo 1) | 18 | 3 586 574 | 19 919 | 6,90 |
+| 2026-09-26T19:05:00Z/23:59:59Z (resto del día, incluye ventanas literales, ±2h y márgenes amplios del ciclo 2) | 0 (sin datos en todas las subventanas probadas) | — | — | — |
+
+Los 530 eventos del día quedan contabilizados (508 + 3 + 18 = 529; 1 evento residual no localizado en un borde de ventana, sin impacto en la conclusión). No existe ningún evento `claude-code` con `repo=gaffer-api` entre las 19:05Z y el final del día — ni en la ventana literal del ciclo 2, ni desplazada ±2h, ni en márgenes de ±25 minutos alrededor de cada ventana. Se usan los totales de `medido:agent-result` (ORCHESTRATOR) como única fuente medida disponible para este ciclo:
+
+| Rol | Tokens (total) | Llamadas | Duración | Origen |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER ciclo 2 | 100 198 | 58 | 446 s | medido:agent-result |
+| REVIEWER ciclo 2 | 53 990 | 13 | 158 s | medido:agent-result |
+| OPTIMIZER (registro entre ciclos) | 30 202 | 5 | 46 s | medido:agent-result |
+
+Comparación con ciclo 1 (mismo origen, `medido:agent-result`, ver sección de ciclo 1 arriba): BUILDER 76 757→100 198 tokens (+30,5%), 52→58 llamadas (+11,5%), 409→446 s (+9%); REVIEWER 42 817→53 990 tokens (+26,1%), 12→13 llamadas (+8,3%), 104→158 s (+51,9%).
+
+### Observación sobre OPT-009 (efecto, sin editar `MEMORIES.md`)
+
+Este ciclo BUILDER/REVIEWER registraron `Inicio`/`Fin` ya en UTC real por instrucción directa del ORCHESTRATOR (no hubo aplicación de OPT-009 en `CLAUDE.md`/prompts, sigue `pendiente`). Aun así, `usage-slice` con la ventana literal devolvió "sin datos", y la bisección de todo el día confirma que **no es un problema de huso horario** (ni +2h ni −2h tienen datos): simplemente no hay eventos capturados por el dashboard entre las 19:05Z y el final del día 2026-09-26, un vacío de ~5 horas que cubre por completo el ciclo 2. No se puede confirmar si OPT-009, una vez aplicado en los ficheros de ámbito, habría evitado bisección en un caso *con* datos pero desplazados; este ciclo no es una prueba de ese escenario porque no hay datos en absoluto. Conclusión: `sin datos` para confirmar o refutar el efecto de OPT-009; el fallo de este ciclo es de una naturaleza distinta (ausencia total de telemetría, no desfase).
+
+### Observación sobre OPT-010 (efecto, sin editar `MEMORIES.md`)
+
+El paso 02 no toca contrato OpenAPI ni nulabilidad; no aplica este ciclo. `sin datos` (no evaluable).
+
+### Spike 1 - Vacío total de telemetría del dashboard durante el ciclo 2 (~19:05Z–fin de día)
+
+- **Valor y origen**: bisección de las 24h del día (`usage-slice`, 8 invocaciones de `Bash` en esta sesión) localiza 529/530 eventos antes de las 19:05Z; cero eventos en cualquier ventana probada entre 19:05Z y 23:59:59Z, incluida la ventana literal del ciclo 2 (20:55:12Z–21:04:51Z) y sus desplazamientos ±2h.
+- **Causa probable**: a diferencia del ciclo 1 (desfase de huso horario, evento presente pero mal ubicado), aquí el propio evento no existe en el fichero JSONL del dashboard para ese intervalo — posible cierre/reinicio de la extensión Token Consumer Dashboard, cambio de ventana de VS Code, o corte de captura entre la sesión de OPTIMIZER del ciclo 1 (termina ~19:05Z) y el inicio de BUILDER ciclo 2 (~20:55Z registrado). No verificable desde este entorno (fuera de alcance leer el JSONL crudo más allá de `usage-slice`).
+- **Propuesta concreta (P2-1)**: añadir a `CLAUDE.md` (sección "Measured Usage (Claude)"), a continuación de la regla de OPT-008/OPT-009, una regla de corte: si la bisección de una ventana amplia (p.ej. el día completo) no muestra **ningún** evento en un margen de ±30 min alrededor de la ventana literal (a diferencia de un clúster desplazado, que sí indicaría huso horario), detener la bisección de inmediato y usar `medido:agent-result` sin más intentos de desplazamiento. Esto distingue explícitamente "desfase de huso horario" (OPT-009, bisección con offset fijo) de "ausencia de datos" (parar y usar el fallback), evitando repetir búsquedas con distintos offsets cuando ya no hay señal.
+- **Ahorro esperado**: esta sesión de OPTIMIZER usó 8 llamadas a `Bash`/`usage-slice` para confirmar la ausencia total de datos (equivalente en orden de magnitud a las ~9-10 de la bisección del ciclo 1, pero sin resultado útil al final); con la regla de corte, tras la primera comprobación de "ventana literal + ±30 min sin eventos en absoluto" se pasaría a `medido:agent-result` en 2-3 llamadas en vez de 8.
+- **Fuente**: esta sesión (8 invocaciones de `usage-slice.mjs`, ventanas documentadas en la tabla anterior); `STATUS.md` líneas 32-33 (ventanas del ciclo 2).
+
+### Spike 2 - Sondeo ad hoc de `dotnet fsi` para descubrir el tipo de excepción MySQL
+
+- **Valor y origen**: `usage/BUILDER.md` fila ciclo 2 atribuye explícitamente el coste extra a "probe de `MySqlException` con `dotnet fsi`" (además de normalizar CRLF con `perl` y resolver `NUnit1032`). BUILDER creció +30,5% en tokens y +11,5% en llamadas frente al ciclo 1 (medido:agent-result); no hay desglose de caché disponible este ciclo (spike 1) para aislar el coste exacto del sondeo, pero es la única causa nueva y no reutilizable que BUILDER documenta para este paso.
+- **Causa probable**: para escribir `PropagateTheRepositoryFailureWhile*` (AC2.2) con el tipo exacto de excepción que lanza el driver MySQL al fallar la conexión, BUILDER tuvo que ejecutar un script `dotnet fsi` ad hoc (fuera del repo, en scratchpad) abriendo una `MySqlConnection` a un puerto inalcanzable con el `MySql.Data.dll` del build, en vez de disponer de esa información como conocimiento reutilizable del proyecto.
+- **Propuesta concreta (P2-2)**: registrar en `.github/doc/common/test-stack.md` (o `dev-stack.md`, según dónde viva la guía de dependencias de infraestructura) la nota: "los fallos de conexión/consulta del driver MySQL (`MySql.Data`) se propagan como `MySql.Data.MySqlClient.MySqlException` (con `MySqlException` interna); use este tipo en aserciones `ThrowExactlyAsync<T>` para fallos de repositorio, sin necesidad de sondear con `dotnet fsi`". Así, cualquier paso futuro que necesite el tipo exacto de una excepción de infraestructura (MySQL u otra dependencia ya sondeada una vez) puede citarlo directamente.
+- **Ahorro esperado**: evita repetir la compilación/ejecución de un script `dotnet fsi` (coste de arranque de F# Interactive más carga de ensamblados) en cualquier paso futuro de este plan o de otros que toquen fallos de infraestructura de MySQL; mismo patrón de ahorro que OPT-010 (conocimiento de una sola vez documentado en vez de redescubierto). Magnitud exacta no medible este ciclo por el vacío de telemetría (spike 1); pendiente de confirmar con una medición futura que sí tenga desglose de caché.
+- **Fuente**: `usage/BUILDER.md` fila ciclo 2; `STATUS.md` fila "Tipo de excepción MySQL" (ciclo 2, paso 02).
+
+### Cobertura de MEMORIES.md
+
+Ninguna entrada existente cubre el vacío total de telemetría (distinto de OPT-008 y OPT-009, que tratan de eventos presentes pero mal atribuidos/ubicados) ni el sondeo `dotnet fsi` de tipos de excepción de infraestructura; P2-1 y P2-2 son propuestas nuevas. No se ha podido actualizar con datos nuevos el "Efecto observado" de OPT-009 ni de OPT-010 más allá de las observaciones cualitativas de esta sección (ambas siguen `pendiente` en `MEMORIES.md`; su edición requiere aprobación del operador).
+
+### Brechas de datos
+
+- Sin desglose de entrada/caché-lectura/caché-escritura/salida para BUILDER y REVIEWER del ciclo 2 (el dashboard no capturó eventos en ese intervalo); todas las cifras de este ciclo son `medido:agent-result` (totales sin desglosar) o `estimado` (`usage/BUILDER.md`, `usage/REVIEWER.md`).
+- No se puede confirmar la causa exacta del vacío de telemetría (¿extensión cerrada?, ¿VS Code reiniciado?, ¿corte de captura?) desde este entorno; es una hipótesis, no una medición.
+- No se puede aislar cuánto del +30,5% de tokens de BUILDER corresponde específicamente al sondeo `dotnet fsi` frente a `perl`/`NUnit1032`/el propio crecimiento del alcance (4 handlers + `TestFixture.cs` + `DatabaseFailureShould.cs` nuevo); solo se dispone de la atribución cualitativa que el propio BUILDER registró.
+
+### Estado de aprobación
+
+Pendiente de decisión del operador para P2-1 y P2-2 (registro en `MEMORIES.md` fuera de alcance de OPTIMIZER hasta esa aprobación).

@@ -14,15 +14,9 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
             UpdatePlayer(player, command);
             await playerRepository.Update(player, cancellationToken);
         }
-        catch (Exception ex)
+        catch (PlayerNotFoundException ex)
         {
-            switch (ex)
-            {
-                case PlayerNotFoundException:
-                    throw new CannotUpdatePlayerNotFoundException(ex.Message, command.Id);
-                default:
-                    throw new CannotUpdatePlayerException(ex.Message, command.Id);
-            }
+            throw new CannotUpdatePlayerNotFoundException(ex.Message, command.Id);
         }
     }
 
@@ -75,7 +69,8 @@ public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exce
 public class CannotUpdatePlayerException(string message, Guid id) : Exception(message)
 {
     public Guid Id { get; set; } = id;
-    public string Reason { get; }
+    public const string InternalServerErrorReason = "Internal Server Error";
+    public string Reason { get; } = InternalServerErrorReason;
 }
 
 public class UpdatePlayerCommand : ICommand

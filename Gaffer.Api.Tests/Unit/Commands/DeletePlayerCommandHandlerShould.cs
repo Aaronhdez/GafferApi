@@ -50,21 +50,22 @@ public class DeletePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task ThrowExceptionIfRepositoryFailsWhileFindingPlayer()
+    public async Task PropagateTheRepositoryFailureWhileFindingPlayer()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("database unavailable"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotDeletePlayerException>()
-            .WithMessage("*database unavailable*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task ThrowExceptionIfRepositoryFailsWhileDeletingPlayer()
+    public async Task PropagateTheRepositoryFailureWhileDeletingPlayer()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
         var player = new Player(
             command.Id,
@@ -76,11 +77,10 @@ public class DeletePlayerCommandHandlerShould
 
         _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
         _repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("delete failed"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotDeletePlayerException>()
-            .WithMessage("*delete failed*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 }

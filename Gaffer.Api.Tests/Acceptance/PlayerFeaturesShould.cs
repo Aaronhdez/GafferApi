@@ -178,6 +178,16 @@ public class PlayerFeaturesShould
         body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Update.PlayerNotFound");
     }
 
+    [Test]
+    public async Task ReturnNotFoundWhenDeletingAnUnknownPlayer()
+    {
+        var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, Uris.DeletePlayer(Guid.NewGuid().ToString())));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
+        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Delete.PlayerNotFound");
+    }
+
     private const string KnownFirstName = "Alexia";
     private const string KnownLastName = "Putellas";
     private const Gender KnownGender = Gender.FEMALE;

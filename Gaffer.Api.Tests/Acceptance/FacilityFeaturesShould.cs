@@ -315,7 +315,7 @@ public class FacilityFeaturesShould
 
         var response = await SendUpdateFacilityRequest(createdId, updateRequestBody);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 
     private static object BuildCityArenaRequestBody() => new

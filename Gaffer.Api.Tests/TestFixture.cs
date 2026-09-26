@@ -41,7 +41,9 @@ public class TestFixture
         UseCasesMock = new UseCasesMock();
         Configuration = TestConfiguration.Build();
         var testDatabase = TestConfiguration.RequireDatabaseConnectionString(Configuration);
-        TestServer = await InitializeApiServer(Configuration["ApiUrl"], testDatabase);
+        // Unregistered instance used only by ClearDatabase; each DI scope gets its own provider.
+        SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
+        TestServer = await StartApiServer(Configuration["ApiUrl"], testDatabase);
         GafferApiClientTest = InitializeGafferHttpClient(TestServer, Configuration["ApiUrl"]);
         await ClearDatabase();
     }
@@ -50,6 +52,7 @@ public class TestFixture
     public async Task OneTimeTearDown()
     {
         await ClearDatabase();
+        if (SqlConnectionProviderTest is IAsyncDisposable cleanupProvider) await cleanupProvider.DisposeAsync();
         GafferApiClientTest?.Dispose();
         TestServer?.Dispose();
     }
@@ -64,11 +67,10 @@ public class TestFixture
         return new GafferApiClientTest(httpClient);
     }
 
-    private static async Task<TestServer> InitializeApiServer(string? baseAddress, string testDatabase)
+    /// <summary>Starts the test API host (same DI as the shared fixture) against the given connection string.</summary>
+    internal static async Task<TestServer> StartApiServer(string? baseAddress, string testDatabase)
     {
         if (baseAddress == null) throw new NullReferenceException(nameof(baseAddress));
-        // Unregistered instance used only by ClearDatabase; each DI scope gets its own provider.
-        SqlConnectionProviderTest = new SqlConnectionProvider(testDatabase);
 
         var host = new HostBuilder()
             .ConfigureWebHost(webHostBuilder =>

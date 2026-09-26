@@ -34,27 +34,14 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         {
             facility = await GetFacility(command, cancellationToken);
         }
-        catch (Exception ex)
+        catch (FacilityNotFoundException ex)
         {
-            switch (ex)
-            {
-                case FacilityNotFoundException:
-                    throw new CannotUpdateFacilityNotFoundException(ex.Message, command.Id);
-                default:
-                    throw new CannotUpdateFacilityException(ex.Message, command.Id);
-            }
+            throw new CannotUpdateFacilityNotFoundException(ex.Message, command.Id);
         }
 
         var updatedFacility = BuildUpdatedFacility(facility, command);
 
-        try
-        {
-            await facilityRepository.Update(updatedFacility, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            throw new CannotUpdateFacilityException(ex.Message, command.Id);
-        }
+        await facilityRepository.Update(updatedFacility, cancellationToken);
     }
 
     private async Task<Facility> GetFacility(UpdateFacilityCommand command, CancellationToken cancellationToken)
@@ -106,5 +93,6 @@ public class CannotUpdateFacilityNotFoundException(string message, Guid id) : Ex
 public class CannotUpdateFacilityException(string message, Guid id) : Exception(message)
 {
     public Guid Id { get; } = id;
-    public string Reason { get; }
+    public const string InternalServerErrorReason = "Internal Server Error";
+    public string Reason { get; } = InternalServerErrorReason;
 }

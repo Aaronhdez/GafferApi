@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
@@ -50,5 +51,98 @@ public class ExceptionToHttpResponseConvertersShould
     public void NotMapGenericArgumentExceptionsSoFacilitySearchKeepsItsBehaviour()
     {
         ExceptionToHttpResponseConverters.PlayerConverters.Should().NotContainKey(typeof(ArgumentException));
+    }
+
+    private const string InternalServerErrorReason = "Internal Server Error";
+
+    private sealed record Expectation(
+        Func<Guid, Exception> Create,
+        int Status,
+        string? Title,
+        Func<Guid, string?> Detail,
+        string? ErrorTranslationKey);
+
+    // One expectation per converter. A converter added without an entry here fails CoverEveryConverter.
+    private static readonly IReadOnlyDictionary<Type, Expectation> Expectations = new Dictionary<Type, Expectation>
+    {
+        [typeof(CannotDeletePlayerNotFoundException)] = new(id => new CannotDeletePlayerNotFoundException("not found", id),
+            404, "Cannot delete player", id => $"Player {id} not found", "Error.Players.Delete.PlayerNotFound"),
+        [typeof(CannotDeletePlayerException)] = new(id => new CannotDeletePlayerException("boom", id),
+            400, "Cannot delete player", id => $"Player {id} cannot be deleted", "Error.Players.Delete.Internal Server Error"),
+        [typeof(CannotUpdatePlayerNotFoundException)] = new(id => new CannotUpdatePlayerNotFoundException("not found", id),
+            404, "Cannot update player", id => $"Player {id} not found", "Error.Players.Update.PlayerNotFound"),
+        [typeof(CannotUpdatePlayerException)] = new(id => new CannotUpdatePlayerException("boom", id),
+            400, "Cannot update player", id => $"Player {id} cannot be updated", "Error.Players.Update.Internal Server Error"),
+        [typeof(PlayerNotFoundException)] = new(id => new PlayerNotFoundException("Player not found", id),
+            404, null, _ => null, null),
+        [typeof(PlayerSearchFilterNotPermittedException)] = new(_ => new PlayerSearchFilterNotPermittedException("Gender"),
+            400, "Error.Search.FilterNotPermitted", _ => "FilterNotPermitted", "Error.Search.FilterNotPermitted"),
+        [typeof(FacilityValidationException)] = new(_ => new FacilityValidationException("Stands cannot exceed 4"),
+            400, "Cannot create facility", _ => "Stands cannot exceed 4", "Error.Facilities.Create.Validation"),
+        [typeof(FacilityNotFoundException)] = new(id => new FacilityNotFoundException("Facility not found", id),
+            404, "Facility not found", _ => "Facility not found", "Error.Facilities.NotFound"),
+        [typeof(CannotDeleteFacilityNotFoundException)] = new(id => new CannotDeleteFacilityNotFoundException("not found", id),
+            404, "Cannot delete facility", id => $"Facility {id} not found", "Error.Facilities.Delete.FacilityNotFound"),
+        [typeof(CannotDeleteFacilityException)] = new(id => new CannotDeleteFacilityException("boom", id),
+            400, "Cannot delete facility", id => $"Facility {id} cannot be deleted", "Error.Facilities.Delete.Internal Server Error"),
+        [typeof(CannotUpdateFacilityNotFoundException)] = new(id => new CannotUpdateFacilityNotFoundException("not found", id),
+            404, "Cannot update facility", id => $"Facility {id} not found", "Error.Facilities.Update.FacilityNotFound"),
+        [typeof(CannotUpdateFacilityException)] = new(id => new CannotUpdateFacilityException("boom", id),
+            400, "Cannot update facility", id => $"Facility {id} cannot be updated", "Error.Facilities.Update.Internal Server Error"),
+    };
+
+    private static IEnumerable<Type> ConvertedExceptionTypes() => Expectations.Keys;
+
+    [Test]
+    public void CoverEveryConverter()
+    {
+        ExceptionToHttpResponseConverters.PlayerConverters.Keys.Should().BeEquivalentTo(Expectations.Keys);
+    }
+
+    [TestCaseSource(nameof(ConvertedExceptionTypes))]
+    public void ConvertEachExceptionIntoItsExpectedResponse(Type exceptionType)
+    {
+        var expectation = Expectations[exceptionType];
+        var id = Guid.NewGuid();
+        var exception = expectation.Create(id);
+        exception.Should().BeOfType(exceptionType);
+
+        var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters[exceptionType](exception);
+
+        problemDetails.Status.Should().Be(expectation.Status);
+        problemDetails.Title.Should().Be(expectation.Title);
+        problemDetails.Detail.Should().Be(expectation.Detail(id));
+        if (expectation.ErrorTranslationKey is null)
+        {
+            problemDetails.Extensions.Should().NotContainKey("ErrorTranslationKey");
+        }
+        else
+        {
+            problemDetails.Extensions["ErrorTranslationKey"].Should().Be(expectation.ErrorTranslationKey);
+        }
+    }
+
+    [TestCaseSource(nameof(ConvertedExceptionTypes))]
+    public void NeverProduceATranslationKeyEndingWithADot(Type exceptionType)
+    {
+        var exception = Expectations[exceptionType].Create(Guid.NewGuid());
+
+        var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters[exceptionType](exception);
+
+        if (problemDetails.Extensions.TryGetValue("ErrorTranslationKey", out var key))
+        {
+            key.Should().BeOfType<string>().Which.Should().NotEndWith(".");
+        }
+    }
+
+    [Test]
+    public void AssignTheInternalServerErrorReasonToTheGenericDeleteAndUpdateExceptions()
+    {
+        var id = Guid.NewGuid();
+
+        new CannotDeletePlayerException("boom", id).Reason.Should().Be(InternalServerErrorReason);
+        new CannotUpdatePlayerException("boom", id).Reason.Should().Be(InternalServerErrorReason);
+        new CannotDeleteFacilityException("boom", id).Reason.Should().Be(InternalServerErrorReason);
+        new CannotUpdateFacilityException("boom", id).Reason.Should().Be(InternalServerErrorReason);
     }
 }
