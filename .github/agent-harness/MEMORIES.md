@@ -1,0 +1,8 @@
+# Approved Optimization Memories
+
+| ID | Fecha | Plan / ciclo de origen | Problema detectado | Optimización aprobada | Ámbito (agente, prompt, plan, `AGENTS.md`) | Estado (`pendiente` / `aplicada` / `revertida`) | Efecto observado |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| OPT-001 | 2026-08-13 | legacy:Facility create | Preparación de workflow y documentación dentro del ciclo de entrega consumió turnos previos a la implementación. | Ejecutar cambios de gobernanza y estructura documental en un ciclo de preparación separado; iniciar entrega tras confirmar las convenciones. | workflow | aplicada | sin datos |
+| OPT-002 | 2026-08-13 | legacy:Facility create | Los requisitos se reenviaron repetidamente antes de iniciar la planificación. | Usar un brief normalizado de una sola pasada y exigir confirmación del PLANNER antes de delegar. | workflow | aplicada | sin datos |
+| OPT-003 | 2026-08-13 | legacy:Facility create | Referencias alternaron entre `Doc/` y `.github/doc/`, causando búsqueda y navegación adicional. | Mantener una única ruta de contexto documental (`.github/doc`) en instrucciones y agentes. | agentes, prompts | aplicada | sin datos |
+| OPT-004 | 2026-09-21 | legacy:Facility CRUD completion | Siete checkpoints por incremento elevaron los turnos de coordinación en una finalización CRUD que seguía patrones existentes. | Agrupar incrementos relacionados en CRUD similares; reservar checkpoints por incremento para riesgo alto o cuando el operador los solicite. | workflow | aplicada | sin datos |
