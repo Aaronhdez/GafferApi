@@ -43,7 +43,7 @@ public class Player(
         return SecondLastName ?? string.Empty;
     }
 
-    public void SetSecondLastName(string commandFirstName)
+    public void SetSecondLastName(string? commandFirstName)
     {
         SecondLastName = commandFirstName;
     }
@@ -58,6 +58,11 @@ public class Player(
         Birthdate = DateTime.Parse(commandFirstName, CultureInfo.InvariantCulture);
     }
 
+    public void SetBirthDateName(DateTime birthDate)
+    {
+        Birthdate = birthDate;
+    }
+
     public string GetGenderName()
     {
         return Gender.ToString();
@@ -66,5 +71,10 @@ public class Player(
     public void SetGender(string commandFirstName)
     {
         Gender = Enum.Parse<Gender>(commandFirstName, ignoreCase: true);
+    }
+
+    public void SetGender(Gender gender)
+    {
+        Gender = gender;
     }
 }

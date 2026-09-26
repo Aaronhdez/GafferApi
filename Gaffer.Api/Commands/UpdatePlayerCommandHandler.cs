@@ -1,4 +1,5 @@
 ﻿using Gaffer.Api.Domain;
+using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
@@ -39,31 +40,29 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
     }
 
-    private void UpdatePlayer(Player player, UpdatePlayerCommand command)
+    private static void UpdatePlayer(Player player, UpdatePlayerCommand command)
     {
-        if (player.GetFirstName() != command.FirstName && !string.IsNullOrEmpty(command.FirstName))
+        if (!string.IsNullOrEmpty(command.FirstName))
         {
             player.SetFirstName(command.FirstName);
         }
 
-        if (player.GetLastName() != command.LastName && !string.IsNullOrEmpty(command.LastName))
+        if (!string.IsNullOrEmpty(command.LastName))
         {
             player.SetLastName(command.LastName);
         }
 
-        if (player.GetSecondLastName() != command.SecondLastName && !string.IsNullOrEmpty(command.SecondLastName))
+        // SecondLastName is always replaced: absent, null or empty clears it.
+        player.SetSecondLastName(string.IsNullOrEmpty(command.SecondLastName) ? null : command.SecondLastName);
+
+        if (command.BirthDate.HasValue)
         {
-            player.SetSecondLastName(command.SecondLastName);
+            player.SetBirthDateName(command.BirthDate.Value);
         }
 
-        if (player.GetBirthDateName() != command.BirthDate && !string.IsNullOrEmpty(command.BirthDate))
+        if (command.Gender.HasValue)
         {
-            player.SetBirthDateName(command.BirthDate);
-        }
-
-        if (player.GetGenderName() != command.Gender && !string.IsNullOrEmpty(command.Gender))
-        {
-            player.SetGender(command.Gender);
+            player.SetGender(command.Gender.Value);
         }
     }
 }
@@ -82,9 +81,9 @@ public class CannotUpdatePlayerException(string message, Guid id) : Exception(me
 public class UpdatePlayerCommand : ICommand
 {
     public Guid Id { get; set; }
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    public string SecondLastName { get; set; }
-    public string BirthDate { get; set; }
-    public string Gender { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? SecondLastName { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public Gender? Gender { get; set; }
 }
