@@ -1,6 +1,6 @@
 # Paso 03 (ciclo 3) - Filtro no permitido en Facilities → 400
 
-Q5: se aplica a) (misma clave que Players) salvo respuesta antes del ciclo 3.
+Q5 = a) (misma clave que Players): default aplicado, sin objeción del operador. Sin preguntas abiertas para este paso.
 
 ## Objetivo
 
@@ -13,7 +13,7 @@ Hoy **no hay ruta HTTP** que envíe un filtro de Facility arbitrario: `GET /faci
 | Nivel | Qué demuestra |
 | --- | --- |
 | Repositorio (MySQL, `SqlFacilityRepositoryShould`) | `Get` con un filtro no permitido lanza la excepción nueva (no `ArgumentException`) y no ejecuta SQL. |
-| Conversor (unitario) | La excepción → 400 con `Title`/`Detail`/clave de Q5. |
+| Conversor (unitario) | La excepción → 400 con `Title`/`Detail`/clave iguales a Players (Q5 = a). |
 | Middleware (unitario, `DefaultHttpContext` + `RequestDelegate` que lanza la excepción) | La respuesta HTTP es 400 con el ProblemDetails esperado, cerrando la cadena sin ruta HTTP. |
 
 ## Alcance de ficheros
@@ -32,7 +32,7 @@ Hoy **no hay ruta HTTP** que envíe un filtro de Facility arbitrario: `GET /faci
 | ID | Criterio |
 | --- | --- |
 | AC3.1 | `SqlFacilityRepository.Get` con filtro `Name = "Street"` (no permitido) lanza la excepción nueva con el nombre del campo; ninguna fila se lee (el test no depende de datos). |
-| AC3.2 | El conversor devuelve `Status = 400`, `Title`/`Detail`/`ErrorTranslationKey` según Q5 (a: iguales a Players). |
+| AC3.2 | El conversor devuelve `Status = 400`, `Title = "Error.Search.FilterNotPermitted"`, `Detail = "FilterNotPermitted"`, `ErrorTranslationKey = "Error.Search.FilterNotPermitted"` (Q5 = a, iguales a Players). |
 | AC3.3 | El middleware, ante esa excepción, escribe 400 `application/json` con esos valores e `Instance` = ruta de la petición. |
 | AC3.4 | `ArgumentException` sigue sin conversor (no se mapea de forma genérica). |
 | AC3.5 | Los filtros permitidos (`Id`, `Name`, `Active`, `BuildDate`, `Type`, `Capacity`) siguen funcionando: tests existentes de `SqlFacilityRepositoryShould` y `FacilityFeaturesShould` en verde. |
@@ -41,7 +41,7 @@ Hoy **no hay ruta HTTP** que envíe un filtro de Facility arbitrario: `GET /faci
 
 1. **Aceptación**: AC3.3 (middleware, nivel más alto disponible sin ruta HTTP). Red: 500 "Unkwnown error" al lanzar `ArgumentException` desde el repositorio real, o compilación fallida por la excepción inexistente (se registra cuál) → green.
 2. **Unitario**: AC3.1 y AC3.2. Red → green.
-3. **Refactor**: si Q5 = a, valorar compartir la construcción del ProblemDetails de "filtro no permitido" entre Player y Facility sin cambiar la salida. Revalidar la suite.
+3. **Refactor**: valorar compartir la construcción del ProblemDetails de "filtro no permitido" entre Player y Facility sin cambiar la salida. Revalidar la suite.
 
 ## Cómo demostrarlo
 

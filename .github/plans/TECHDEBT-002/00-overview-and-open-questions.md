@@ -29,7 +29,7 @@ Reglas:
 
 - En el ciclo N, BUILDER implementa **solo el paso N**, más las correcciones que REVIEWER haya pedido en el ciclo anterior (si las hay). No adelanta trabajo de pasos posteriores.
 - En el ciclo N, REVIEWER **solo aprueba el paso N** (y verifica las correcciones del ciclo anterior). El veredicto del ciclo se refiere a ese paso.
-- Los ciclos que sobran hasta 6 (5 y 6) quedan de reserva para `NEEDS_CHANGES`. Cómo se combina una corrección con el paso siguiente es la pregunta Q0 (abierta).
+- Los ciclos que sobran hasta 6 (5 y 6) quedan de reserva para `NEEDS_CHANGES`. Cómo se combina una corrección con el paso siguiente: Q0 = b) (default aplicado, ver tabla de preguntas).
 - Cada paso sigue el doble bucle de `.github/doc/work-guidelines.md` dentro de su ciclo: aceptación (red → green) → unitario (red → green) → refactor con revalidación de la suite completa. BUILDER registra en `STATUS.md` comando y resultado de cada red y green.
 - BUILDER no empieza un paso con una pregunta bloqueante abierta para ese paso; si no hay nada ejecutable en el ciclo, marca `BLOCKED`.
 
@@ -51,7 +51,9 @@ Reglas:
 
 ## Preguntas abiertas
 
-| ID | Paso | Pregunta | Opciones | Recomendación PLANNER (no vinculante) | Bloquea |
+### Preguntas originales (texto original conservado)
+
+| ID | Paso | Pregunta | Opciones | Recomendación PLANNER (no vinculante) | Bloqueaba |
 | --- | --- | --- | --- | --- | --- |
 | Q0 | Todos | ¿Cómo se combina un `NEEDS_CHANGES` del paso N con el paso N+1? | a) El ciclo siguiente solo corrige el paso N; el paso N+1 se desplaza un ciclo (consume reserva). b) Corregir primero y avanzar al paso N+1 en el mismo ciclo solo si la corrección es pequeña (p. ej. ≤ 1 fichero de producto y sin cambio de contrato); si no, a). c) Siempre corregir y avanzar en el mismo ciclo. | b). Lo decide el operador en el checkpoint del ciclo con `NEEDS_CHANGES`. | No bloquea el ciclo 1 |
 | Q1 | 01 | ¿Se debe poder borrar `SecondLastName` explícitamente con un update? Hoy `null` y `""` se ignoran, así que no se puede borrar. | a) No: `null`, ausente y `""` conservan el valor (comportamiento actual). b) `""` lo borra; `null`/ausente lo conserva. c) `null` explícito lo borra y ausente lo conserva (exige distinguir "ausente" de `null`: JSON Merge Patch o similar; más diseño). | a) o b). a) es el cambio mínimo; b) es explícito y no necesita distinguir ausente/`null`. | Solo AC1.5 |
@@ -61,15 +63,45 @@ Reglas:
 | Q5 | 03 | Clave de traducción y título del 400 de Facilities. | a) Igual que Players: `Title` y clave `Error.Search.FilterNotPermitted`, `Detail` `FilterNotPermitted`. b) Clave propia `Error.Facilities.Search.FilterNotPermitted`. | a): "alinear" con Players. | No (se aplica a) salvo respuesta antes del ciclo 3) |
 | Q6 | 04 | Nivel de log para excepciones **mapeadas** (400/404). Las no mapeadas (500) se registran con `LogError` y la excepción. | a) No registrar las mapeadas. b) `Debug`. c) `Information`. d) `Warning`. | b) o c): dejan rastro sin ruido en `Error`; 404 y 400 son respuestas esperadas. | Solo AC4.3 |
 
+### Respuestas y estado
+
+| ID | Respuesta del operador (literal) | Decisión aplicada al plan | Estado |
+| --- | --- | --- | --- |
+| Q0 | (sin respuesta) | b). Default aplicado, sin objeción del operador. | Resuelta |
+| Q1 | 1ª respuesta: "Si, se puede borrar, hay personas con un solo apellido". 2ª respuesta (al aprobar el plan, **sustituye** a la deducción b): "Q1, el second last name puede ser null, si viene en la actualización, actualiza al valor, si no, dejalo null." | `secondLastName` tiene semántica de **reemplazo** (distinta del resto de campos, que son parciales): si el cuerpo trae un valor, se guarda ese valor; si no lo trae (ausente o `null`), se guarda `null`. `""`: se mantiene la equivalencia actual de `""` con `null` (hoy `string.IsNullOrEmpty`), así que `""` también deja `null`; no se añade recorte (`Trim`) porque hoy no existe. | Resuelta |
+| Q2 | (sin respuesta) | a) `PUT` parcial. Default aplicado, sin objeción del operador. | Resuelta |
+| Q3 | "a" | a) 500: los handlers dejan de envolver excepciones no de negocio. | Resuelta |
+| Q4 | "Mantenlas, pero pon un reason que indique error interno en." (texto aparentemente truncado) | b) Se mantienen las 4 excepciones genéricas y sus 4 conversores; `Reason` se asigna siempre con un valor que indica error interno. Valor exacto: Q4.1. | Resuelta (valor en Q4.1) |
+| Q4.1 | "Q4.1. \"Internal Server Error\" as reason" | `Reason = "Internal Server Error"` (literal, con espacios) en las 4 excepciones genéricas. Con los conversores actuales (`$"Error.<X>.<Op>.{Reason}"`) las claves quedan `Error.Players.Delete.Internal Server Error`, `Error.Players.Update.Internal Server Error`, `Error.Facilities.Delete.Internal Server Error`, `Error.Facilities.Update.Internal Server Error`. `Title`/`Detail` no usan `Reason` y no cambian. Estado HTTP: sigue 400 (el operador no pidió 500 para ellas). | Resuelta |
+| Q5 | (sin respuesta) | a) Misma clave y título que Players. Default aplicado, sin objeción del operador. | Resuelta |
+| Q6 | "400 Error, 404 no se registran" | Excepciones mapeadas a 400 → `LogError`; mapeadas a 404 → no se registran. Hoy (y tras el paso 03) el diccionario solo mapea a 400 y 404, así que no hay otros códigos mapeados que decidir. Las no mapeadas (500) siguen con `LogError` + excepción. | Resuelta |
+
+Notas sobre Q1 (2ª respuesta):
+
+- La deducción anterior (b: `""` borra, `null`/ausente conserva) queda **sustituida** por la respuesta literal del operador.
+- Consecuencia observable: un `PUT` que no incluya `secondLastName` lo deja a `null`, aunque el resto de campos sí sean parciales. Esto afecta a clientes (BFF/frontend) que envíen updates parciales sin `secondLastName`; se registra como efecto del contrato, no como pregunta.
+- No hace falta distinguir "ausente" de `null` explícito: ambos llevan a `null`. Compatible con Q2 = a) (`PUT` sin JSON Merge Patch).
+- `""` → `null`: no lo dice la respuesta; se conserva la equivalencia actual `""` ≡ `null` del handler (`string.IsNullOrEmpty`). Valores con solo espacios se guardan tal cual (hoy no hay recorte). Si el operador prefiere guardar `""` literal, puede indicarlo en el checkpoint del ciclo 1; no bloquea.
+
+### Preguntas abiertas nuevas
+
+Ninguna. Q4.1 respondida (ver tabla de respuestas).
+
+Nota sobre Q4: los 4 conversores genéricos mantienen el estado 400 (el operador no pidió 500 al responder Q4.1). Con Q3 = a) ningún código de producto lanza hoy esas excepciones, así que el 400 no es observable por HTTP.
+
+## Aprobación
+
+| Fecha (UTC) | Texto del operador (literal) |
+| --- | --- |
+| 2026-09-26 | "I approve the plan" |
+
 ## Acciones del operador (los agentes no las hacen)
 
 | Cuándo | Acción |
 | --- | --- |
-| Antes del ciclo 1 | Crear la rama del plan; responder Q1 (y Q2 si no vale a)). |
-| Antes del ciclo 2 | Responder Q3 y Q4. |
-| Antes del ciclo 3 / 4 | Q5 (opcional) / Q6. |
-| En cada checkpoint con `NEEDS_CHANGES` | Decidir Q0 para ese ciclo. |
-| Al cerrar (tras `DONE`) | Regenerar `Gaffer.Api.Client` con NSwag: cambia el contrato de `UpdatePlayerRequest` (paso 01) y, según Q3/Q4, las respuestas de error. Decidir la versión SemVer según la regla de TECHDEBT-001 paso 10. |
+| Antes del ciclo 1 | Crear la rama del plan (hecho: `TECHDEBT-002`). |
+| En cada checkpoint con `NEEDS_CHANGES` | Q0 = b) por defecto; el operador puede decidir otra cosa en ese checkpoint. |
+| Al cerrar (tras `DONE`) | Regenerar `Gaffer.Api.Client` con NSwag: cambia el contrato de `UpdatePlayerRequest` (paso 01; `secondLastName` con semántica de reemplazo, Q1) y las respuestas de error (Q3 = a: 500 en Delete/Update ante fallos de infraestructura; Q4.1: claves con `Reason = "Internal Server Error"`). Decidir la versión SemVer según la regla de TECHDEBT-001 paso 10. |
 
 ## Fuera de alcance (anotado, no se planifica)
 

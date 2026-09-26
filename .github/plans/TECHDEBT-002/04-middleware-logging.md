@@ -1,10 +1,10 @@
 # Paso 04 (ciclo 4) - ExceptionHandlingMiddleware registra las excepciones
 
-Prerequisito para AC4.3: Q6 (nivel de log de las excepciones mapeadas).
+Q6 resuelta: excepciones mapeadas a 400 → nivel `Error`; mapeadas a 404 → no se registran. El diccionario solo mapea a 400 y 404, así que no hay más casos. Sin preguntas abiertas para este paso.
 
 ## Objetivo
 
-El middleware recibe `ILogger<ExceptionHandlingMiddleware>` por constructor, registra las excepciones no mapeadas (500) con `LogError` incluyendo la excepción, registra las mapeadas según Q6 y corrige el título `"Unkwnown error"` → `"Unknown error"`. Se añade el test que falta de "excepción desconocida → 500".
+El middleware recibe `ILogger<ExceptionHandlingMiddleware>` por constructor, registra las excepciones no mapeadas (500) con `LogError` incluyendo la excepción, registra las mapeadas a 400 con nivel `Error`, no registra las mapeadas a 404 y corrige el título `"Unkwnown error"` → `"Unknown error"`. Se añade el test que falta de "excepción desconocida → 500".
 
 ## Alcance de ficheros
 
@@ -21,7 +21,7 @@ El middleware recibe `ILogger<ExceptionHandlingMiddleware>` por constructor, reg
 | --- | --- |
 | AC4.1 | Unitario: una `InvalidOperationException` no mapeada produce 500, `application/json`, `Title = "Unknown error"`, `Instance` = ruta. |
 | AC4.2 | Unitario: esa excepción se registra **una vez** con nivel `Error` y la instancia de la excepción adjunta. |
-| AC4.3 | Una excepción mapeada (p. ej. `PlayerNotFoundException`) se registra según Q6 (o no se registra si Q6 = a). La respuesta no cambia. |
+| AC4.3 | Q6. (a) Una excepción mapeada a 400 (p. ej. `PlayerSearchFilterNotPermittedException`) produce **una** entrada de log de nivel `Error` desde `ExceptionHandlingMiddleware`; la respuesta (400 y ProblemDetails) no cambia. (b) Una excepción mapeada a 404 (p. ej. `PlayerNotFoundException`) produce **cero** entradas de log de cualquier nivel desde el middleware; la respuesta (404) no cambia. |
 | AC4.4 | Aceptación: con la BD inalcanzable, `GET /players/{id}` devuelve 500 `"Unknown error"` y el proveedor de log de test recibe una entrada `Error` de `ExceptionHandlingMiddleware`. |
 | AC4.5 | `dotnet build` ya no emite CS0169 para `ExceptionHandlingMiddleware.logger`; `grep -rn "Unkwnown" Gaffer.Api Gaffer.Api.Tests` → 0. |
 | AC4.6 | Suite completa en verde; los tests existentes que leen `Title` de errores siguen en verde (ninguno depende de la errata; si alguno lo hiciera, se registra). |
