@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using Gaffer.Api.Commands;
+﻿using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
@@ -74,19 +73,19 @@ public class PlayerController(
             FirstName = request.FirstName,
             LastName = request.LastName,
             SecondLastName = request.SecondLastName,
-            BirthDate = request.BirthDate.ToString(CultureInfo.InvariantCulture),
-            Gender = request.Gender.ToString(),
+            BirthDate = request.BirthDate,
+            Gender = request.Gender,
         }, CancellationToken.None);
     }
 }
 
 public class UpdatePlayerRequest
 {
-    public string FirstName;
-    public string LastName;
-    public string? SecondLastName; 
-    public DateTime BirthDate;
-    public Gender Gender;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? SecondLastName { get; set; }
+    public DateTime? BirthDate { get; set; }
+    public Gender? Gender { get; set; }
 }
 
 public class SearchPlayersRequest

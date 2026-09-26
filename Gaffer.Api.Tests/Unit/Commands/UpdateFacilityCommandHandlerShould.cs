@@ -85,31 +85,31 @@ public class UpdateFacilityCommandHandlerShould
     }
 
     [Test]
-    public async Task ThrowExceptionWhenRepositoryFailsWhileGettingFacility()
+    public async Task PropagateTheRepositoryFailureWhileGettingFacility()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var command = BuildCommand(_facilityId);
         _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>())
-            .Throws(new InvalidOperationException("repository unavailable"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotUpdateFacilityException>()
-            .WithMessage("*repository unavailable*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task ThrowExceptionWhenRepositoryFailsWhileUpdatingFacility()
+    public async Task PropagateTheRepositoryFailureWhileUpdatingFacility()
     {
+        var failure = new InvalidOperationException("database unavailable");
         var existing = BuildExistingFacility(_facilityId);
         var command = BuildCommand(_facilityId);
         _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
         _repository.Update(Arg.Any<Facility>(), Arg.Any<CancellationToken>())
-            .Throws(new Exception("update failed"));
+            .Throws(failure);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<CannotUpdateFacilityException>()
-            .WithMessage("*update failed*");
+        (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]

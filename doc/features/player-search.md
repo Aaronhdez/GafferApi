@@ -36,3 +36,4 @@ This document covers how clients search for players and how the API reports erro
 
 - Technical detail and API contract: [`doc/features/technical/player-search-and-persistence.md`](./technical/player-search-and-persistence.md).
 - The search endpoint depends on a database connection being available per request; see [`doc/features/technical/database-connection-lifecycle.md`](./technical/database-connection-lifecycle.md) for what happens when the database is briefly unreachable at startup.
+- Facility search now rejects a non-permitted filter field the same way, and every non-`404` error (including this one) is logged server-side: [`error-handling.md`](./error-handling.md).

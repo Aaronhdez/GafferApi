@@ -52,6 +52,7 @@ sequenceDiagram
 
 - No new `PackageReference` or MSBuild `Import` was added; `Directory.Build.props` only adds the property and target described above, scoped to `Gaffer.Api.Client`.
 - Contract changes that require a version bump under this rule: see [`api-contract-and-access.md`](./api-contract-and-access.md) (this plan's own MAJOR-worthy change: `201` + `Location` on create, enums as text).
+- [`player-update.md`](./player-update.md): `UpdatePlayerRequest.birthDate`/`gender` become optional and nullable (schema relaxation, backward-compatible for existing callers) but `secondLastName` is now always cleared when omitted (a client-visible behaviour change, not a schema change) — factor both in when deciding the bump for that change.
 - `.github/doc/common/dev-stack.md`, "Build and Packaging Notes" documents this rule at the stack level.
 
 ## Usage Examples

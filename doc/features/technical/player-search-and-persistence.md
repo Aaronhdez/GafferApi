@@ -59,7 +59,7 @@ sequenceDiagram
 | `SqlPlayerRepository` | `BuildFilters` (private) | `(string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria)` | tuple | For each filter: rejects an unmapped/blank field name with `PlayerSearchFilterNotPermittedException` (no query is executed); otherwise appends `` `Column` = @pN `` using the canonical column name and binds the raw value as a Dapper parameter (never interpolated). |
 | `PlayerSearchFilterNotPermittedException` | constructor | `PlayerSearchFilterNotPermittedException(string fieldName)` | — | Message `"FilterNotPermitted"`; carries the rejected `FieldName`. Declared in `Gaffer.Api/Shared/Repositories/IPlayerRepository.cs`. |
 | `PlayerNotFoundException` | constructor | `PlayerNotFoundException(string message, Guid id)` | — | Thrown by `PlayerController.GetBy` when the search returns no row for the requested id. |
-| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerSearchFilterNotPermittedException]` | `Func<Exception, ProblemDetails>` | `ProblemDetails` | Maps to `400 Bad Request`, `Title = "Error.Search.FilterNotPermitted"`, `Detail = "FilterNotPermitted"`, `Extensions["ErrorTranslationKey"] = "Error.Search.FilterNotPermitted"`. Only this exact exception type is mapped, so `SqlFacilityRepository`'s own `ArgumentException` on an unknown filter is unaffected and still surfaces as an unmapped (500) error. |
+| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerSearchFilterNotPermittedException]` | `Func<Exception, ProblemDetails>` | `ProblemDetails` | Maps to `400 Bad Request`, `Title = "Error.Search.FilterNotPermitted"`, `Detail = "FilterNotPermitted"`, `Extensions["ErrorTranslationKey"] = "Error.Search.FilterNotPermitted"`, via the shared private helper `BuildSearchFilterNotPermittedProblemDetails()`. `SqlFacilityRepository` now throws the analogous `FacilitySearchFilterNotPermittedException` (instead of a plain `ArgumentException`) for the same reason, mapped through the same helper — see [`error-handling.md`](./error-handling.md) for the Facility side and the logging behaviour that now runs for both. |
 | `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerNotFoundException]` / `BuildNotFoundProblemDetails` | `Func<Exception, ProblemDetails>` / `ProblemDetails BuildNotFoundProblemDetails()` | `ProblemDetails` | Maps to a bare `404 Not Found`: only `Status` is set (`Title`, `Detail`, `Type` remain `null`; no `Extensions` entry). `ExceptionHandlingMiddleware` still sets `Instance` to the request path afterward. |
 
 ## Dependencies
@@ -67,6 +67,8 @@ sequenceDiagram
 - `IPlayerRepository` / `SqlPlayerRepository` (Dapper-based, via `IDatabaseConnectionProvider`; see [`database-connection-lifecycle.md`](./database-connection-lifecycle.md)).
 - `ExceptionToHttpResponseConverters.PlayerConverters` and `ExceptionHandlingMiddleware`, which serialize `ProblemDetails` with Newtonsoft.Json (PascalCase keys, `Extensions` nested object).
 - `SearchPlayersQueryHandler` / `IQueryHandler<TQuery, TResult>` (CQRS pipeline), used by both `Search` and `GetBy`.
+- Partial update of a `Player` via `PUT /{id}`, which reuses this same `Id`-filtered `Get` to load the player before applying changes: [`player-update.md`](./player-update.md).
+- Infrastructure-failure and logging behaviour shared with every other Delete/Update endpoint: [`error-handling.md`](./error-handling.md).
 
 ## Usage Examples
 

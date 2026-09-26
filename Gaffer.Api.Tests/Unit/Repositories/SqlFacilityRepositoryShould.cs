@@ -4,6 +4,7 @@ using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
+using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Repositories;
 
@@ -207,6 +208,23 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
             }, CancellationToken.None);
 
             result.Should().BeEmpty();
+        }
+
+        [TestCase("Street")]
+        [TestCase("Name IN ('x') OR 1=1 --")]
+        public async Task ThrowWithoutQueryingWhenTheFilterFieldIsNotPermitted(string fieldName)
+        {
+            var connectionProvider = Substitute.For<IDatabaseConnectionProvider>();
+            var repository = new SqlFacilityRepository(connectionProvider);
+
+            var action = async () => await repository.Get(new FacilitySearchCriteria
+            {
+                criteriaList = [new SearchCriteria { Name = fieldName, Value = "x" }]
+            }, CancellationToken.None);
+
+            (await action.Should().ThrowExactlyAsync<FacilitySearchFilterNotPermittedException>())
+                .Which.FieldName.Should().Be(fieldName);
+            connectionProvider.ReceivedCalls().Should().BeEmpty();
         }
     }
 
