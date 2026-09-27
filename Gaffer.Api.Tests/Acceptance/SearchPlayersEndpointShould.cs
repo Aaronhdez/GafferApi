@@ -4,7 +4,6 @@ using AwesomeAssertions;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
-using Gaffer.Api.Shared.Clients;
 using Gaffer.Api.Tests.TestShared;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

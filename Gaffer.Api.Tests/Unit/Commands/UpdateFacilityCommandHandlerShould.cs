@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
@@ -32,7 +33,7 @@ public class UpdateFacilityCommandHandlerShould
         Stands = stands,
     };
 
-    private Facility BuildExistingFacility(Guid id) => new(
+    private Facility BuildExistingFacility(Guid id, List<Stand>? stands = null) => new(
         id,
         "National Stadium",
         true,
@@ -40,7 +41,7 @@ public class UpdateFacilityCommandHandlerShould
         FacilityType.Stadium,
         52000,
         new Address(Guid.NewGuid(), "Main Avenue", "100", "28001", "Madrid", "Madrid", "Spain"),
-        null);
+        stands);
 
     [Test]
     public async Task UpdateAFacilityWhileBeingExecuted()
@@ -53,10 +54,10 @@ public class UpdateFacilityCommandHandlerShould
 
         await _repository.Received(1)
             .Get(Arg.Is<FacilitySearchCriteria>(sc =>
-                    sc.criteriaList.Any(c => c.Name == "Id" && c.Value == _facilityId.ToString())),
+                    sc != null && sc.criteriaList.Any(c => c.Name == "Id" && c.Value == _facilityId.ToString())),
                 Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(Arg.Is<Facility>(facility =>
-                facility.Id == existing.Id
+                facility != null && facility.Id == existing.Id
                 && facility.Name == command.Name
                 && facility.Active == command.Active
                 && facility.BuildDate == command.BuildDate
@@ -131,4 +132,133 @@ public class UpdateFacilityCommandHandlerShould
             .WithMessage("*Stands cannot exceed 4*");
         await _repository.DidNotReceive().Update(Arg.Any<Facility>(), Arg.Any<CancellationToken>());
     }
+
+    [Test]
+    public async Task KeepTheIdOfMatchedStandsUpdatingTheirValuesAndKeepTheStandsNotMentioned()
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        var south = new Stand(Guid.NewGuid(), "South", 4500);
+        var existing = BuildExistingFacility(_facilityId, [north, south]);
+        var command = BuildCommand(_facilityId, [new UpdateFacilityStandCommand("North Renovated", 5000, north.Id)]);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        var updated = UpdatedFacility();
+        updated.Stands.Select(Describe).Should().BeEquivalentTo([
+            $"{north.Id}:North Renovated:5000",
+            $"{south.Id}:South:4500"
+        ]);
+        updated.Address.Id.Should().Be(existing.Address.Id);
+        updated.Name.Should().Be(command.Name);
+    }
+
+    [TestCase(null)]
+    [TestCase(0)]
+    public async Task KeepEveryExistingStandWhenTheCommandHasNoStands(int? standCount)
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        var existing = BuildExistingFacility(_facilityId, [north]);
+        var command = BuildCommand(_facilityId, standCount is null ? null : []);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        UpdatedFacility().Stands.Select(Describe).Should().Equal($"{north.Id}:North:4500");
+    }
+
+    [Test]
+    public async Task CreateStandsWithNewIdsForMissingUnknownOrForeignIdsWhenLessThanFourStandsExist()
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        var existing = BuildExistingFacility(_facilityId, [north]);
+        var unknownId = Guid.NewGuid();
+        var foreignId = Guid.NewGuid();
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("Without Id", 1000),
+            new UpdateFacilityStandCommand("Unknown", 2000, unknownId),
+            new UpdateFacilityStandCommand("Foreign", 3000, foreignId),
+        ]);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        var updated = UpdatedFacility();
+        updated.Stands.Should().HaveCount(4);
+        updated.Stands.Select(Describe).Should().Contain($"{north.Id}:North:4500");
+        var created = updated.Stands.Where(stand => stand.Id != north.Id).ToList();
+        created.Select(stand => $"{stand.StandName}:{stand.StandCapacity}")
+            .Should().BeEquivalentTo(["Without Id:1000", "Unknown:2000", "Foreign:3000"]);
+        created.Select(stand => stand.Id).Should().OnlyHaveUniqueItems()
+            .And.NotContain([Guid.Empty, unknownId, foreignId, north.Id]);
+    }
+
+    [Test]
+    public async Task DiscardEveryUnmatchedStandWhenFourStandsExist()
+    {
+        var stands = Enumerable.Range(0, 4).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList();
+        var originalDescriptions = stands.Select(Describe).ToList();
+        var existing = BuildExistingFacility(_facilityId, stands);
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("Renovated", 5000, stands[0].Id),
+            new UpdateFacilityStandCommand("Without Id", 1000),
+            new UpdateFacilityStandCommand("Unknown", 2000, Guid.NewGuid()),
+            new UpdateFacilityStandCommand("Foreign", 3000, Guid.NewGuid()),
+        ]);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        var updated = UpdatedFacility();
+        updated.Name.Should().Be(command.Name);
+        updated.Capacity.Should().Be(command.Capacity);
+        updated.Address.Street.Should().Be(command.Address.Street);
+        updated.Stands.Select(Describe).Should().BeEquivalentTo(
+            [$"{stands[0].Id}:Renovated:5000", .. originalDescriptions.Skip(1)]);
+    }
+
+    [TestCase(1)]
+    [TestCase(4)]
+    public async Task RejectARepeatedIdOfAnExistingStandWithoutUpdating(int existingStands)
+    {
+        var stands = Enumerable.Range(0, existingStands).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList();
+        var existing = BuildExistingFacility(_facilityId, stands);
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("First", 1000, stands[0].Id),
+            new UpdateFacilityStandCommand("Second", 2000, stands[0].Id),
+        ]);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<CannotUpdateFacilityDuplicatedStandException>()).Which;
+        exception.Id.Should().Be(_facilityId);
+        exception.StandId.Should().Be(stands[0].Id);
+        await _repository.DidNotReceive().Update(Arg.Any<Facility>(), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RejectAnUpdateLeavingMoreThanFourStandsWithoutUpdating()
+    {
+        var stands = Enumerable.Range(0, 3).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList();
+        var existing = BuildExistingFacility(_facilityId, stands);
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("Without Id", 1000),
+            new UpdateFacilityStandCommand("Unknown", 2000, Guid.NewGuid()),
+        ]);
+        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([existing]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await result.Should().ThrowAsync<FacilityValidationException>().WithMessage("*Stands cannot exceed 4*");
+        await _repository.DidNotReceive().Update(Arg.Any<Facility>(), Arg.Any<CancellationToken>());
+    }
+
+    private Facility UpdatedFacility()
+    {
+        var call = _repository.ReceivedCalls().Single(call => call.GetMethodInfo().Name == nameof(IFacilityRepository.Update));
+        return (Facility)call.GetArguments()[0]!;
+    }
+
+    private static string Describe(Stand stand) => $"{stand.Id}:{stand.StandName}:{stand.StandCapacity}";
 }

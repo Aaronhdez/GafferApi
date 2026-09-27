@@ -49,10 +49,6 @@ public class Startup(IConfiguration configuration)
         }
         services.ConfigureRepositories(configuration);
         services.ConfigureActions();
-        //services.AddHealthChecks(_configuration);
-        //services.ConfigureServices(configuration);
-        //services.ConfigureClients(configuration);
-        //services.AddHttpFilteringModelBinder();
     }
 
     public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)

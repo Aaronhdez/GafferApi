@@ -39,9 +39,9 @@ public class PlayerShould
     }
 
     [Test]
-    public void ReturnBirthDateName()
+    public void ReturnBirthDate()
     {
-        _player.GetBirthDateName().Should().Be(TestDefaultValues.DefaultBirthDate.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        _player.GetBirthDate().Should().Be(TestDefaultValues.DefaultBirthDate.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     [Test]
@@ -75,11 +75,11 @@ public class PlayerShould
     }
 
     [Test]
-    public void SetBirthDateName()
+    public void SetBirthDate()
     {
         var birthDate = new DateTime(1995, 5, 23);
 
-        _player.SetBirthDateName(birthDate.ToString(CultureInfo.InvariantCulture));
+        _player.SetBirthDate(birthDate.ToString(CultureInfo.InvariantCulture));
 
         _player.Birthdate.Should().Be(birthDate);
     }

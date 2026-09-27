@@ -1,7 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Gaffer.Api.Controllers;
+using Gaffer.Api.Tests.TestShared;
 using Microsoft.AspNetCore.Mvc;
+using NSwag;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;
 
@@ -89,6 +91,36 @@ public class FacilitiesControllerContractShould
         Enum.GetNames(facilityTypeEnum)
             .Should()
             .BeEquivalentTo(["Stadium", "Arena", "Pitch", "Training"]);
+    }
+
+    [Test]
+    public void DefineAnOptionalNullableIdOnUpdateFacilityStandRequest()
+    {
+        var standRequestType = FindTypeByName("UpdateFacilityStandRequest");
+
+        standRequestType.Should().NotBeNull();
+        var idProperty = standRequestType!.GetProperty("Id");
+        idProperty.Should().NotBeNull();
+        idProperty!.PropertyType.Should().Be(typeof(Guid?));
+        idProperty.GetCustomAttributes(typeof(RequiredAttribute), true).Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task DeclareTheStandIdOfTheUpdateRequestAsOptionalAndNullableInTheServedOpenApi()
+    {
+        await using var server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
+        var raw = await server.Client.GetStringAsync("/swagger/v1/swagger.json");
+        var document = await OpenApiDocument.FromJsonAsync(raw);
+        var standRequest = document.Definitions["UpdateFacilityStandRequest"];
+        var standResult = document.Definitions["SearchFacilityStandResult"];
+        TestContext.Out.WriteLine(standRequest.ToJson());
+        TestContext.Out.WriteLine(standResult.ToJson());
+
+        standRequest.RequiredProperties.Should().NotContain("id");
+        var id = standRequest.ActualProperties["id"];
+        id.IsNullable(document.SchemaType).Should().BeTrue();
+        id.Format.Should().Be(standResult.ActualProperties["id"].Format);
+        standResult.ActualProperties.Keys.Should().BeEquivalentTo(["id", "standName", "standCapacity"]);
     }
 
     private static Type? FindTypeByName(string typeName)

@@ -1,4 +1,4 @@
-﻿using Gaffer.Api.Shared.Clients;
+﻿using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Integration;
 

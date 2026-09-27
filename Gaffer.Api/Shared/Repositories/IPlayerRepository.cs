@@ -18,8 +18,8 @@ public class PlayerSearchCriteria
 
 public class SearchCriteria
 {
-    public string Name { get; set; }
-    public string Value { get; set; }
+    public string Name { get; set; } = null!;
+    public string Value { get; set; } = null!;
     public CriteriaType CriteriaType { get; set; } = CriteriaType.AND;
 }
 

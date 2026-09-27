@@ -48,12 +48,12 @@ public class UpdatePlayerCommandHandlerShould
 
         await _repository.Received(1)
             .Get(Arg.Is<PlayerSearchCriteria>(sc =>
-                    sc.criteriaList.Any(c =>
+                    sc != null && sc.criteriaList.Any(c =>
                         c.Name == "Id"
                         && c.Value == _playerId.ToString())),
                 Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(Arg.Is<Player>(p =>
-                p.Id == player.Id
+                p != null && p.Id == player.Id
                 && p.FirstName == NewName
                 && p.LastName == NewLastName
                 && p.SecondLastName == NewSecondLastName
@@ -72,7 +72,7 @@ public class UpdatePlayerCommandHandlerShould
         await _handler.Handle(command, CancellationToken.None);
 
         await _repository.Received(1).Update(Arg.Is<Player>(p =>
-                p.FirstName == NewName
+                p != null && p.FirstName == NewName
                 && p.LastName == TestDefaultValues.DefaultLastName
                 && p.SecondLastName == null
                 && p.Gender == OriginalGender
@@ -92,7 +92,7 @@ public class UpdatePlayerCommandHandlerShould
         await _handler.Handle(command, CancellationToken.None);
 
         await _repository.Received(1).Update(Arg.Is<Player>(p =>
-                p.FirstName == TestDefaultValues.DefaultFirstName
+                p != null && p.FirstName == TestDefaultValues.DefaultFirstName
                 && p.LastName == TestDefaultValues.DefaultLastName
                 && p.SecondLastName == expectedSecondLastName
                 && p.Gender == OriginalGender

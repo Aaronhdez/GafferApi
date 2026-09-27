@@ -27,7 +27,7 @@ sequenceDiagram
         IPlayerRepository-->>UpdatePlayerCommandHandler: [Player]
         UpdatePlayerCommandHandler->>Player: SetFirstName("X") (only if FirstName present)
         UpdatePlayerCommandHandler->>Player: SetSecondLastName(null) (always runs; command.SecondLastName was null)
-        Note over UpdatePlayerCommandHandler,Player: SetLastName / SetBirthDateName / SetGender skipped: not present in the command
+        Note over UpdatePlayerCommandHandler,Player: SetLastName / SetBirthDate / SetGender skipped: not present in the command
         UpdatePlayerCommandHandler->>IPlayerRepository: Update(player)
         IPlayerRepository-->>UpdatePlayerCommandHandler: ok
         UpdatePlayerCommandHandler-->>PlayerController: ok
@@ -44,8 +44,8 @@ sequenceDiagram
 | `UpdatePlayerCommand` | properties | same shape as `UpdatePlayerRequest` | — | `ICommand`; carries `Id` plus the same five optional fields, untyped-to-typed conversion is not needed since both are already `DateTime?`/`Gender?`. |
 | `UpdatePlayerCommandHandler` | `Handle` | `Task Handle(UpdatePlayerCommand, CancellationToken)` | `Task` | Loads the player, calls `UpdatePlayer`, persists via `IPlayerRepository.Update`. Converts `PlayerNotFoundException` into `CannotUpdatePlayerNotFoundException`; any other exception (e.g. a repository/infrastructure failure) propagates unchanged — see [`error-handling.md`](../error-handling.md). |
 | `UpdatePlayerCommandHandler` | `UpdatePlayer` (private, static) | `void UpdatePlayer(Player, UpdatePlayerCommand)` | `void` | `FirstName`/`LastName` applied only `if (!string.IsNullOrEmpty(...))`; `BirthDate`/`Gender` applied only `if (command.X.HasValue)`; `SecondLastName` always applied via `player.SetSecondLastName(string.IsNullOrEmpty(command.SecondLastName) ? null : command.SecondLastName)`. |
-| `Player` | `SetSecondLastName` | `void SetSecondLastName(string? commandFirstName)` | `void` | Unconditional setter; the parameter name is a pre-existing naming artifact (out of scope for this change; tracked for TECHDEBT-003). |
-| `Player` | `SetBirthDateName` (overload) | `void SetBirthDateName(DateTime birthDate)` | `void` | Typed overload used by the handler; the pre-existing `SetBirthDateName(string)` overload remains, used elsewhere (`PlayerShould`). |
+| `Player` | `SetSecondLastName` | `void SetSecondLastName(string? newSecondLastName)` | `void` | Unconditional setter. The parameter was renamed from the pre-existing `commandFirstName` naming artifact as part of TECHDEBT-003 (small-changes step); no behaviour change. |
+| `Player` | `SetBirthDate` (overload) | `void SetBirthDate(DateTime newBirthDate)` | `void` | Typed overload used by the handler; renamed from `SetBirthDateName(DateTime)` (TECHDEBT-003). The `string`-typed overload was likewise renamed to `SetBirthDate(string newBirthDate)`, and the getter to `GetBirthDate()` (from `SetBirthDateName`/`GetBirthDateName`), used elsewhere (`PlayerShould`). `GetGenderName`/`SetGender(string)` keep their names — `GetGenderName` returns the enum member's name, which is already correct. |
 | `Player` | `SetGender` (overload) | `void SetGender(Gender gender)` | `void` | Typed overload used by the handler; the pre-existing `SetGender(string)` overload remains. |
 | `CannotUpdatePlayerNotFoundException` | constructor | `CannotUpdatePlayerNotFoundException(string message, Guid id)` | — | Mapped to `404`, `Error.Players.Update.PlayerNotFound` (see [`error-handling.md`](../error-handling.md) for the full converter table). |
 

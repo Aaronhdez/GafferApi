@@ -105,7 +105,7 @@ public class Program
         }
     }
 
-    static void EnsureDatabaseExists(string connectionString, string databaseName = null)
+    static void EnsureDatabaseExists(string connectionString, string databaseName)
     {
         using var connection = new MySqlConnection(connectionString);
         connection.Open();
@@ -124,6 +124,6 @@ public class Program
 
 public class DatabaseSettings
 {
-    public string ConnectionString { get; set; }
-    public string Name { get; set; }
+    public string ConnectionString { get; set; } = null!;
+    public string Name { get; set; } = null!;
 }

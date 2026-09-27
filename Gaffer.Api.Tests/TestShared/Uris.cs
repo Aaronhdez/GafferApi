@@ -2,7 +2,7 @@
 
 public static class Uris
 {
-    public static string BaseAddress;
+    public static string BaseAddress = string.Empty;
     private static Uri BaseUri => new(BaseAddress+"api/v1.0/");
     public static Uri CreatePlayer() => new(BaseUri, $"players/");
     public static Uri CreateFacility() => new(BaseUri, $"facilities/");

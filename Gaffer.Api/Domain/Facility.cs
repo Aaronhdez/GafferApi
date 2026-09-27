@@ -40,7 +40,7 @@ public class Facility(
     DateTime buildDate,
     FacilityType type,
     int capacity,
-    Address address,
+    Address? address,
     List<Stand>? stands)
 {
     public Guid Id { get; set; } = id;

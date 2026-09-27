@@ -103,7 +103,7 @@ public class SearchFacilitiesQueryHandlerShould
         var result = await _handler.Handle(query, CancellationToken.None);
 
         await _repository.Received(1).Get(Arg.Is<FacilitySearchCriteria>(criteria =>
-                criteria.criteriaList.Count == 2
+                criteria != null && criteria.criteriaList.Count == 2
                 && criteria.criteriaList.Any(filter => filter.Name == "Name" && filter.Value == "City Arena")
                 && criteria.criteriaList.Any(filter => filter.Name == "Type" && filter.Value == nameof(FacilityType.Stadium))),
             Arg.Any<CancellationToken>());

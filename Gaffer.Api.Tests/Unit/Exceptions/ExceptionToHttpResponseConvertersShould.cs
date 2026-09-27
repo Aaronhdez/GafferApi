@@ -104,7 +104,11 @@ public class ExceptionToHttpResponseConvertersShould
             404, "Cannot update facility", id => $"Facility {id} not found", "Error.Facilities.Update.FacilityNotFound"),
         [typeof(CannotUpdateFacilityException)] = new(id => new CannotUpdateFacilityException("boom", id),
             400, "Cannot update facility", id => $"Facility {id} cannot be updated", "Error.Facilities.Update.Internal Server Error"),
+        [typeof(CannotUpdateFacilityDuplicatedStandException)] = new(id => new CannotUpdateFacilityDuplicatedStandException(id, RepeatedStandId),
+            400, "Cannot update facility", id => $"Stand {RepeatedStandId} is repeated in the update of facility {id}", "Error.Facilities.Update.DuplicatedStand"),
     };
+
+    private static readonly Guid RepeatedStandId = Guid.Parse("7d1f5c0e-3b2a-4c7e-9f1d-2a6b8c4e0f13");
 
     private static IEnumerable<Type> ConvertedExceptionTypes() => Expectations.Keys;
 

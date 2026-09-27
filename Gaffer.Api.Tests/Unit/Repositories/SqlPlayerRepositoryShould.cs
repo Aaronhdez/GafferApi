@@ -66,6 +66,58 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
     }
 
     [TestFixture]
+    public class WhenPropagatingTheCancellationToken : SqlPlayerRepositoryShould
+    {
+        private TokenRecordingConnectionProvider _recorder;
+        private SqlPlayerRepository _recordedRepository;
+        private CancellationTokenSource _cancellation;
+
+        [SetUp]
+        public void SetUpRecorder()
+        {
+            _recorder = new TokenRecordingConnectionProvider(_databaseConnectionProvider);
+            _recordedRepository = new SqlPlayerRepository(_recorder);
+            _cancellation = new CancellationTokenSource();
+        }
+
+        [TearDown]
+        public void DisposeCancellation() => _cancellation.Dispose();
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenGetting()
+        {
+            await _recordedRepository.Get(new PlayerSearchCriteria(), _cancellation.Token);
+
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 1);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenSaving()
+        {
+            await _recordedRepository.Save(
+                new Player(Guid.NewGuid(), "Xavi", "Hernandez", string.Empty, Gender.MALE, _birthDate), _cancellation.Token);
+
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 1);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenDeleting()
+        {
+            await _recordedRepository.Delete(player1.Id, _cancellation.Token);
+
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 1);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenUpdating()
+        {
+            await _recordedRepository.Update(player2, _cancellation.Token);
+
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 1);
+        }
+    }
+
+    [TestFixture]
     public class WhenGettingPlayers : SqlPlayerRepositoryShould
     {
         [Test]

@@ -16,7 +16,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         var (whereClause, parameters) = BuildFilters(criteria);
         var query = $"SELECT * FROM `Facilities` {whereClause};";
-        var rows = await dbConnectionProvider.QueryAsync<FacilityRow>(query, parameters);
+        var rows = await dbConnectionProvider.QueryAsync<FacilityRow>(query, parameters, cancellationToken);
 
         var facilities = new List<Facility>();
         foreach (var row in rows)
@@ -60,13 +60,13 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         return (whereClause, parameters);
     }
 
-    private async Task<Address> GetAddress(Guid facilityId, CancellationToken cancellationToken)
+    private async Task<Address?> GetAddress(Guid facilityId, CancellationToken cancellationToken)
     {
         const string query =
             "SELECT a.* FROM `Addresses` a " +
             "INNER JOIN `Facilities_Addresses` fa ON fa.AddressId = a.Id " +
             "WHERE fa.FacilityId = @FacilityId;";
-        var rows = await dbConnectionProvider.QueryAsync<AddressRow>(query, new { FacilityId = facilityId });
+        var rows = await dbConnectionProvider.QueryAsync<AddressRow>(query, new { FacilityId = facilityId }, cancellationToken);
         var row = rows.FirstOrDefault();
         if (row == null) return null;
 
@@ -79,7 +79,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             "SELECT s.* FROM `Stands` s " +
             "INNER JOIN `Facilities_Stands` fs ON fs.StandId = s.Id " +
             "WHERE fs.FacilityId = @FacilityId;";
-        var rows = await dbConnectionProvider.QueryAsync<StandRow>(query, new { FacilityId = facilityId });
+        var rows = await dbConnectionProvider.QueryAsync<StandRow>(query, new { FacilityId = facilityId }, cancellationToken);
         return rows.Select(row => new Stand(row.Id, row.StandName, row.StandCapacity)).ToList();
     }
 
@@ -111,11 +111,11 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
                 facility.BuildDate,
                 Type = facility.Type.ToString(),
                 facility.Capacity
-            });
+            }, cancellationToken);
 
             await InsertAddress(facility, cancellationToken);
             await InsertStands(facility, cancellationToken);
-        });
+        }, cancellationToken);
     }
 
     public async Task Update(Facility facility, CancellationToken cancellationToken)
@@ -138,13 +138,65 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
                 facility.BuildDate,
                 Type = facility.Type.ToString(),
                 facility.Capacity
-            });
+            }, cancellationToken);
 
-            await DeleteStands(facility.Id, cancellationToken);
-            await DeleteAddress(facility.Id, cancellationToken);
-            await InsertAddress(facility, cancellationToken);
-            await InsertStands(facility, cancellationToken);
-        });
+            await UpdateAddress(facility, cancellationToken);
+            await UpdateStands(facility, cancellationToken);
+        }, cancellationToken);
+    }
+
+    /// <summary>Updates in place the address linked to the facility; its <c>Id</c> never changes.</summary>
+    private async Task UpdateAddress(Facility facility, CancellationToken cancellationToken)
+    {
+        const string updateAddressQuery =
+            "UPDATE `Addresses` SET " +
+            "Street = @Street, " +
+            "StreetNumber = @StreetNumber, " +
+            "PostalCode = @PostalCode, " +
+            "City = @City, " +
+            "Region = @Region, " +
+            "Country = @Country " +
+            "WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
+
+        await dbConnectionProvider.ExecuteAsync(updateAddressQuery, new
+        {
+            FacilityId = facility.Id,
+            facility.Address.Street,
+            facility.Address.StreetNumber,
+            facility.Address.PostalCode,
+            facility.Address.City,
+            facility.Address.Region,
+            facility.Address.Country
+        }, cancellationToken);
+    }
+
+    /// <summary>
+    /// Updates in place the stands already linked to the facility and inserts the others.
+    /// Linked stands missing from <paramref name="facility"/> are left untouched (never deleted).
+    /// </summary>
+    private async Task UpdateStands(Facility facility, CancellationToken cancellationToken)
+    {
+        const string linkedStandIdsQuery = "SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
+        var linkedStandIds = (await dbConnectionProvider.QueryAsync<Guid>(linkedStandIdsQuery, new { FacilityId = facility.Id }, cancellationToken))
+            .ToHashSet();
+        var standsByLinked = facility.Stands.ToLookup(stand => linkedStandIds.Contains(stand.Id));
+
+        const string updateStandQuery =
+            "UPDATE `Stands` SET StandName = @StandName, StandCapacity = @StandCapacity WHERE Id = @Id;";
+        foreach (var stand in standsByLinked[true])
+        {
+            await dbConnectionProvider.ExecuteAsync(updateStandQuery, new
+            {
+                stand.Id,
+                stand.StandName,
+                stand.StandCapacity
+            }, cancellationToken);
+        }
+
+        foreach (var stand in standsByLinked[false])
+        {
+            await InsertStand(facility.Id, stand, cancellationToken);
+        }
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken)
@@ -155,8 +207,8 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             await DeleteAddress(id, cancellationToken);
 
             const string deleteFacilityQuery = "DELETE FROM `Facilities` WHERE Id = @Id;";
-            await dbConnectionProvider.ExecuteAsync(deleteFacilityQuery, new { Id = id });
-        });
+            await dbConnectionProvider.ExecuteAsync(deleteFacilityQuery, new { Id = id }, cancellationToken);
+        }, cancellationToken);
     }
 
     private async Task InsertAddress(Facility facility, CancellationToken cancellationToken)
@@ -188,7 +240,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             facility.Address.City,
             facility.Address.Region,
             facility.Address.Country
-        });
+        }, cancellationToken);
 
         const string insertFacilityAddressRelationQuery =
             "INSERT INTO `Facilities_Addresses` (FacilityId, AddressId) VALUES (@FacilityId, @AddressId);";
@@ -196,77 +248,82 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         {
             FacilityId = facility.Id,
             AddressId = facility.Address.Id
-        });
+        }, cancellationToken);
     }
 
     private async Task InsertStands(Facility facility, CancellationToken cancellationToken)
     {
         foreach (var stand in facility.Stands)
         {
-            const string insertStandQuery =
-                "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, @StandName, @StandCapacity);";
-            await dbConnectionProvider.ExecuteAsync(insertStandQuery, new
-            {
-                stand.Id,
-                stand.StandName,
-                stand.StandCapacity
-            });
-
-            const string insertFacilityStandRelationQuery =
-                "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);";
-            await dbConnectionProvider.ExecuteAsync(insertFacilityStandRelationQuery, new
-            {
-                FacilityId = facility.Id,
-                StandId = stand.Id
-            });
+            await InsertStand(facility.Id, stand, cancellationToken);
         }
+    }
+
+    private async Task InsertStand(Guid facilityId, Stand stand, CancellationToken cancellationToken)
+    {
+        const string insertStandQuery =
+            "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, @StandName, @StandCapacity);";
+        await dbConnectionProvider.ExecuteAsync(insertStandQuery, new
+        {
+            stand.Id,
+            stand.StandName,
+            stand.StandCapacity
+        }, cancellationToken);
+
+        const string insertFacilityStandRelationQuery =
+            "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);";
+        await dbConnectionProvider.ExecuteAsync(insertFacilityStandRelationQuery, new
+        {
+            FacilityId = facilityId,
+            StandId = stand.Id
+        }, cancellationToken);
     }
 
     private async Task DeleteStands(Guid facilityId, CancellationToken cancellationToken)
     {
         const string deleteStandsQuery =
             "DELETE FROM `Stands` WHERE Id IN (SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId);";
-        await dbConnectionProvider.ExecuteAsync(deleteStandsQuery, new { FacilityId = facilityId });
+        await dbConnectionProvider.ExecuteAsync(deleteStandsQuery, new { FacilityId = facilityId }, cancellationToken);
 
         const string deleteStandRelationsQuery = "DELETE FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
-        await dbConnectionProvider.ExecuteAsync(deleteStandRelationsQuery, new { FacilityId = facilityId });
+        await dbConnectionProvider.ExecuteAsync(deleteStandRelationsQuery, new { FacilityId = facilityId }, cancellationToken);
     }
 
     private async Task DeleteAddress(Guid facilityId, CancellationToken cancellationToken)
     {
         const string deleteAddressQuery =
             "DELETE FROM `Addresses` WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
-        await dbConnectionProvider.ExecuteAsync(deleteAddressQuery, new { FacilityId = facilityId });
+        await dbConnectionProvider.ExecuteAsync(deleteAddressQuery, new { FacilityId = facilityId }, cancellationToken);
 
         const string deleteAddressRelationQuery = "DELETE FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId;";
-        await dbConnectionProvider.ExecuteAsync(deleteAddressRelationQuery, new { FacilityId = facilityId });
+        await dbConnectionProvider.ExecuteAsync(deleteAddressRelationQuery, new { FacilityId = facilityId }, cancellationToken);
     }
 
     private class FacilityRow
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
         public bool Active { get; set; }
         public DateTime BuildDate { get; set; }
-        public string Type { get; set; }
+        public string Type { get; set; } = null!;
         public int Capacity { get; set; }
     }
 
     private class AddressRow
     {
         public Guid Id { get; set; }
-        public string Street { get; set; }
-        public string StreetNumber { get; set; }
-        public string PostalCode { get; set; }
-        public string City { get; set; }
-        public string Region { get; set; }
-        public string Country { get; set; }
+        public string Street { get; set; } = null!;
+        public string StreetNumber { get; set; } = null!;
+        public string PostalCode { get; set; } = null!;
+        public string City { get; set; } = null!;
+        public string Region { get; set; } = null!;
+        public string Country { get; set; } = null!;
     }
 
     private class StandRow
     {
         public Guid Id { get; set; }
-        public string StandName { get; set; }
+        public string StandName { get; set; } = null!;
         public int StandCapacity { get; set; }
     }
 }

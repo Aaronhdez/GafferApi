@@ -51,7 +51,7 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 
         if (command.BirthDate.HasValue)
         {
-            player.SetBirthDateName(command.BirthDate.Value);
+            player.SetBirthDate(command.BirthDate.Value);
         }
 
         if (command.Gender.HasValue)

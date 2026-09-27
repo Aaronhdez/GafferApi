@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text;
-using Gaffer.Api.Shared.Clients;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Gaffer.Api.Tests.TestShared;
@@ -53,4 +52,7 @@ public class GafferApiClientTest(HttpClient client) : IGafferApiClient
     }
 }
 
-public class GafferApiClientException(HttpStatusCode resultStatusCode, string exMessage) : Exception($"{resultStatusCode}");
+public class GafferApiClientException(HttpStatusCode resultStatusCode, string exMessage) : Exception($"{resultStatusCode}")
+{
+    public string ResponseContent { get; } = exMessage;
+}

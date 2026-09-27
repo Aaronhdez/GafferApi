@@ -95,6 +95,13 @@ public static class ExceptionToHttpResponseConverters
                     $"Facility {((CannotUpdateFacilityException)ex).Id} cannot be updated",
                     $"Error.Facilities.Update.{((CannotUpdateFacilityException)ex).Reason}")
             },
+            {
+                typeof(CannotUpdateFacilityDuplicatedStandException),
+                ex => BuildBadRequestProblemDetailsWithExtension(
+                    "Cannot update facility",
+                    ex.Message,
+                    "Error.Facilities.Update.DuplicatedStand")
+            },
         };
     
     // Helper methods to build ProblemDetails
