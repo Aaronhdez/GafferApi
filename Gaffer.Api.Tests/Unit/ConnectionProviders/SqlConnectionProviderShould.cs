@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Data;
+using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Tests.TestShared;
@@ -80,6 +82,117 @@ public class SqlConnectionProviderShould
 
         (await testConnection.Should().NotThrowAsync()).Subject.Should().BeFalse();
     }
+
+    [Test]
+    public async Task CloseButNotReleaseTheConnectionAfterEachOperation()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+
+        await provider.QueryScalarAsync<int>("SELECT 1;");
+        AssertClosedAndNotDisposed(provider);
+        await provider.ExecuteAsync(PlayersInsert, new { Id = id });
+        AssertClosedAndNotDisposed(provider);
+        (await provider.QueryAsync<Guid>(PlayerById, new { Id = id })).Should().ContainSingle();
+        AssertClosedAndNotDisposed(provider);
+        await provider.ExecuteInTransactionAsync(() => provider.ExecuteAsync(PlayerDelete, new { Id = id }));
+        AssertClosedAndNotDisposed(provider);
+        (await provider.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
+        AssertClosedAndNotDisposed(provider);
+    }
+
+    [Test]
+    public async Task ReleaseTheConnectionOnlyWhenItsScopeIsDisposed()
+    {
+        await using var serviceProvider = BuildScopedServiceProvider();
+        var scope = serviceProvider.CreateAsyncScope();
+        var provider = (SqlConnectionProvider)scope.ServiceProvider.GetRequiredService<IDatabaseConnectionProvider>();
+        var releases = 0;
+        UnderlyingConnectionOf(provider).Disposed += (_, _) => releases++;
+
+        await provider.QueryScalarAsync<int>("SELECT 1;");
+        await provider.ExecuteAsync("SELECT 1;");
+        await provider.QueryAsync<int>("SELECT 1;");
+        await provider.ExecuteInTransactionAsync(() => provider.QueryScalarAsync<int>("SELECT 1;"));
+        releases.Should().Be(0);
+
+        await scope.DisposeAsync();
+
+        releases.Should().BeGreaterThan(0);
+    }
+
+    [Test]
+    public async Task MakeTheWorkOfACommittedTransactionVisible()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+
+        await provider.ExecuteInTransactionAsync(() => provider.ExecuteAsync(PlayersInsert, new { Id = id }));
+
+        await using var observer = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        (await observer.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(1);
+    }
+
+    [Test]
+    public async Task RollBackAndPropagateTheFailureOfATransaction()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
+        {
+            await provider.ExecuteAsync(PlayersInsert, new { Id = id });
+            throw new InvalidOperationException("force rollback");
+        });
+
+        await transaction.Should().ThrowAsync<InvalidOperationException>();
+        (await provider.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
+    [Test]
+    public async Task RunANestedTransactionInsideTheOuterOne()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
+        {
+            await provider.ExecuteInTransactionAsync(() => provider.ExecuteAsync(PlayersInsert, new { Id = id }));
+            provider.ConnectionState.Should().Be(ConnectionState.Open);
+            throw new InvalidOperationException("force outer rollback");
+        });
+
+        await transaction.Should().ThrowAsync<InvalidOperationException>();
+        (await provider.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
+    }
+
+    [SetUp]
+    [TearDown]
+    public async Task ClearPlayers()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        await provider.ClearAsync([DbTableNames.PlayersTable]);
+    }
+
+    private const string PlayersInsert =
+        "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
+        "VALUES (@Id, 'Lifecycle', 'Probe', NULL, 'MALE', '2000-01-01');";
+    private const string PlayerCount = "SELECT COUNT(*) FROM `Players` WHERE Id = @Id;";
+    private const string PlayerById = "SELECT Id FROM `Players` WHERE Id = @Id;";
+    private const string PlayerDelete = "DELETE FROM `Players` WHERE Id = @Id;";
+
+    private static void AssertClosedAndNotDisposed(SqlConnectionProvider provider)
+    {
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+        provider.IsDisposed.Should().BeFalse();
+    }
+
+    /// <summary>Reads the private connection by reflection to observe its <see cref="Component.Disposed"/> event without widening the public API.</summary>
+    private static Component UnderlyingConnectionOf(SqlConnectionProvider provider)
+        => (Component)typeof(SqlConnectionProvider)
+            .GetField("_sqlConnection", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetValue(provider)!;
 
     private static ServiceProvider BuildScopedServiceProvider()
     {

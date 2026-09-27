@@ -48,70 +48,30 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
     }
 
     public async Task ClearAsync(List<string> tablesToDelete)
-    {
-        if (_sqlConnection.State != ConnectionState.Open)
+        => await RunOnConnectionAsync(async () =>
         {
-            _sqlConnection.Open();
-        }
-        foreach (var table in tablesToDelete)
-        {
-            await _sqlConnection.ExecuteAsync($"DELETE FROM `{table}`");
-        }
-        if (_sqlConnection.State == ConnectionState.Open)
-        {
-            await _sqlConnection.CloseAsync();
-            await _sqlConnection.DisposeAsync();
-        }
-    }
+            foreach (var table in tablesToDelete)
+            {
+                await _sqlConnection.ExecuteAsync($"DELETE FROM `{table}`");
+            }
+            return true;
+        });
 
     public async Task CreateAsync(string database)
-    {
-        if (_sqlConnection.State != ConnectionState.Open)
-        {
-            _sqlConnection.Open();
-        }
-        var result = await _sqlConnection.ExecuteAsync("CREATE Database if not exists @database", new { database });
-        if (_sqlConnection.State == ConnectionState.Open)
-        {
-            await _sqlConnection.CloseAsync();
-            await _sqlConnection.DisposeAsync();
-        }
-    }
-    
-    public async Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
-    {
-        var ownsConnection = await OpenIfNeededAsync();
-        var result = await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters, _currentTransaction);
-        if (ownsConnection)
-        {
-            await _sqlConnection.CloseAsync();
-            await _sqlConnection.DisposeAsync();
-        }
-        return result;
-    }
+        => await RunOnConnectionAsync(() =>
+            _sqlConnection.ExecuteAsync("CREATE Database if not exists @database", new { database }));
+
+    public Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
+        => RunOnConnectionAsync(async () =>
+            (await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters, _currentTransaction))!);
 
     public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
-    {
-        var ownsConnection = await OpenIfNeededAsync();
-        var result = await _sqlConnection.QueryAsync<T>(query, parameters, _currentTransaction);
-        if (ownsConnection)
-        {
-            await _sqlConnection.CloseAsync();
-            await _sqlConnection.DisposeAsync();
-        }
-        return result.ToList();
-    }
+        => (await RunOnConnectionAsync(() =>
+            _sqlConnection.QueryAsync<T>(query, parameters, _currentTransaction))).ToList();
 
     public async Task ExecuteAsync(string query, object? parameters = null)
-    {
-        var ownsConnection = await OpenIfNeededAsync();
-        await _sqlConnection.ExecuteAsync(query, parameters, _currentTransaction);
-        if (ownsConnection)
-        {
-            await _sqlConnection.CloseAsync();
-            await _sqlConnection.DisposeAsync();
-        }
-    }
+        => await RunOnConnectionAsync(() =>
+            _sqlConnection.ExecuteAsync(query, parameters, _currentTransaction));
 
     public async Task ExecuteInTransactionAsync(Func<Task> operations)
     {
@@ -141,7 +101,6 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
             if (_sqlConnection.State == ConnectionState.Open)
             {
                 await _sqlConnection.CloseAsync();
-                await _sqlConnection.DisposeAsync();
             }
         }
     }
@@ -156,7 +115,8 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
             await _currentTransaction.DisposeAsync();
         }
         await _sqlConnection.CloseAsync();
-        await _sqlConnection.DisposeAsync();
+        // MySql.Data's DisposeAsync does not run Component disposal; after CloseAsync the synchronous Dispose does no I/O.
+        _sqlConnection.Dispose();
     }
 
     public void Dispose()
@@ -166,6 +126,23 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         _currentTransaction?.Dispose();
         _sqlConnection.Close();
         _sqlConnection.Dispose();
+    }
+
+    /// <summary>
+    /// Runs <paramref name="operation"/> on the connection, opening it if needed and closing it (back to the pool,
+    /// without releasing it) when this call opened it. Inside an ambient transaction the transaction owns the connection.
+    /// A failing operation is not closed here (TECHDEBT-003 Q1 debt): the connection stays open until the next
+    /// transaction ends or the provider is disposed with its scope.
+    /// </summary>
+    private async Task<T> RunOnConnectionAsync<T>(Func<Task<T>> operation)
+    {
+        var ownsConnection = await OpenIfNeededAsync();
+        var result = await operation();
+        if (ownsConnection)
+        {
+            await _sqlConnection.CloseAsync();
+        }
+        return result;
     }
 
     /// <summary>Opens the connection if not already open. Returns whether the caller is responsible for closing it.</summary>
