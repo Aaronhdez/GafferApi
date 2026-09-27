@@ -1,0 +1,5 @@
+# Uso - BUILDER (TECHDEBT-004)
+
+| Ciclo | Tokens entrada | Tokens salida | Origen del dato | Llamadas a herramientas | Ficheros leídos (nº y mayores) | Comandos con salida grande | Observaciones |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ~55k (mayoría caché) | ~9k | estimado | ~22 | ~6 (00-overview-and-open-questions.md, SqlConnectionProviderShould.cs, SqlConnectionProvider.cs, 01-*.md) | `dotnet build --no-incremental` (x6, filtrado con grep); `dotnet test` suite completa (x2, `--verbosity quiet`); `git ls-files --eol` (filtrado) | Paso 01. Sin sondas extra: el doble que cancela tras abrir se resolvió con `DbConnection.StateChange`. `sed -i` dejó `Gaffer.Api.csproj` en `w/lf` (índice `i/lf`, diff de 1 línea). |

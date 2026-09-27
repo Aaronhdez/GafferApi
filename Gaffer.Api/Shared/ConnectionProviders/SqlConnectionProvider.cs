@@ -140,19 +140,23 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
 
     /// <summary>
     /// Runs <paramref name="operation"/> on the connection, opening it if needed and closing it (back to the pool,
-    /// without releasing it) when this call opened it. Inside an ambient transaction the transaction owns the connection.
-    /// A failing operation is not closed here (TECHDEBT-003 Q1 debt): the connection stays open until the next
-    /// transaction ends or the provider is disposed with its scope.
+    /// without releasing it) when this call opened it, also when the operation fails or is cancelled; the original
+    /// exception propagates unwrapped. Inside an ambient transaction the transaction owns the connection and closes it.
     /// </summary>
     private async Task<T> RunOnConnectionAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
     {
         var ownsConnection = await OpenIfNeededAsync(cancellationToken);
-        var result = await operation();
-        if (ownsConnection)
+        try
         {
-            await _sqlConnection.CloseAsync();
+            return await operation();
         }
-        return result;
+        finally
+        {
+            if (ownsConnection)
+            {
+                await _sqlConnection.CloseAsync();
+            }
+        }
     }
 
     /// <summary>

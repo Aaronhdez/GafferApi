@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Data;
+using System.Data.Common;
 using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Shared.ConnectionProviders;
@@ -226,6 +227,83 @@ public class SqlConnectionProviderShould
         provider.ConnectionState.Should().Be(ConnectionState.Closed);
     }
 
+    [Test]
+    public async Task CloseTheConnectionWhenAQueryFails()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+
+        var query = async () => await provider.QueryAsync<int>(InvalidSql);
+
+        await AssertPropagatesTheDriverFailure(query, "syntax");
+        AssertClosedAndNotDisposed(provider);
+    }
+
+    [Test]
+    public async Task CloseTheConnectionWhenAScalarQueryFails()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+
+        var query = async () => await provider.QueryScalarAsync<int>(InvalidSql);
+
+        await AssertPropagatesTheDriverFailure(query, "syntax");
+        AssertClosedAndNotDisposed(provider);
+    }
+
+    [Test]
+    public async Task CloseTheConnectionWhenAnExecuteViolatesAConstraint()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+        await provider.ExecuteAsync(PlayersInsert, new { Id = id });
+
+        var duplicatedInsert = async () => await provider.ExecuteAsync(PlayersInsert, new { Id = id });
+
+        await AssertPropagatesTheDriverFailure(duplicatedInsert, "Duplicate entry");
+        AssertClosedAndNotDisposed(provider);
+    }
+
+    [Test]
+    public async Task CloseTheConnectionWhenAnOperationIsCancelledAfterOpeningIt()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        using var cancellation = new CancellationTokenSource();
+        UnderlyingDbConnectionOf(provider).StateChange += (_, change) =>
+        {
+            if (change.CurrentState == ConnectionState.Open) cancellation.Cancel();
+        };
+
+        var query = async () => await provider.QueryAsync<int>("SELECT 1;", cancellationToken: cancellation.Token);
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+        AssertClosedAndNotDisposed(provider);
+    }
+
+    [Test]
+    public async Task LeaveTheConnectionToTheTransactionWhenAnOperationInsideItFails()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+        var stateAfterFailure = ConnectionState.Closed;
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
+        {
+            await provider.ExecuteAsync(PlayersInsert, new { Id = id });
+            try
+            {
+                await provider.ExecuteAsync(InvalidSql);
+            }
+            finally
+            {
+                stateAfterFailure = provider.ConnectionState;
+            }
+        });
+
+        await AssertPropagatesTheDriverFailure(transaction, "syntax");
+        stateAfterFailure.Should().Be(ConnectionState.Open);
+        await AssertPlayerNotWritten(id);
+        AssertClosedAndNotDisposed(provider);
+    }
+
     [SetUp]
     [TearDown]
     public async Task ClearPlayers()
@@ -240,6 +318,15 @@ public class SqlConnectionProviderShould
     private const string PlayerCount = "SELECT COUNT(*) FROM `Players` WHERE Id = @Id;";
     private const string PlayerById = "SELECT Id FROM `Players` WHERE Id = @Id;";
     private const string PlayerDelete = "DELETE FROM `Players` WHERE Id = @Id;";
+    private const string InvalidSql = "SELEC 1;";
+
+    /// <summary>The driver's own exception reaches the caller unwrapped (checked by type name to stay driver-agnostic).</summary>
+    private static async Task AssertPropagatesTheDriverFailure(Func<Task> operation, string messageFragment)
+    {
+        var failure = (await operation.Should().ThrowAsync<DbException>()).Which;
+        failure.GetType().Name.Should().Be("MySqlException");
+        failure.Message.Should().Contain(messageFragment);
+    }
 
     private static CancellationToken CancelledToken() => new(canceled: true);
 
@@ -260,6 +347,9 @@ public class SqlConnectionProviderShould
         => (Component)typeof(SqlConnectionProvider)
             .GetField("_sqlConnection", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(provider)!;
+
+    private static DbConnection UnderlyingDbConnectionOf(SqlConnectionProvider provider)
+        => (DbConnection)UnderlyingConnectionOf(provider);
 
     private static ServiceProvider BuildScopedServiceProvider()
     {
