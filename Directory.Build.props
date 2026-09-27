@@ -6,7 +6,7 @@
         Keep Gaffer.Api/nswag.json "infoVersion" equal to this version.
     -->
     <PropertyGroup Condition="'$(MSBuildProjectName)' == 'Gaffer.Api.Client'">
-        <GlobalPackageVersion Condition="'$(GlobalPackageVersion)' == ''">1.0.0</GlobalPackageVersion>
+        <GlobalPackageVersion Condition="'$(GlobalPackageVersion)' == ''">2.0.0</GlobalPackageVersion>
     </PropertyGroup>
 
     <Target Name="ValidateClientSemVer"
