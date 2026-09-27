@@ -7,7 +7,7 @@ public abstract class BaseSqlTest
 {
    private readonly IDatabaseConnectionProvider _connectionProvider;
    private string? _dbConnection;
-   protected List<string> _tablesToDelete;
+   protected List<string> _tablesToDelete = [];
 
    protected BaseSqlTest()
    {

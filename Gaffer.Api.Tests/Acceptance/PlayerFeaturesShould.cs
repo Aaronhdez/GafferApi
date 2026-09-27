@@ -15,9 +15,6 @@ public class PlayerFeaturesShould
     private GafferApiClientTest _client;
     
     private Guid PlayerId = TestDefaultValues.EmptyPlayerId;
-    private static readonly string FirstName = TestDefaultValues.DefaultFirstName;
-    private static readonly string LastName = TestDefaultValues.DefaultLastName;
-    private static readonly string SecondLastName = TestDefaultValues.DefaultSecondLastName;
     private readonly DateTime BirthDate = TestDefaultValues.DefaultBirthDate;
     private const Gender Gender = TestDefaultValues.DefaultGender;
     private Player Player1;

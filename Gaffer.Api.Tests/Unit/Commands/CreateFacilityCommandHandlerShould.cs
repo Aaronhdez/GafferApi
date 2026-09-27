@@ -44,7 +44,7 @@ public class CreateFacilityCommandHandlerShould
         await _handler.Handle(command, CancellationToken.None);
 
         await _repository.Received(1).Save(Arg.Is<Facility>(facility =>
-            facility.Name == command.Name
+            facility != null && facility.Name == command.Name
             && facility.Active == command.Active
             && facility.BuildDate == command.BuildDate
             && facility.Type == command.Type

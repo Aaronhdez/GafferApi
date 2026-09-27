@@ -33,7 +33,7 @@ public class CreatePlayerCommandHandlerShould
         await _handler.Handle(createPlayerCommand, CancellationToken.None);
 
         await _repository.Received(1).Save(Arg.Is<Player>(p =>
-            p.FirstName == TestDefaultValues.DefaultFirstName
+            p != null && p.FirstName == TestDefaultValues.DefaultFirstName
             && p.LastName == TestDefaultValues.DefaultLastName
             && p.SecondLastName == TestDefaultValues.DefaultSecondLastName
             && p.Birthdate == TestDefaultValues.DefaultBirthDate
@@ -61,7 +61,7 @@ public class CreatePlayerCommandHandlerShould
         savedPlayer.Should().NotBeNull();
         result.Id.Should().Be(savedPlayer!.Id);
         await _repository.Received(1).Save(Arg.Is<Player>(p =>
-            p.Id == result.Id
+            p != null && p.Id == result.Id
             && p.FirstName == command.FirstName
             && p.LastName == command.LastName
             && p.SecondLastName == command.SecondLastName

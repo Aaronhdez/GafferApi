@@ -18,12 +18,12 @@ public record UpdateFacilityStandCommand(string StandName, int StandCapacity, Gu
 public class UpdateFacilityCommand : ICommand
 {
     public Guid Id { get; set; }
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     public bool Active { get; set; }
     public DateTime BuildDate { get; set; }
     public FacilityType Type { get; set; }
     public int Capacity { get; set; }
-    public UpdateFacilityAddressCommand Address { get; set; }
+    public UpdateFacilityAddressCommand Address { get; set; } = null!;
     public List<UpdateFacilityStandCommand>? Stands { get; set; }
 }
 

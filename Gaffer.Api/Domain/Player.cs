@@ -7,7 +7,7 @@ public class Player(
     Guid id,
     string firstName,
     string lastName,
-    string secondLastName,
+    string? secondLastName,
     Gender gender,
     DateTime birthdate)
 {

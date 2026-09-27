@@ -3,12 +3,12 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 4 |
-| Pasos completados | 01 (APPROVED ciclo 1; F1 de higiene EOL pendiente para el operador, ver REVIEW.md); 02 (APPROVED ciclo 2; H1-H4 no bloqueantes, ver REVIEW.md) ; 03 (NEEDS_CHANGES ciclo 3: AC3.1-AC3.3 y AC3.6 demostrados; AC3.4 aceptado por REVIEWER como limitación del driver; AC3.5 no demostrado, pendiente de Q4); ciclo 4: 03 APPROVED (AC3.5 demostrado, H2 retirado) y 04 APPROVED (REVIEWER ciclo 4) |
+| Ciclo | 5 |
+| Pasos completados | 01 (APPROVED ciclo 1; F1 de higiene EOL pendiente para el operador, ver REVIEW.md); 02 (APPROVED ciclo 2; H1-H4 no bloqueantes, ver REVIEW.md) ; 03 (NEEDS_CHANGES ciclo 3: AC3.1-AC3.3 y AC3.6 demostrados; AC3.4 aceptado por REVIEWER como limitación del driver; AC3.5 no demostrado, pendiente de Q4); ciclo 4: 03 APPROVED (AC3.5 demostrado, H2 retirado) y 04 APPROVED (REVIEWER ciclo 4); ciclo 5: 05 APPROVED (REVIEWER ciclo 5; H1-H5 informativos/no bloqueantes, ver REVIEW.md) |
 | Pasos bloqueados | Ninguno. Q4, Q6 y Q7 respondidas antes del ciclo 4 (ver "Respuestas del operador (antes del ciclo 4)") |
 | Respuestas del operador (antes del ciclo 4) | Literal: "Q0. opción b / Q4. Opcion b / Q6. \"Gaffer Api\" / H2. Quitalo / Apruebo P3-1 y P3-2". Seguimiento: nivel de log de Q4 = "Information (Recomendado)"; Q7 = "c) No activar" (paso 05). Q5 sin respuesta → b) (solo los 12 registros). Q0 = b: corregir el paso 03 y avanzar al paso 04 en el mismo ciclo. P3-1/P3-2 → OPT-019/OPT-020 (OPT-019 lo aplica el operador; no aplicado por BUILDER) |
 | Actualización del plan (antes del ciclo 2) | Q2 respondida y después corregida por el operador (literal en `00-overview-and-open-questions.md`): la grada se identifica por su `Id` (`Guid`) existente, opcional en la petición; update sin borrado de gradas ausentes; `Id` desconocido/ajeno → 400 `Error.Facilities.Update.UnknownStand`. ULID descartado (anotado en "Posibles mejoras"); sin migración ni paquetes. Q9, Q11 y Q12 retiradas; Q10 y Q13 con valor por defecto. OPT-016 (nota `MySql.Data` `DisposeAsync` en `dev-stack.md`) incluida en el ciclo 2 como AC2.10 por decisión del operador. Ajuste final R-MAX (literal en `00-overview-and-open-questions.md`): con la facility ya a 4 gradas, una grada con `Id` no existente entre ellas se descarta sin error y el resto del update se aplica (AC2.11). Q14-Q18 respondidas por el operador (literal en `00`): Q14 = ignorar también la grada sin `Id` con 4 gradas; Q15 = crear la grada con `Id` desconocido/ajeno con menos de 4; Q16-Q18 por defecto. Clave `Error.Facilities.Update.UnknownStand` retirada (ningún caso la produce); Q13 por defecto reajustada a la clave `Error.Facilities.Update.DuplicatedStand` (AC2.12 nuevo). Q19 nueva (qué `Id` recibe la grada creada por Q15) con valor por defecto a) `Id` nuevo generado, no bloqueante. AC2.3, AC2.4, AC2.8 y AC2.11 reescritos. |
-| Siguiente | Checkpoint humano del ciclo 4 (OPTIMIZER y decisión del operador; paso 05 pendiente) |
+| Siguiente | OPTIMIZER ciclo 5 y checkpoint humano (DOCUMENTER solo con aprobación explícita) |
 | Bloqueos | Ninguno. Q1 sin respuesta: se aplica b) (sin `try/finally`), anotado como deuda. AC3.4 aceptado por REVIEWER (ciclo 3) como limitación del driver `MySql.Data` 26.7.0; su test `[Explicit]` retirado en el ciclo 4 (H2), la medición queda en el ciclo 3. |
 
 ## Secuenciación (un paso = un ciclo)
@@ -21,7 +21,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 2 | 02 - Update de Facility con gradas por `Id` (`Guid`) (+ OPT-016) | APPROVED |
 | 3 | 03 - Cancelación | NEEDS_CHANGES (solo AC3.5, Q4) |
 | 4 | Corrección del paso 03 (AC3.5, H2) + 04 - Cambios pequeños (Q0 = b) | APPROVED (paso 03 completo + paso 04) |
-| 5 | 05 - Warnings | - |
+| 5 | 05 - Warnings | APPROVED |
 | 6 | Reserva | - |
 
 ## Tiempos por agente
@@ -37,6 +37,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 3 | 2026-09-27T13:50:10Z | 2026-09-27T13:54:34Z |
 | BUILDER | 4 | 2026-09-27T14:08:59Z | 2026-09-27T14:17:17Z |
 | REVIEWER | 4 | 2026-09-27T14:19:08Z | 2026-09-27T14:21:49Z |
+| BUILDER | 5 | 2026-09-27T14:30:59Z | 2026-09-27T14:36:29Z |
+| REVIEWER | 5 | 2026-09-27T14:37:38Z | 2026-09-27T14:42:30Z |
 
 ## Prerrequisitos
 
@@ -189,6 +191,66 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | Orden de revalidación | Filtros por AC tras cada limpieza (AC4.1, AC4.4) y suite completa + build `--no-incremental` al final (registrado arriba) |
 | DI / `TestFixture` (lección permanente) | Sin handlers nuevos; TestFixture pasa a reutilizar `ConfigureActions()`, por lo que un handler nuevo registrado en producción queda registrado en tests y cubierto por `TestServerDependenciesShould` |
 | Desviaciones | (1) Fichero de test nuevo `Gaffer.Api.Tests/Integration/TestServerDependenciesShould.cs` (lo exige AC4.1; el plan no fija ubicación). (2) Ficheros de test tocados solo por `using` tras mover `IGafferApiClient` (consecuencia directa de AC4.2). (3) Evidencia opcional de AC4.5 con `dotnet-nswag` no ejecutada. (4) Los ficheros editados con `sed` quedaron con LF en el árbol de trabajo; `.gitattributes` (`*.cs text eol=lf`) normaliza igualmente |
+
+## Ciclo 5 - Paso 05 (BUILDER)
+
+| Campo | Valor |
+| --- | --- |
+| Inicio | 2026-09-27T14:30:59Z |
+| Fin | 2026-09-27T14:36:29Z |
+| Decisión del operador | Literal: "Aprueba P4 y sigue con el ciclo 5". Q7 = "c) No activar"; Q8 sin respuesta → a) |
+| Base | Pasos 01-04 ya commiteados (4bd203a, 5a8c0b1, 6652ef9); árbol limpio de producto al empezar |
+| Preflight | `docker ps` → `Gaffer.Database` Up |
+
+### Recuentos (`dotnet build gaffer-api.sln --no-incremental -v q`, líneas `warning` deduplicadas con `sort -u`)
+
+| Código | Antes | Tras producción | Final |
+| --- | --- | --- | --- |
+| CS8618 | 26 | 7 (tests) | 0 |
+| CS8625 | 11 | 6 (tests) | 0 |
+| CS8602 | 13 | 13 | 0 |
+| CS0414 | 3 | 3 | 0 |
+| CS8603 | 1 | 0 | 0 |
+| CS8604 | 1 | 0 | 0 |
+| CS9113 | 1 | 1 | 0 |
+| **Total** | **56** (Api 19, Tests 34, Migrations 3, Client 0) | **30** (solo Tests) | **0** |
+
+CS0169 y CS8601 del plan no aparecen en la base. `Gaffer.Api.Client`: 0 warnings (nada que registrar para el operador según Q8). 4 de los CS8625 de tests (`null` como `secondLastName` en `PlayerFeatureShould`/`PlayerFeaturesShould`) desaparecen con la corrección de producción de `Player`.
+
+### Correcciones (sin `#pragma`, sin `NoWarn`, sin cambios en `.csproj`)
+
+| Fichero | Cambio | Justificación |
+| --- | --- | --- |
+| `SqlFacilityRepository.cs` | `FacilityRow`/`AddressRow`/`StandRow`: `string ... = null!` (9); `GetAddress` → `Task<Address?>` | Filas privadas de Dapper; columnas `NotNullable` en `M0002`. `GetAddress` sí devuelve `null` si no hay fila |
+| `Facility.cs` | Parámetro `Address? address` | El constructor ya valida `address ?? throw FacilityValidationException`: el `null` es una entrada contemplada |
+| `Player.cs` | Parámetro `string? secondLastName` | La propiedad ya es `string?` y la columna es `Nullable()` |
+| `PlayerController.cs` (`SearchPlayersFilter`), `UpdateFacilityCommandHandler.cs` (`Name`, `Address`), `SearchPlayersQueryHandler.cs` (`QueryFilter`), `IPlayerRepository.cs` (`SearchCriteria`) | `= null!` | Q8 a): sin `?` ni `required` para no alterar el OpenAPI (DTO de petición) ni el valor en tiempo de ejecución (sigue `null` si no llega) |
+| `Gaffer.Api.Migrations/Program.cs` | `DatabaseSettings` `= null!`; `EnsureDatabaseExists(..., string databaseName)` sin `= null` | Configuración enlazada; el único llamador pasa siempre el nombre (con `null` el SQL sería inválido) |
+| Tests `Unit/{Commands,Controllers,Queries}` (13 lambdas `Arg.Is`) | Guarda `x != null && ...` | Convención ya existente en `PlayerControllerShould` (L111, L128); NSubstitute 6 anota el argumento como anulable. Un `null` sigue sin coincidir |
+| `PlayerControllerShould.cs` | `SearchPlayerResult` de prueba con `TestDefaultValues.DefaultFirstName/LastName` en lugar de `null` | Los tests solo verifican la llamada al handler |
+| `PlayerFeaturesShould.cs` | Borrados 3 campos sin uso (CS0414) | — |
+| `TestFixture.cs` | Borrado campo estático `HttpClient` sin uso | Sin referencias (grep). DI sin cambios |
+| `SqlTest.cs` / `Uris.cs` | `_tablesToDelete = []`; `BaseAddress = string.Empty` | Siempre asignados antes de usarse; `null + "api/..."` y `"" + "api/..."` dan la misma cadena |
+| `UseCasesMock.cs` | Sustitutos como inicializadores de propiedad (se elimina `AddPlayerActions`) | Mismo estado inicial |
+| `GafferApiClientTest.cs` | `GafferApiClientException` expone `ResponseContent` (CS9113) | Conserva el contenido de la respuesta sin cambiar `Message` |
+
+### Evidencia
+
+| AC | Comando | Resultado |
+| --- | --- | --- |
+| AC5.1 | build `--no-incremental -v q` (base) | 56 (tabla) |
+| AC5.2 | mismo build tras producción / final / final tras borrar el test temporal | 30 / 0 / 0 advertencias, 0 errores |
+| AC5.3 | test temporal (scratchpad, copiado y borrado) que arranca `StartupTestServer` y vuelca `/swagger/{v1,v2,v3,AutogeneratedClient}/swagger.json`, antes y después; `cmp` | 4/4 idénticos byte a byte (v1 y AutogeneratedClient 200; v2/v3 404 en ambos) |
+| AC5.4 | — | Ninguna supresión; `null!` solo en las propiedades de la tabla, justificadas |
+| AC5.5 | — | Q7 = c: sin cambios en `TreatWarningsAsErrors` |
+| AC5.6 | `dotnet test gaffer-api.sln --verbosity quiet` antes / después | 269/269 / 269/269, 0 omitidos |
+| Rojo→verde | Rojo = las 56 advertencias de la base; verde = 0 con la suite igual | Refactor sin cambio de comportamiento: sin tests nuevos |
+
+### Desviaciones
+
+1. Builds por proyecto (producción, luego tests) en lugar de uno por código de warning; el recuento por código queda en la tabla.
+2. Ficheros editados con `sed` quedan con LF en el árbol (`.gitattributes` normaliza).
+3. `DummyConnectionProvider`, `.csproj` y `Directory.Build.props` sin tocar.
 
 ## Documentación modificada
 

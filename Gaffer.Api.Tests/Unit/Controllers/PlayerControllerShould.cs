@@ -37,7 +37,7 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
-                new(Guid.NewGuid(), null, null, null, default, Gender.MALE)
+                new(Guid.NewGuid(), TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
         ;
 
@@ -45,7 +45,7 @@ public class PlayerControllerShould
 
         await _searchPlayersQueryHandler.Received(1)
             .Handle(Arg.Is<SearchPlayersQuery>(spq =>
-                    spq.Filters[0].Name == "Id"
+                    spq != null && spq.Filters[0].Name == "Id"
                     && spq.Filters[0].Value == $"{newGuid}"),
                 Arg.Any<CancellationToken>());
     }
@@ -56,7 +56,7 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
-                new(Guid.NewGuid(), null, null, null, default, Gender.MALE)
+                new(Guid.NewGuid(), TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
 
         await _controller.Search(new SearchPlayersRequest());
@@ -76,14 +76,14 @@ public class PlayerControllerShould
         _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
-                new(newGuid, null, null, null, default, Gender.MALE)
+                new(newGuid, TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
 
         await _controller.Search(searchPlayersRequest);
 
         await _searchPlayersQueryHandler.Received(1)
             .Handle(Arg.Is<SearchPlayersQuery>(spq =>
-                    spq.Filters[0].Name == guidFilter.Name
+                    spq != null && spq.Filters[0].Name == guidFilter.Name
                     && spq.Filters[0].Value == guidFilter.Value),
                 Arg.Any<CancellationToken>());
     }

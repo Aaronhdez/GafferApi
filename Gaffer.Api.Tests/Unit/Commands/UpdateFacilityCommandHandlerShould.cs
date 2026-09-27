@@ -54,10 +54,10 @@ public class UpdateFacilityCommandHandlerShould
 
         await _repository.Received(1)
             .Get(Arg.Is<FacilitySearchCriteria>(sc =>
-                    sc.criteriaList.Any(c => c.Name == "Id" && c.Value == _facilityId.ToString())),
+                    sc != null && sc.criteriaList.Any(c => c.Name == "Id" && c.Value == _facilityId.ToString())),
                 Arg.Any<CancellationToken>());
         await _repository.Received(1).Update(Arg.Is<Facility>(facility =>
-                facility.Id == existing.Id
+                facility != null && facility.Id == existing.Id
                 && facility.Name == command.Name
                 && facility.Active == command.Active
                 && facility.BuildDate == command.BuildDate

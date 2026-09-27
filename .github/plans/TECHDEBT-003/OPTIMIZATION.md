@@ -186,4 +186,64 @@ No se repiten propuestas ya registradas en `MEMORIES.md`. S7 extiende el patrón
 
 ### Estado de aprobación
 
-Pendiente del checkpoint humano de este ciclo (no resuelto en este modo de análisis).
+Decisión del operador (verbatim): "Aprueba P4 y sigue con el ciclo 5".
+
+- **P4-1** → aprobada, registrada como `OPT-021` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `AGENTS.md` (sección "Plans and Evidence") o `.claude/agents/builder.md`.
+
+## Ciclo 5 - Paso 05 (0 warnings de compilación) — todos los pasos APPROVED, cierre probable del plan
+
+### Uso medido
+
+`usage-slice` repite el vacío total de telemetría de los ciclos 1-4: sin datos con `--repo gaffer-api` (`claude-code` y `copilot`), ni con `--repo TECHDEBT-003` (patrón OPT-008; solo fila `copilot` "sin datos"). Vacío total, no un clúster desplazado → aplica el criterio de corte de OPT-011: se usa `medido:agent-result` sin más bisección.
+
+| Agente | Tokens (medido:agent-result) | Llamadas a herramientas | Duración | Δ vs. ciclo 4 (tokens / llamadas / duración) |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER | 77 802 | 41 | 389 925 ms (~6 min 30 s) | −17,0 % / −32,8 % / −35,0 % |
+| REVIEWER | 54 888 | 21 | 206 491 ms (~3 min 26 s) | +2,2 % / +40,0 % / +9,3 % |
+| OPTIMIZER (registro entre ciclos 4→5) | 50 800 | 5 | n/a | +12,9 % tokens vs. 3→4 (45 006), mismas 5 llamadas, para 1-2 propuestas (mismo patrón que 2→3→4: 37 922 → 45 006 → 50 800) |
+
+Comparación con `usage/*.md`: BUILDER estimó ~70k+10k (~80k) frente a 77 802 medido (~3 % por debajo, la estimación más precisa del plan hasta ahora). REVIEWER estimó ~55k+7k (~62k) frente a 54 888 medido (~11,5 % por debajo, en línea con las brechas de ciclos 3-4).
+
+**Hallazgo principal**: BUILDER siguió la tendencia de mejora ya observada en el ciclo 4 (tokens/llamadas/duración a la baja pese a un paso de alcance no trivial, 56→0 warnings en 21 ficheros); tanto `usage/BUILDER.md` como `usage/REVIEWER.md` registran `STATUS.md` leído "por rangos"/"grep/sed por secciones" en vez de una lectura íntegra persistida como salida grande (a diferencia de los ciclos 3-4, donde ambos agentes registraron un `cat`/lectura inicial completa de 31,5-44 KB). REVIEWER, en cambio, subió llamadas a herramienta un 40 % (15→21) pese a revisar un solo paso de refactor mecánico: la causa registrada es un intento fallido reproduciendo AC5.3.
+
+### Spikes detectados
+
+| Spike | Valor / origen | Causa probable |
+| --- | --- | --- |
+| S8 | REVIEWER reprodujo AC5.3 (swagger.json idéntico antes/después) en **dos** copias scratchpad: el primer intento arrancó el servidor de pruebas con `TestFixture.TestServer` y obtuvo 404 en las cuatro rutas comprobadas; el segundo intento, con `TestShared/StartupTestServer.cs` (la clase que sí usó BUILDER en el mismo ciclo y en el ciclo 4), dio los 4/4 idénticos esperados (`usage/REVIEWER.md` ciclo 5: "primer intento con `TestFixture.TestServer` dio 404 en todos, repetido con `StartupTestServer`") | Ninguna nota de `.github/doc/common/test-stack.md` o `test-stack-documentation.md` distingue `TestFixture.TestServer` (el `TestServer` compartido entre tests, con el pipeline de test ya configurado por otros medios) de `Gaffer.Api.Tests/TestShared/StartupTestServer.cs` (arranque de servidor completo necesario para volcar rutas Swagger reales, ya usado por BUILDER en los ciclos 4 y 5 para el mismo propósito). REVIEWER repitió el mismo tipo de sondeo por ensayo-error que BUILDER ya había resuelto, sin una nota reutilizable que se lo evitara — mismo patrón de fondo que OPT-010/012/016/019 (hecho de comportamiento de la infraestructura de test descubierto por sondeo repetido, en vez de documentado una vez), aquí por primera vez del lado de REVIEWER en vez de BUILDER |
+
+No se repiten propuestas ya registradas en `MEMORIES.md`. S8 es un hecho nuevo y distinto de OPT-010 (nulabilidad Swagger/NSwag), OPT-012 (tipo de excepción MySQL), OPT-016/OPT-019 (ciclo de vida de conexión/cancelación de `MySql.Data`): aquí el objeto sondeado es la infraestructura de arranque de servidor de pruebas del propio proyecto (`StartupTestServer` vs. `TestFixture.TestServer`), no una dependencia externa.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P5-1 | Documentar en `.github/doc/common/test-stack-documentation.md` (o `test-stack.md`) la nota: "Para arrancar un servidor de pruebas completo y volcar/comparar rutas servidas realmente (p. ej. `/swagger/*/swagger.json`), usar `Gaffer.Api.Tests/TestShared/StartupTestServer.cs`, no el `TestServer` interno de `TestFixture` (este último no expone las rutas de Swagger con las convenciones de arranque completo; da 404 en todas)." | `.github/doc/common/test-stack-documentation.md` (o `test-stack.md`) | Evita que REVIEWER (o BUILDER en un plan futuro) repita el sondeo de ensayo-error con la clase de servidor de pruebas equivocada al verificar contrato OpenAPI servido; en este ciclo costó una copia scratchpad completa y una ejecución adicional del test temporal, visible en el +40 % de llamadas a herramienta de REVIEWER (15→21) pese a revisar un único paso de refactor mecánico | `usage/REVIEWER.md` ciclo 5 ("primer intento con `TestFixture.TestServer` dio 404 en todos, repetido con `StartupTestServer`"); `STATUS.md`/`usage/BUILDER.md` ciclos 4-5 (BUILDER ya usaba `StartupTestServer` correctamente para el mismo propósito) |
+
+### Efecto observado de propuestas previas (OPT-013/OPT-014, OPT-017/OPT-020, OPT-021)
+
+- **OPT-013 / OPT-014** (Hierarchical Summary para `OPTIMIZATION.md`/`MEMORIES.md`): siguen sin aplicarse. El registro de OPTIMIZER entre ciclos continúa la misma tendencia de crecimiento ya documentada (30 202 → 34 858 → 50 838 en TECHDEBT-002; 37 922 → 45 006 → **50 800** en este plan, transiciones 2→3, 3→4, 4→5), con el mismo número de llamadas (5) y, según el dato aportado para este ciclo, para solo 1-2 propuestas nuevas que registrar — confirma que el coste escala con el contexto acumulado de `OPTIMIZATION.md`/`MEMORIES.md` (ambos de lectura íntegra obligatoria), no con el volumen de trabajo de registro en sí. Tercera medición consecutiva de esta plantilla en este plan sin que se haya aplicado la compactación propuesta.
+- **OPT-017 / OPT-020** (consolidar decisiones pendientes antes de actuar): efecto positivo sostenido. La transición al ciclo 5 repitió el patrón del ciclo 4: ninguna re-invocación de PLANNER, ninguna pregunta pendiente bloqueando un AC al iniciar el ciclo (Q7 y Q8 ya resueltas o con valor por defecto antes de empezar, según `STATUS.md` ciclo 5), y el ciclo terminó `APPROVED` a la primera sin sorpresa de veredicto parcial — tercer ciclo consecutivo (3→4→5, descontando el propio ciclo 3 donde se originó el hallazgo) sin recurrencia de S6/H1 del ciclo 3. `Estado` se mantiene `pendiente` en `MEMORIES.md` (no se ha editado `AGENTS.md`), pese al efecto conductual positivo sostenido en los tres últimos ciclos del plan.
+- **OPT-021** (Hierarchical Summary para `STATUS.md`): no aplicada formalmente (no se compactó ninguna sección de `STATUS.md`, que sigue creciendo íntegro: 196 líneas en el ciclo 4 → 258 líneas en el ciclo 5), pero el síntoma que motivó la propuesta (S7: lectura inicial completa de `STATUS.md` persistida como salida grande, dos ciclos consecutivos 3-4) **no se repitió** en el ciclo 5: `usage/BUILDER.md` registra `STATUS.md (grep/sed por secciones)` y `usage/REVIEWER.md` registra `STATUS.md por rangos`, ninguno de los dos con una lectura íntegra en la lista de "comandos con salida grande". Esto es consistente con la guía informal de lecturas acotadas de `STATUS.md` que este ciclo se pasó a BUILDER/REVIEWER en lugar de la compactación formal propuesta en `OPT-021` (aún sin aplicar en `AGENTS.md`). Efecto parcial: mitiga el síntoma por disciplina de lectura, pero no resuelve la causa de fondo (el fichero sigue sin compactarse y seguirá creciendo en cualquier plan futuro que reutilice el mismo patrón de secuenciación).
+
+### Brechas de datos
+
+- `usage-slice` sigue sin devolver datos medidos de entrada fresca vs. caché para BUILDER/REVIEWER del ciclo 5 (vacío total de telemetría en las cuatro consultas de esta invocación, igual que los ciclos 1-4); todo el análisis de tokens se apoya en `medido:agent-result`.
+- No es posible aislar en tokens exactos el coste del segundo intento de REVIEWER en AC5.3 (S8) sin `usage-slice`; se infiere de la diferencia de llamadas a herramienta (+40 %) frente a un alcance de revisión más simple que ciclos previos.
+- El total de tokens del plan completo (ver resumen abajo) no incluye: el coste de la planificación inicial (ciclo 0, sin dato reportado), el registro de OPTIMIZER entre los ciclos 1→2 (no se reportó explícitamente en `OPTIMIZATION.md` de ese momento), ni el coste de las propias invocaciones de OPTIMIZER en modo análisis (solo se ha registrado el coste de sus invocaciones en modo registro entre ciclos). El total es, por tanto, un suelo medido, no el gasto real completo del plan.
+
+### Estado de aprobación
+
+Pendiente de decisión del operador en el checkpoint de este ciclo (verdict `APPROVED`, plan probablemente cerrado; DOCUMENTER requiere aprobación explícita).
+
+## Resumen de uso de todo el plan (ciclos 1-5, cierre probable)
+
+| Rol | Origen | Total medido (tokens) | Detalle por ciclo |
+| --- | --- | ---: | --- |
+| BUILDER | `medido:agent-result` | **498 895** | 64 411 / 126 322 / 136 576 / 93 784 / 77 802 (ciclos 1-5) |
+| REVIEWER | `medido:agent-result` | **305 244** | 45 375 / 75 680 / 75 593 / 53 708 / 54 888 (ciclos 1-5) |
+| PLANNER (solo re-planificación post-aprobación) | `medido:agent-result` | **211 043** | 4 invocaciones entre ciclos 1→2 (69 389 + 45 876 + 41 815 + 53 963); ninguna invocación de re-planificación en las transiciones 2→3, 3→4 ni 4→5 |
+| OPTIMIZER (solo registro entre ciclos) | `medido:agent-result` | **133 728** | 37 922 (2→3) + 45 006 (3→4) + 50 800 (4→5); sin dato del registro 1→2 |
+| **Total parcial medido** | — | **1 148 910** | Suelo medido; excluye planificación inicial (ciclo 0), registro OPTIMIZER 1→2 y coste propio de las invocaciones de OPTIMIZER en modo análisis (no autoinformado) |
+
+Patrón dominante de todo el plan: el coste de BUILDER+REVIEWER por ciclo bajó de forma sostenida desde el pico del ciclo 3 (212 169) hasta el ciclo 5 (132 690), pese a alcance comparable o mayor por ciclo, coincidiendo con la aplicación conductual de OPT-017/OPT-018/OPT-020 (consolidación de decisiones, `Edit` por ancla) — evidencia consistente de que estas optimizaciones, aunque `pendiente` formalmente en `MEMORIES.md`, ya producen ahorro medible. En paralelo, el coste de coordinación entre ciclos (PLANNER de re-planificación + OPTIMIZER de registro) se concentró casi por completo en la transición 1→2 (211 043 de un total de 344 771 en coordinación), un patrón que OPT-017 explica directamente y que no se repitió en ninguna transición posterior.

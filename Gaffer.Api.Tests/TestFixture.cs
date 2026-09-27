@@ -28,7 +28,6 @@ public class TestFixture
     public static IConfigurationRoot Configuration;
     public static IGafferApiClient GafferApiClientTest;
     public static IDatabaseConnectionProvider SqlConnectionProviderTest { get; set; }
-    public static HttpClient HttpClient;
     public static TestServer TestServer;
     public static UseCasesMock UseCasesMock;
 

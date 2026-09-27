@@ -60,7 +60,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         return (whereClause, parameters);
     }
 
-    private async Task<Address> GetAddress(Guid facilityId, CancellationToken cancellationToken)
+    private async Task<Address?> GetAddress(Guid facilityId, CancellationToken cancellationToken)
     {
         const string query =
             "SELECT a.* FROM `Addresses` a " +
@@ -302,28 +302,28 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     private class FacilityRow
     {
         public Guid Id { get; set; }
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
         public bool Active { get; set; }
         public DateTime BuildDate { get; set; }
-        public string Type { get; set; }
+        public string Type { get; set; } = null!;
         public int Capacity { get; set; }
     }
 
     private class AddressRow
     {
         public Guid Id { get; set; }
-        public string Street { get; set; }
-        public string StreetNumber { get; set; }
-        public string PostalCode { get; set; }
-        public string City { get; set; }
-        public string Region { get; set; }
-        public string Country { get; set; }
+        public string Street { get; set; } = null!;
+        public string StreetNumber { get; set; } = null!;
+        public string PostalCode { get; set; } = null!;
+        public string City { get; set; } = null!;
+        public string Region { get; set; } = null!;
+        public string Country { get; set; } = null!;
     }
 
     private class StandRow
     {
         public Guid Id { get; set; }
-        public string StandName { get; set; }
+        public string StandName { get; set; } = null!;
         public int StandCapacity { get; set; }
     }
 }

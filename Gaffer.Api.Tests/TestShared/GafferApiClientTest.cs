@@ -52,4 +52,7 @@ public class GafferApiClientTest(HttpClient client) : IGafferApiClient
     }
 }
 
-public class GafferApiClientException(HttpStatusCode resultStatusCode, string exMessage) : Exception($"{resultStatusCode}");
+public class GafferApiClientException(HttpStatusCode resultStatusCode, string exMessage) : Exception($"{resultStatusCode}")
+{
+    public string ResponseContent { get; } = exMessage;
+}

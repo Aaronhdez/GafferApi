@@ -100,7 +100,7 @@ public class SearchPlayersQueryHandlerShould
         var result = await _handler.Handle(query, CancellationToken.None);
 
         await _repository.Received(1).Get(Arg.Is<PlayerSearchCriteria>(criteria =>
-            criteria.criteriaList.Count == 2
+            criteria != null && criteria.criteriaList.Count == 2
             && criteria.criteriaList.Any(filter => filter.Name == "FirstName" && filter.Value == "Jane")
             && criteria.criteriaList.Any(filter => filter.Name == "Gender" && filter.Value == nameof(Gender.FEMALE))),
             Arg.Any<CancellationToken>());
