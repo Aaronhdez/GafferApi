@@ -375,6 +375,87 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
     }
 
     [TestFixture]
+    public class WhenPropagatingTheCancellationToken : SqlFacilityRepositoryShould
+    {
+        private TokenRecordingConnectionProvider _recorder;
+        private SqlFacilityRepository _recordedRepository;
+        private CancellationTokenSource _cancellation;
+
+        [SetUp]
+        public void SetUpRecorder()
+        {
+            _recorder = new TokenRecordingConnectionProvider(_databaseConnectionProvider);
+            _recordedRepository = new SqlFacilityRepository(_recorder);
+            _cancellation = new CancellationTokenSource();
+        }
+
+        [TearDown]
+        public void DisposeCancellation() => _cancellation.Dispose();
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenSaving()
+        {
+            await _recordedRepository.Save(AFacilityWithTwoStands(), _cancellation.Token);
+
+            // Transaction + facility + address and its link + two stands and their links.
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 8);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenGettingIncludingAddressAndStandsLookups()
+        {
+            var facility = AFacilityWithTwoStands();
+            await _repository.Save(facility, CancellationToken.None);
+
+            var result = await _recordedRepository.Get(new FacilitySearchCriteria
+            {
+                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{facility.Id}" }]
+            }, _cancellation.Token);
+
+            result.Should().ContainSingle();
+            // Facilities + address lookup + stands lookup.
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 3);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenUpdating()
+        {
+            var facility = AFacilityWithTwoStands();
+            await _repository.Save(facility, CancellationToken.None);
+            var updated = new Facility(facility.Id, "Renamed Arena", facility.Active, facility.BuildDate, facility.Type,
+                facility.Capacity, facility.Address,
+                [facility.Stands[0], new Stand(Guid.NewGuid(), "East", 1000)]);
+
+            await _recordedRepository.Update(updated, _cancellation.Token);
+
+            // Transaction + facility + address + linked stands lookup + one stand update + one stand insert and its link.
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 7);
+        }
+
+        [Test]
+        public async Task PassItsTokenToTheProviderWhenDeleting()
+        {
+            var facility = AFacilityWithTwoStands();
+            await _repository.Save(facility, CancellationToken.None);
+
+            await _recordedRepository.Delete(facility.Id, _cancellation.Token);
+
+            // Transaction + stands and their links + address and its link + facility.
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 6);
+        }
+
+        private static Facility AFacilityWithTwoStands() => new(
+            Guid.NewGuid(),
+            "City Arena",
+            true,
+            new DateTime(2020, 7, 20),
+            FacilityType.Arena,
+            18000,
+            new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
+            [new Stand(Guid.NewGuid(), "North", 4500), new Stand(Guid.NewGuid(), "South", 4500)]);
+    }
+
+    [TestFixture]
     public class WhenDeletingAFacility : SqlFacilityRepositoryShould
     {
         [Test]

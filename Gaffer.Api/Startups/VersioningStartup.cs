@@ -17,7 +17,6 @@ public static class VersioningStartup {
                 options.ReportApiVersions = true;
             })
             .AddMvc(options => {
-                var apiVersionsDefinition = new GafferApiVersioningDefinition();
                 options.Conventions.Controller<PlayerController>().HasApiVersions(apiVersionsDefinition.Versions);
                 options.Conventions.Controller<FacilitiesController>().HasApiVersions(apiVersionsDefinition.Versions);
             })

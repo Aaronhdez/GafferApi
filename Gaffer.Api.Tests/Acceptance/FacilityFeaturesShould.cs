@@ -2,7 +2,6 @@ using System.Net;
 using System.Text;
 using AwesomeAssertions;
 using Gaffer.Api.Queries;
-using Gaffer.Api.Shared.Clients;
 using Gaffer.Api.Tests.TestShared;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

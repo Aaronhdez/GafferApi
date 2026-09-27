@@ -1,4 +1,4 @@
-﻿namespace Gaffer.Api.Shared.Clients;
+﻿namespace Gaffer.Api.Tests.TestShared;
 
 public interface IGafferApiClient
 {

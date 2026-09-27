@@ -8,22 +8,22 @@ public class DummyConnectionProvider : IDatabaseConnectionProvider
         throw new NotImplementedException();
     }
 
-    public Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
+    public Task<T> QueryScalarAsync<T>(string query, object? parameters = null, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
+    public Task<List<T>> QueryAsync<T>(string query, object? parameters = null, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task ExecuteAsync(string query, object? parameters = null)
+    public Task ExecuteAsync(string query, object? parameters = null, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
 
-    public Task ExecuteInTransactionAsync(Func<Task> operations)
+    public Task ExecuteInTransactionAsync(Func<Task> operations, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }

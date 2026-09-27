@@ -19,25 +19,25 @@ public class FacilitiesController(
     : ControllerBase
 {
     [HttpGet("{id}")]
-    public async Task<SearchFacilityResult> GetBy([FromRoute] Guid id)
+    public async Task<SearchFacilityResult> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var query = new SearchFacilitiesQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
-        var queryResult = await searchFacilitiesQueryHandler.Handle(query, CancellationToken.None);
+        var queryResult = await searchFacilitiesQueryHandler.Handle(query, cancellationToken);
         var facility = queryResult.FirstOrDefault();
         return facility ?? throw new FacilityNotFoundException($"Facility with id {id} not found", id);
     }
 
     [HttpGet("")]
-    public async Task<List<SearchFacilityResult>> GetAll()
+    public async Task<List<SearchFacilityResult>> GetAll(CancellationToken cancellationToken = default)
     {
         var query = new SearchFacilitiesQuery();
-        return await searchFacilitiesQueryHandler.Handle(query, CancellationToken.None);
+        return await searchFacilitiesQueryHandler.Handle(query, cancellationToken);
     }
 
     [HttpPost("")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
-    public async Task<ActionResult<Guid>> Create([FromBody] CreateFacilityRequest request)
+    public async Task<ActionResult<Guid>> Create([FromBody] CreateFacilityRequest request, CancellationToken cancellationToken = default)
     {
         var command = new CreateFacilityCommand(
             request.Name,
@@ -54,18 +54,18 @@ public class FacilitiesController(
                 request.Address.Country),
             request.Stands?.Select(stand => new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
 
-        var result = await createFacilityCommandHandler.Handle(command, CancellationToken.None);
+        var result = await createFacilityCommandHandler.Handle(command, cancellationToken);
         return CreatedAtAction(nameof(GetBy), new { id = result.Id }, result.Id);
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete([FromRoute] Guid id)
+    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await deleteFacilityCommandHandler.Handle(new DeleteFacilityCommand(id), CancellationToken.None);
+        await deleteFacilityCommandHandler.Handle(new DeleteFacilityCommand(id), cancellationToken);
     }
 
     [HttpPut("{id}")]
-    public async Task Update([FromRoute] Guid id, [FromBody] UpdateFacilityRequest request)
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdateFacilityRequest request, CancellationToken cancellationToken = default)
     {
         await updateFacilityCommandHandler.Handle(new UpdateFacilityCommand
         {
@@ -83,7 +83,7 @@ public class FacilitiesController(
                 request.Address.Region,
                 request.Address.Country),
             Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
-        }, CancellationToken.None);
+        }, cancellationToken);
     }
 }
 

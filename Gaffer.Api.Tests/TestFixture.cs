@@ -2,14 +2,10 @@
 using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
 using Asp.Versioning.Conventions;
-using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
-using Gaffer.Api.Infrastructure;
-using Gaffer.Api.Queries;
-using Gaffer.Api.Shared.Clients;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Exceptions;
-using Gaffer.Api.Shared.Repositories;
+using Gaffer.Api.Startups;
 using Gaffer.Api.Tests.TestShared;
 using Gaffer.Api.Versioning;
 using Microsoft.AspNetCore.Builder;
@@ -85,7 +81,7 @@ public class TestFixture
                 webHostBuilder.UseUrls(baseAddress);
                 if (loggerProvider != null) webHostBuilder.ConfigureLogging(logging => logging.AddProvider(loggerProvider));
                 webHostBuilder.ConfigureAppConfiguration((builderContext, config) => TestConfiguration.AddSources(config));
-                webHostBuilder.ConfigureServices(services =>
+                webHostBuilder.ConfigureServices((builderContext, services) =>
                 {
                     services.AddMvcCore()
                         .AddMvcOptions(options =>
@@ -115,16 +111,9 @@ public class TestFixture
                     services.AddRouting();
                     services.AddControllers();
                     services.AddScoped<IDatabaseConnectionProvider>(_ => new SqlConnectionProvider(testDatabase));
-                    services.AddScoped<IPlayerRepository,SqlPlayerRepository>();
-                    services.AddScoped<IFacilityRepository, SqlFacilityRepository>();
-                    services.AddScoped<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>, CreatePlayerCommandHandler>();
-                    services.AddScoped<ICommandHandler<CreateFacilityCommand, CreateFacilityResponse>, CreateFacilityCommandHandler>();
-                    services.AddScoped<ICommandHandler<DeleteFacilityCommand>, DeleteFacilityCommandHandler>();
-                    services.AddScoped<ICommandHandler<UpdateFacilityCommand>, UpdateFacilityCommandHandler>();
-                    services.AddScoped<IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>>, SearchFacilitiesQueryHandler>();
-                    services.AddScoped<ICommandHandler<DeletePlayerCommand>, DeletePlayerCommandHandler>();
-                    services.AddScoped<ICommandHandler<UpdatePlayerCommand>, UpdatePlayerCommandHandler>();
-                    services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
+                    // Same repository and handler registrations as production (Startup.ConfigureServices).
+                    services.ConfigureRepositories(builderContext.Configuration);
+                    services.ConfigureActions();
                     services.AddHttpContextAccessor();
                 });
                 webHostBuilder.UseStartup<TestStartup>();

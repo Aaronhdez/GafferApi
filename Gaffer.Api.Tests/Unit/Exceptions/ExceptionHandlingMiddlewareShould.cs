@@ -119,6 +119,56 @@ public class ExceptionHandlingMiddlewareShould
         logs.EntriesFor<ExceptionHandlingMiddleware>().Should().BeEmpty();
     }
 
+    [Test]
+    public async Task ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient()
+    {
+        var middleware = CreateMiddleware(new OperationCanceledException());
+        var context = CreateAbortedContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(ClientClosedRequest);
+        context.Response.Body.Length.Should().Be(0);
+    }
+
+    [Test]
+    public async Task LogAnAbortedRequestOnceAsInformationWithoutError()
+    {
+        var middleware = CreateMiddleware(new TaskCanceledException());
+
+        await middleware.Invoke(CreateAbortedContext());
+
+        var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Information);
+    }
+
+    [Test]
+    public async Task KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted()
+    {
+        var exception = new OperationCanceledException();
+        var middleware = CreateMiddleware(exception);
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(500);
+        var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
+        entries.Should().ContainSingle();
+        entries[0].Level.Should().Be(LogLevel.Error);
+    }
+
+    private const int ClientClosedRequest = 499;
+
+    private static DefaultHttpContext CreateAbortedContext()
+    {
+        var context = CreateContext();
+        var aborted = new CancellationTokenSource();
+        aborted.Cancel();
+        context.RequestAborted = aborted.Token;
+        return context;
+    }
+
     private ExceptionHandlingMiddleware CreateMiddleware(Exception exception) =>
         new(_ => throw exception, logs.CreateLogger<ExceptionHandlingMiddleware>());
 

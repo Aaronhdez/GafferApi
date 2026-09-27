@@ -24,24 +24,6 @@ namespace Gaffer.Api.Startups {
                 document.OperationProcessors.Insert(0, new ApiVersionProcessor());
                 document.DocumentName = documentName;
                 document.Title = productName.ToUpper();
-                //document.AddVersioning(documentName);
-                //var idOptions = serviceProvider.GetService<IOptions<IdentityServerConfig>>()?.Value;
-                //if (idOptions != null && !string.IsNullOrEmpty(idOptions.Authority)) {
-                //    document.AddSecurity("oauth2",
-                //        new List<string> { idOptions.ApiName, $"{productName} - full access" },
-                //        new OpenApiSecurityScheme {
-                //            Description = "OAuth2 - Client Credentials",
-                //            Type = OpenApiSecuritySchemeType.OAuth2,
-                //            Flows = new OpenApiOAuthFlows {
-                //                ClientCredentials = new OpenApiOAuthFlow {
-                //                    TokenUrl = new Uri(new Uri(idOptions.Authority), "connect/token").ToString(),
-                //                    Scopes = new Dictionary<string, string> {
-                //                        {idOptions.ApiName, $"{productName} - full access"}
-                //                    }
-                //                }
-                //            }
-                //        });
-                //}
             });
         }
         

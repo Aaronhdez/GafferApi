@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Text;
-using Gaffer.Api.Shared.Clients;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Gaffer.Api.Tests.TestShared;

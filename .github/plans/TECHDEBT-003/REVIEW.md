@@ -89,3 +89,94 @@ Ninguno.
 ### Bloqueos
 
 Ninguno.
+
+## Ciclo 3 - Paso 03 (Propagar la cancelación hasta Dapper)
+
+**Veredicto: CHANGES_REQUESTED → estado `NEEDS_CHANGES`**. Único motivo bloqueante: AC3.5 no demostrado (no implementado por Q4 sin respuesta). El resto del paso (AC3.1-AC3.3, AC3.6) está demostrado con red → green; AC3.4 se acepta como limitación del driver (ver decisión). No hay defectos de código que corregir en lo implementado.
+
+### Evidencia ejecutada por REVIEWER
+
+| Comprobación | Comando | Resultado |
+| --- | --- | --- |
+| Git status | `git status --short` | M: 4 ficheros de test y 7 de producto del alcance, ficheros del plan, `MEMORIES.md` (OPTIMIZER, aprobado); ?? `Unit/Controllers/FacilitiesControllerShould.cs`, `Unit/Repositories/TokenRecordingConnectionProvider.cs`. Sin `Gaffer.Api.Client`, `TestFixture.cs` ni `ExceptionHandlingMiddleware.cs`. Commands/Queries sin cambios (ya reenviaban el token, comprobado con `grep`) |
+| Preflight | `docker ps` | `Gaffer.Database` Up |
+| Build | `dotnet build gaffer-api.sln --no-incremental` | 56 advertencias (igual que la base), 0 errores |
+| Red independiente | Copia del árbol en scratchpad con mutaciones que quitan el reenvío (controladores → `CancellationToken.None`; repositorios sin token al proveedor; proveedor sin `ThrowIfCancellationRequested` ni token en `OpenAsync`/`BeginTransactionAsync`/`CommandDefinition`); `dotnet test Gaffer.Api.Tests.csproj --filter "PassTheRequestToken\|WhenPropagatingTheCancellationToken\|SqlConnectionProviderShould"` | 22/32 fallan: exactamente los 22 tests nuevos (10 controladores, 8 repositorios, 4 proveedor); los 10 previos en verde |
+| Green / suite completa | `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 265/265, 0 omitidos (243 + 22) |
+| AC3.4 | `dotnet test gaffer-api.sln --no-build --filter "FullyQualifiedName~StopALongRunningQueryWhenItsTokenIsCancelled"` | Falla en 5 s: `Expected a <System.OperationCanceledException> to be thrown, but no exception was thrown.` (reproduce lo registrado por BUILDER) |
+| AC3.6 | `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 |
+| Cobertura del reenvío | `grep` de `QueryAsync\|ExecuteAsync\|QueryScalarAsync\|ExecuteInTransactionAsync` en `Gaffer.Api` + lectura del diff | Todas las llamadas de repositorio reciben el token (las multilínea cierran con `}, cancellationToken)`); sin token solo `ClearAsync`/`CreateAsync` internos del proveedor (fuera del camino de petición, justificado) |
+| Middleware | `grep` en `ExceptionHandlingMiddleware.cs` | `catch (Exception)` genérico → 500 + `LogError` para `OperationCanceledException` (sin cambios; ver H1) |
+
+### Criterios
+
+| ID | Estado | Evidencia |
+| --- | --- | --- |
+| AC3.1 | Demostrado | 10 tests `PassTheRequestTokenTo...` (5 `PlayerControllerShould`, 5 nuevo `FacilitiesControllerShould`) con `Received(1).Handle(..., token)` de un `CancellationTokenSource` propio (≠ `None`). Red por mutación: 10/10 |
+| AC3.2 | Demostrado (desviación aceptada, H3) | `WhenPropagatingTheCancellationToken` en ambos repositorios (4 + 4), todos los métodos públicos; el doble exige un mínimo de llamadas (Update facility: 7, cuadra con tx + facility + dirección + lookup + update + insert + enlace) y que todas lleven el token. Red por mutación: 8/8 |
+| AC3.3 | Demostrado | `NotRunAQueryWhenItsTokenIsAlreadyCancelled` (OCE, conexión cerrada), `NotWriteAnythingWhenAnExecuteTokenIsAlreadyCancelled`, `NotWriteAnythingWhenATransactionTokenIsAlreadyCancelled` (fila no insertada, observada con otro proveedor), más `RollBackATransactionWhoseOperationIsCancelled` (cancelación a mitad de transacción revierte la primera fila). Red por mutación: 4/4 |
+| AC3.4 | No cumplido; **aceptado como limitación del driver** (decisión REVIEWER) | Rama "si no lo soporta" del criterio: medición registrada en `STATUS.md` (sonda y test: ~5 s sin excepción con `MySql.Data` 26.7.0) y reproducida aquí. `MySqlCommand.Cancel()` lanza `NullReferenceException`; cambiar de driver está fuera de alcance (`00`). No bloquea: el comportamiento alcanzable (no abrir/ejecutar con token cancelado, detener las llamadas siguientes, revertir la transacción) está demostrado en AC3.3. Ver H2 sobre el test `[Explicit]` |
+| AC3.5 | **No demostrado** | No implementado: Q4 sin respuesta del operador (el plan lo marca como prerrequisito de AC3.5). Sin test de middleware. Bloqueante para `APPROVED` |
+| AC3.6 | Demostrado | `grep` → 0; suite completa 265/265 |
+| Refactor | Hecho | Una sola construcción de `CommandDefinition` (`Command(...)`), evaluada dentro de la lambda tras abrir (toma la transacción ambiente correcta); revalidado 265/265 |
+
+### Hallazgos
+
+| ID | Severidad | Hallazgo | Acción |
+| --- | --- | --- | --- |
+| H1 | Bloqueante (vía AC3.5) | Este paso hace alcanzable `OperationCanceledException` en peticiones abortadas por el cliente (antes el token era `None`). Sin AC3.5, el middleware la trata como desconocida: intenta escribir un 500 y registra `LogError` por cada abortada. Es exactamente el caso de Q4 | Operador: responder Q4 (recomendado a). BUILDER: implementar AC3.5 con test de middleware en el siguiente ciclo |
+| H2 | Menor, no bloqueante | `StopALongRunningQueryWhenItsTokenIsCancelled` queda `[Explicit]` y en rojo si se ejecuta: documenta la limitación pero es un test que falla a propósito | Opcional: mantenerlo como sonda (motivo ya en `Explicit`) o convertirlo en caracterización del comportamiento actual. Decide el operador |
+| H3 | Informativo | AC3.2 pide proveedor "sustituido"; el doble `TokenRecordingConnectionProvider` sustituye la interfaz pero delega en el `SqlConnectionProvider` real (Docker), porque un stub devolvería `null` para el tipo privado `FacilityRow`. Motivo razonable; los tests viven en `BaseSqlTest`, ya dependiente de Docker | Ninguna |
+| H4 | Informativo | Parámetro de acción `CancellationToken cancellationToken = default` (no obligatorio) por las llamadas directas de `Acceptance/Features_Refactor/SearchPlayersFeatureShould.cs` (fuera de alcance). ASP.NET Core enlaza `RequestAborted` igualmente; el parámetro no aparece en el OpenAPI (tests de contrato en verde) | Ninguna; la carpeta `Features_Refactor` ya está anotada como fuera de alcance |
+| H5 | Informativo (deuda Q1) | Una operación cancelada fuera de transacción tras abrir deja la conexión abierta hasta el fin del scope (misma deuda Q1). `CommitAsync`/`RollbackAsync` sin token, a propósito | Ninguna |
+| H6 | Higiene | `git diff` avisa CRLF → LF en `SqlConnectionProviderShould.cs` y `SqlPlayerRepositoryShould.cs`; se normaliza al commitear (`eol=lf`) | Ninguna |
+
+### Bloqueos
+
+- AC3.5 depende de Q4 (decisión del operador). No hay bloqueo técnico: Docker y la suite disponibles.
+- Q0 (cómo combinar la corrección con el paso 04) queda para el operador en el checkpoint.
+
+## Ciclo 4 - Corrección del paso 03 (AC3.5, H2) + Paso 04 (Cambios pequeños)
+
+**Veredicto: APPROVED** (paso 03 completo y paso 04). Q0 = b, Q4 = b (499, log `Information`), Q5 = b (por defecto), Q6 = "Gaffer Api", H2 = retirar.
+
+### Evidencia ejecutada por REVIEWER
+
+| Comprobación | Comando | Resultado |
+| --- | --- | --- |
+| Git status / diff | `git status --short`; `git diff HEAD` de los ficheros del ciclo | Cambios dentro del alcance de 03 y 04: `ExceptionHandlingMiddleware.cs`, `TestFixture.cs`, `Player.cs`, `UpdatePlayerCommandHandler.cs`, `Startup.cs`, `SwaggerStartup.cs`, `VersioningStartup.cs`, `nswag.json`, `IGafferApiClient` movido (D + ??), `using` en 6 ficheros de test, test nuevo `Integration/TestServerDependenciesShould.cs`. Resto del diff = paso 03 ya revisado en ciclo 3. `Gaffer.Api.Client` no tocado ni verificado |
+| Preflight | `docker ps` | `Gaffer.Database` (mariadb) Up |
+| Build | `dotnet build gaffer-api.sln --no-incremental` | 0 errores, 56 advertencias (igual que la base) |
+| Suite completa | `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 269/269, 0 omitidos |
+| Red AC3.5 | Copia en scratchpad (`git archive HEAD` + ficheros del árbol salvo el middleware de HEAD); filtro `ExceptionHandlingMiddlewareShould` | 7/9: `Expected context.Response.StatusCode to be 499, but found 500`; `Expected entries[0].Level to be LogLevel.Information, but found LogLevel.Error` |
+| Green AC3.5 | Suite completa en el árbol | incluidos los 9/9 del middleware |
+| H2 | `grep -rn "Explicit" Gaffer.Api.Tests --include=*.cs` | Solo el nombre de un test de aceptación ajeno (`KeepBirthDateAndGenderWhenUpdatedWithExplicitNulls`); ningún atributo `[Explicit]` |
+| Mutación AC4.1 | Misma copia, borrando `services.ConfigureActions();` de `TestFixture.cs`; filtro `TestServerDependenciesShould` | Falla: `... not to be <null> because IQueryHandler`2 is registered in production.` (en el árbol: verde) |
+| Greps AC4.2-AC4.6 | ver Criterios | ver Criterios |
+
+### Criterios
+
+| AC | Estado | Evidencia |
+| --- | --- | --- |
+| AC3.5 | Demostrado | `catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)` → `LogInformation` + 499 si la respuesta no ha empezado, sin cuerpo. Tests: 499 y cuerpo vacío; una sola entrada `Information` (con `TaskCanceledException`); sin `RequestAborted` sigue 500 + `LogError`. Red→green reproducido |
+| Paso 03 global | Demostrado | AC3.1-AC3.3, AC3.6 demostrados en ciclo 3; AC3.4 aceptado en ciclo 3 como limitación del driver (medición registrada allí); AC3.5 ahora demostrado; test `[Explicit]` retirado (H2) |
+| AC4.1 | Demostrado | `grep -n "AddScoped<" TestFixture.cs` → solo L113 (`IDatabaseConnectionProvider`); `ConfigureRepositories`/`ConfigureActions` no registran el proveedor de conexión, así que el de la BD de test no se sobrescribe. `TestServerDependenciesShould` toma los tipos de los startups de producción (2 + 8) y los resuelve en un scope; la mutación demuestra que puede fallar |
+| AC4.2 | Demostrado | `grep -rn "IGafferApiClient\|Shared.Clients" Gaffer.Api` → 0; carpeta `Shared/Clients` inexistente; fichero movido idéntico salvo `namespace`; tests compilan y pasan |
+| AC4.3 | Demostrado | `grep -nE "^\s*//"` → solo `Startup.cs` L42-43 (comentario explicativo) |
+| AC4.4 | Demostrado | `grep -rn "BirthDateName\|commandFirstName"` en `Gaffer.Api` y tests → 0; `SetFirstName(newFirstName)`. `GetGenderName` conservado: devuelve el nombre del enum, nombre correcto (criterio "revisar"). Tests de `Player` y del handler en la suite verde |
+| AC4.5 | Demostrado | `nswag.json` L33 `"infoTitle": "Gaffer Api"`. Evidencia opcional `dotnet-nswag` no ejecutada (opcional) |
+| AC4.6 | Demostrado | `grep -c "new GafferApiVersioningDefinition" VersioningStartup.cs` → 1; la convención usa la instancia registrada como singleton (mismas `Versions`); tests de versionado/OpenAPI en verde |
+| AC4.7 | Demostrado | 269 = 265 + 3 (AC3.5) + 1 (AC4.1). `swagger.json` idéntico antes/después según BUILDER (comparación byte a byte con test temporal); REVIEWER no lo repitió, pero ninguno de los cambios afecta al documento servido (el título servido sale de `productName`, no de `nswag.json`; la instancia de versionado tiene las mismas versiones; el código borrado era comentario) y los tests de contrato OpenAPI están en verde |
+
+### Hallazgos
+
+| ID | Severidad | Detalle |
+| --- | --- | --- |
+| H1 | No bloqueante | `HandleAbortedRequest` fija 499 pero no escribe cuerpo y no llama a `CompleteAsync`; correcto para un cliente que ya no escucha. Si la respuesta ya había empezado solo se registra el log (coherente con Q4). |
+| H2 | No bloqueante (higiene) | EOL: varios `.cs` del árbol quedan con CRLF / mezcla (avisos `CRLF will be replaced by LF`); `.gitattributes` los normaliza al hacer `git add`. Misma familia que F1 del ciclo 1; lo resuelve el operador al commitear. |
+| H3 | Informativo | `TestServerDependenciesShould` construye `ConfigureRepositories` con una configuración vacía; hoy el método ignora la configuración. Si en el futuro la usa, el test podría necesitar la configuración de test. |
+| H4 | Informativo | Paso 04 no añade handlers: la lección permanente de `TestFixture.cs` queda cubierta estructuralmente (TestFixture reutiliza `ConfigureActions()`). |
+
+### Bloqueos
+
+Ninguno. MySQL/MariaDB local en Docker disponible.

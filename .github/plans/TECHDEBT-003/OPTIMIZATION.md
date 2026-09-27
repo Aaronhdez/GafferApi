@@ -89,4 +89,101 @@ Ambas se confirman **aplicadas** por evidencia de fichero y de `REVIEW.md` (aunq
 
 ### Estado de aprobación
 
-Pendiente de decisión del operador en el checkpoint de este ciclo (P2-1, P2-2).
+Decisión del operador (verbatim): "aprueba P2-1 Y P2-2 y procede con el paso 3".
+
+- **P2-1** → aprobada, registrada como `OPT-017` en `MEMORIES.md`. Pendiente de aplicación en `AGENTS.md` (sección "Human-Controlled Flow") o `.claude/commands/harness-run` (lógica de re-invocación de PLANNER en ORCHESTRATOR).
+- **P2-2** → aprobada, registrada como `OPT-018` en `MEMORIES.md`. Pendiente de aplicación en la skill `incremental-implementation` o `test-driven-development` de BUILDER (`.claude/agents/builder.md`).
+
+## Ciclo 3 - Paso 03 (Propagar la cancelación hasta Dapper)
+
+### Uso medido
+
+`usage-slice` repite el vacío total de telemetría de los ciclos 1-2: sin datos con `--repo gaffer-api` para ambas ventanas (`claude-code` y `copilot`), ni con `--repo TECHDEBT-003` (patrón OPT-008; solo devuelve fila `copilot` "sin datos", ninguna `claude-code`). Vacío total, no un clúster desplazado → aplica el criterio de corte de OPT-011: se usa `medido:agent-result` (totales pasados por el ORCHESTRATOR) sin más bisección.
+
+| Agente | Tokens (medido:agent-result) | Llamadas a herramientas | Duración | Δ vs. ciclo 2 (tokens / llamadas / duración) |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER | 136 576 | 64 | 728 601 ms (~12 min 9 s) | +8,1 % / −9,9 % / +9,8 % |
+| REVIEWER | 75 593 | 25 | 297 739 ms (~4 min 58 s) | −0,1 % / −3,8 % / +26,0 % |
+| OPTIMIZER (registro entre ciclos 2→3) | 37 922 | 5 | n/a | Muy por debajo del coste de replanificación S3 del ciclo 2 (211 043 tokens / 86 llamadas); registro de OPT-017/OPT-018 sin lectura adicional relevante |
+
+Comparación con `usage/*.md`: BUILDER estimó ~120k+20k (~140k) frente a 136 576 medido (~2,4 % por debajo); REVIEWER estimó ~75k+8k (~83k) frente a 75 593 medido (~8,9 % por debajo, la brecha estimado/medido más amplia de las tres ciclos, sin causa evidente en `usage/REVIEWER.md`; no investigable más sin `usage-slice`). BUILDER: tokens y duración suben ~9-10 % pese a que las llamadas a herramienta bajan ~10 % frente al ciclo 2 (71→64) — coherente con menos empalmes de shell (ver Efecto observado de OPT-018 abajo) pero más coste por llamada, consistente con las 3 sondas de driver registradas en `usage/BUILDER.md`. REVIEWER: tokens y llamadas casi planos, pero la duración sube +26 % — no aislable en tokens sin `usage-slice`; posible causa la verificación red del AC3.4 (5 s de ejecución real por diseño del test) más la copia completa del árbol (`git archive HEAD` + mutaciones) para el red independiente de 22 tests nuevos.
+
+### Spikes detectados
+
+| Spike | Valor / origen | Causa probable |
+| --- | --- | --- |
+| S5 | BUILDER ejecutó 3 sondas `dotnet run probe.cs` en scratchpad para caracterizar el comportamiento de `MySql.Data` 26.7.0 ante `CancellationToken` (AC3.4): `SELECT SLEEP(5)` cancelado a los ~100 ms no lanza excepción con `ExecuteScalarAsync`/`ExecuteReaderAsync`/Dapper `QueryAsync` (termina en ~5 s); `MySqlCommand.Cancel()` explícito interrumpe pero lanza `NullReferenceException`. Una de las 3 sondas falló primero por credenciales hasta usar user-secrets (`usage/BUILDER.md` ciclo 3: "Coste extra: 3 sondas... una falló por credenciales..."). REVIEWER reprodujo el mismo hecho reejecutando el test ya existente (`StopALongRunningQueryWhenItsTokenIsCancelled`, sin sonda propia) | Comportamiento del driver no documentado en `.github/doc/common/dev-stack.md`, que ya recoge una nota equivalente sobre `MySql.Data`/`DisposeAsync` (OPT-016) pero no sobre cancelación de comandos en ejecución. Mismo patrón que OPT-010/OPT-012/OPT-016: hecho de comportamiento de dependencia descubierto por sondeo repetible (con coste extra de credenciales) en vez de estar documentado una vez. Contribuye a los 64 llamadas y 728 601 ms de BUILDER (el ciclo más largo de los tres) |
+| S6 | Un ciclo completo de BUILDER+REVIEWER (212 169 tokens combinados) se gastó en el paso 03 sabiendo de antemano, por `STATUS.md` del ciclo 2 ("Pasos bloqueados: 03 (solo AC3.5, Q4)..."), que AC3.5 no podría implementarse sin respuesta a Q4; el ciclo terminó, como era previsible, en `NEEDS_CHANGES` únicamente por ese motivo (`REVIEW.md` ciclo 3, H1). El operador había instruido "procede con el paso 3" sin que Q4 estuviera resuelta ni se le hubiera planteado explícitamente la disyuntiva ("Q4 seguirá sin respuesta y el paso 03 no llegará a APPROVED por AC3.5: ¿procedes igualmente, se difiere AC3.5, o respondes Q4 antes?") | El bloqueo de AC3.5 por Q4 ya estaba registrado en `STATUS.md` antes de iniciar el ciclo 3, pero ORCHESTRATOR no lo resurgió como pregunta consolidada al operador antes de invocar a BUILDER (mismo tipo de brecha que motivó `OPT-017`, aquí en el punto de inicio de ciclo en vez de en la re-invocación de PLANNER tras aprobación). El coste no es del todo evitable (AC3.1-AC3.3 y AC3.6 sí eran demostrables y se demostraron), pero el veredicto parcial previsible no se hizo explícito de antemano, y ahora el ciclo 4 debe combinar la corrección de AC3.5 con el paso 04 (Q0, aún abierta) |
+
+No se repiten propuestas ya registradas en `MEMORIES.md`. S5 es un hecho de comportamiento del driver distinto del cubierto por OPT-016 (`DisposeAsync`/`Component.Disposed`): aquí es la cancelación de un comando en ejecución (`SLEEP`, `Cancel()`), no el ciclo de vida de la conexión al cerrar el scope. S6 es una variante del problema de OPT-017 (falta de consolidación de decisiones pendientes antes de actuar) pero en un punto distinto del flujo (inicio de ciclo BUILDER, no re-invocación de PLANNER), por lo que se registra como propuesta nueva que amplía el ámbito de OPT-017 en vez de repetirla.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P3-1 | Documentar en `.github/doc/common/dev-stack.md` (junto a la nota de OPT-016 sobre `MySql.Data`/`DisposeAsync`) el hecho de comportamiento: "`MySql.Data` 26.7.0 no reacciona a un `CancellationToken` una vez que el comando está en ejecución: `ExecuteScalarAsync`/`ExecuteReaderAsync` (directo o vía Dapper `CommandDefinition`) completan la consulta igualmente (p. ej. `SELECT SLEEP(5)` tarda ~5 s pese a cancelar el token a los ~100 ms), sin lanzar excepción. `MySqlCommand.Cancel()` explícito interrumpe la consulta pero el driver lanza `NullReferenceException`, por lo que no es una alternativa limpia. Solo un token ya cancelado antes de abrir/ejecutar detiene la operación." Añadir también que las sondas de conexión en scratchpad deben usar la cadena de conexión de user-secrets del proyecto para evitar el fallo de credenciales del primer intento | `.github/doc/common/dev-stack.md` | Evita repetir las 3 sondas `dotnet run probe.cs` (incluida la de credenciales) en los pasos 04-05 de este plan o en planes futuros que toquen cancelación/timeouts de `MySql.Data`; mismo patrón de ahorro confirmado por OPT-016 (spike no repetido en el ciclo 2) | `STATUS.md` ciclo 3, fila "Sonda del driver"; `usage/BUILDER.md` ciclo 3 ("Coste extra: 3 sondas...") |
+| P3-2 | Ampliar el ámbito de `OPT-017` (aún `pendiente` de aplicación): además de consolidar preguntas pendientes antes de re-invocar a PLANNER tras una aprobación, ORCHESTRATOR debe comprobar, antes de invocar a BUILDER para iniciar un nuevo ciclo, si el paso previsto en `STATUS.md`/`00-overview-and-open-questions.md` ya tiene algún criterio marcado como bloqueado por una pregunta sin respuesta (sección "Pasos bloqueados"); si es así, plantear esa disyuntiva explícitamente en el mensaje de checkpoint antes de empezar el ciclo (p. ej. "el paso 03 no llegará a `APPROVED` por AC3.5/Q4 sin respuesta: ¿procedes igualmente, se difiere el criterio, o respondes la pregunta antes?"), en vez de iniciar el ciclo y descubrir el veredicto parcial al final | `AGENTS.md` (sección "Human-Controlled Flow"), extiende el ámbito de `OPT-017` | Convierte un veredicto parcial previsible en una decisión explícita del operador antes de gastar el ciclo; no evita el coste de las ACs sí demostrables (AC3.1-AC3.3, AC3.6 de este ciclo eran necesarias de todos modos), pero evita la sorpresa del checkpoint y la coordinación adicional de fusionar la corrección con el paso siguiente (Q0). Magnitud no cuantificable sin un ciclo de contraste donde se plantee la disyuntiva y el operador decida diferir el criterio | `STATUS.md` ciclo 2 (bloqueo de AC3.5/Q4 ya registrado antes del ciclo 3); `REVIEW.md` ciclo 3, hallazgo H1 |
+
+### Efecto observado de propuestas previas (OPT-017, OPT-018)
+
+- **OPT-018** (`Edit` por ancla en vez de `head`/`tail`): **aplicada con efecto positivo confirmado**. `usage/BUILDER.md` ciclo 3 registra explícitamente "OPT-018 aplicado (Edit por ancla)" y, a diferencia del ciclo 2 ("una llave sobrante al empalmar tests del repositorio con head/tail (1 build extra)"), el ciclo 3 no registra ningún build de diagnóstico por llaves desajustadas pese a añadir bloques de test nuevos a 3 ficheros existentes (`SqlConnectionProviderShould.cs`, `PlayerControllerShould.cs`, `SqlFacilityRepositoryShould.cs`) más uno nuevo. El único build extra del ciclo 3 tiene otra causa (CS7036 en `Features_Refactor`, fuera de alcance). Consistente con la bajada de llamadas a herramienta de BUILDER (71→64) pese a más ficheros de test tocados.
+- **OPT-017** (consolidar preguntas pendientes antes de re-invocar a PLANNER): sigue `pendiente` de aplicación (no se ha tocado `AGENTS.md` ni `harness-run`). Este ciclo no reprodujo su escenario original (re-invocación de PLANNER), pero sí una variante del mismo problema de fondo en un punto distinto del flujo — ver spike S6 y propuesta P3-2, que amplía explícitamente su ámbito en vez de darla por probada o refutada.
+
+### Brechas de datos
+
+- `usage-slice` sigue sin devolver datos medidos de entrada fresca vs. caché para BUILDER/REVIEWER del ciclo 3 (vacío total de telemetría en las tres ventanas de `claude-code`, igual que ciclos 1-2); todo el análisis de tokens se apoya en `medido:agent-result`, que no distingue caché de entrada fresca ni permite aislar el coste exacto en tokens de S5 (sondas de driver) o del +26 % de duración de REVIEWER.
+- La brecha estimado/medido de REVIEWER (~8,9 % por debajo) es la mayor de las tres ciclos; no hay suficiente detalle en `usage/REVIEWER.md` para atribuirla a una causa concreta.
+- No es posible cuantificar el ahorro de P3-2 sin un ciclo futuro de contraste en el que ORCHESTRATOR plantee la disyuntiva de un AC conocido como bloqueado antes de iniciar el ciclo y el operador decida diferirlo.
+
+### Estado de aprobación
+
+Decisión del operador (verbatim): "Q0. opción b / Q4. Opcion b / Q6. \"Gaffer Api\" / H2. Quitalo / Apruebo P3-1 y P3-2".
+
+- **P3-1** → aprobada, registrada como `OPT-019` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/doc/common/dev-stack.md`.
+- **P3-2** → aprobada, registrada como `OPT-020` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `AGENTS.md` (sección "Human-Controlled Flow"), ampliando el ámbito de `OPT-017`.
+
+## Ciclo 4 - Corrección del paso 03 (AC3.5) + Paso 04 (Cambios pequeños)
+
+### Uso medido
+
+`usage-slice` repite el vacío total de telemetría de los ciclos 1-3: sin datos con `--repo gaffer-api` para ambas ventanas (`claude-code` y `copilot`), ni con `--repo TECHDEBT-003` (patrón OPT-008; solo fila `copilot` "sin datos"). Vacío total, no un clúster desplazado → aplica el criterio de corte de OPT-011: se usa `medido:agent-result` (totales pasados por el ORCHESTRATOR) sin más bisección.
+
+| Agente | Tokens (medido:agent-result) | Llamadas a herramientas | Duración | Δ vs. ciclo 3 (tokens / llamadas / duración) |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER | 93 784 | 61 | 599 599 ms (~9 min 60 s) | −31,3 % / −4,7 % / −17,7 % |
+| REVIEWER | 53 708 | 15 | 188 963 ms (~3 min 9 s) | −28,9 % / −40,0 % / −36,5 % |
+| OPTIMIZER (registro entre ciclos 3→4) | 45 006 | 5 | n/a | +18,7 % tokens vs. 2→3 (37 922), mismas 5 llamadas |
+
+Comparación con `usage/*.md`: BUILDER estimó ~95k+14k (~109k) frente a 93 784 medido (~14 % por debajo, la estimación se mantiene por exceso como en ciclos previos). REVIEWER estimó ~60k+7k (~67k) frente a 53 708 medido (~19,8 % por debajo, la brecha estimado/medido más amplia del plan hasta ahora; consistente con una revisión más corta de lo habitual — 15 llamadas frente a 20-26 en ciclos anteriores — por un red reproducible en una sola pasada y una sola mutación, sin hallazgos que motivasen exploración adicional). No se propone corrección de la estimación: el patrón varía con la complejidad del ciclo revisado, no apunta a un sesgo sistemático corregible.
+
+**Hallazgo principal**: pese a combinar dos entregas (corrección de AC3.5 + los 7 AC del paso 04 completo), el coste conjunto de BUILDER+REVIEWER de este ciclo (93 784 + 53 708 = 147 492 tokens) es un 30,5 % **menor** que el del ciclo 3 en solitario (136 576 + 75 593 = 212 169), que solo cubrió el paso 03. Ninguna invocación de PLANNER ocurrió en la transición 3→4 (frente a las 4 invocaciones / 211 043 tokens de la transición 1→2, spike S3 del ciclo 2).
+
+### Spikes detectados
+
+| Spike | Valor / origen | Causa probable |
+| --- | --- | --- |
+| S7 | Segundo ciclo consecutivo (3 y 4) en el que tanto BUILDER como REVIEWER abren `STATUS.md` de forma completa y la salida queda "persistida por salida grande" antes de cambiar a lecturas por rango (`sed -n`): ciclo 3 BUILDER "lectura inicial de plan de 41.7KB persistida"; ciclo 3 REVIEWER "cat inicial de plan+STATUS+REVIEW (44KB, persistido; evitable leyendo por rangos)"; ciclo 4 BUILDER "lectura inicial de STATUS.md persistida por salida grande (31.5KB) antes de pasar a sed -n"; ciclo 4 REVIEWER "cat inicial de STATUS.md (33KB, persistido)" (`usage/BUILDER.md`, `usage/REVIEWER.md`) | `STATUS.md` crece cada ciclo con el detalle íntegro de todos los ciclos anteriores (196 líneas tras 4 ciclos; el ciclo 1 y 2 ya suman ~150 de esas líneas y están cerrados con veredicto `APPROVED`, sin cambios previstos). La guía de "Minimal Reading" de `CLAUDE.md` (grep/glob antes de `Read`; `offset`/`limit` en ficheros grandes) no evita el primer `cat` completo porque el agente necesita contexto íntegro del historial al empezar; el patrón "Hierarchical Summary" ya aprobado para `OPTIMIZATION.md` (`OPT-013`) y `MEMORIES.md` (`OPT-014`) no se ha extendido a `STATUS.md`, que es justamente el fichero que BUILDER y REVIEWER leen primero en cada ciclo |
+
+No se repiten propuestas ya registradas en `MEMORIES.md`. S7 extiende el patrón de fondo de `OPT-013`/`OPT-014` (ficheros de harness que crecen sin compactación y se leen íntegros en cada ciclo) a un tercer fichero (`STATUS.md`) y una causa distinta (lectura inicial de BUILDER/REVIEWER, no de OPTIMIZER entre ciclos); se registra como propuesta nueva por tratarse de un fichero y unos agentes distintos.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P4-1 | Extender el patrón "Hierarchical Summary" (ya aprobado como `OPT-013`/`OPT-014` para `OPTIMIZATION.md`/`MEMORIES.md`) a `STATUS.md`: cuando un ciclo alcance veredicto `APPROVED` y no se prevean más correcciones sobre sus filas, compactar su sección de detalle (bloque "Ciclo N - Paso X" y las filas correspondientes de "Comandos y resultados") a una fila resumen de una tabla-índice al inicio del fichero (`Ciclo \| Paso \| Veredicto \| AC(s) relevantes \| referencia al commit/hash`), conservando el detalle íntegro en el historial de Git; mantener el detalle completo solo para el ciclo en curso y el inmediatamente anterior (necesario para "correcciones de REVIEWER del ciclo anterior" según la secuenciación del plan). Añadir la instrucción en `AGENTS.md` (sección "Plans and Evidence", regla de contenido de `STATUS.md`) para que aplique a BUILDER al iniciar cada ciclo | `AGENTS.md` (sección "Plans and Evidence") o `.claude/agents/builder.md` (instrucción de mantenimiento de `STATUS.md`) | Reduce el tamaño de la primera lectura íntegra de `STATUS.md` que BUILDER y REVIEWER hacen en cada ciclo; en este plan, compactar los ciclos 1-2 (ya cerrados, ~150 de las 196 líneas actuales) recortaría esa primera lectura en más de la mitad para los ciclos 5-6 restantes, evitando el patrón de "salida grande persistida" repetido en 2 ciclos consecutivos por 2 agentes distintos | `usage/BUILDER.md` ciclos 3-4; `usage/REVIEWER.md` ciclos 3-4 (cuatro observaciones de lectura inicial "persistida" por tamaño) |
+
+### Efecto observado de propuestas previas (OPT-017, OPT-018, OPT-020)
+
+- **OPT-018** (`Edit` por ancla en vez de `head`/`tail`): sin regresión, efecto positivo sostenido. `STATUS.md` ciclo 4 no registra ningún build de diagnóstico por llaves desajustadas pese a añadir bloques de test a `ExceptionHandlingMiddlewareShould.cs` y `SqlConnectionProviderShould.cs` (ficheros existentes) más un fichero nuevo. Llamadas a herramienta de BUILDER siguen bajando (64→61) pese a combinar la corrección del paso 03 con el paso 04 completo.
+- **OPT-017 / OPT-020** (consolidar decisiones pendientes antes de actuar): **efecto positivo confirmado** en su forma extendida. Según el encargo de este ciclo, ORCHESTRATOR consolidó Q4 (nivel de log) y el bloqueo conocido del paso siguiente (Q7) en una sola pregunta antes de iniciar el ciclo 4, y pasó las respuestas directamente a BUILDER sin reinvocar a PLANNER (los AC ya estaban parametrizados por las respuestas de Q). Resultado medible: cero invocaciones de PLANNER en la transición 3→4 (frente a 4 invocaciones / 211 043 tokens en la transición 1→2), y un ciclo con más alcance (corrección + paso 04 completo) que costó un 30,5 % menos que el ciclo 3 en solitario (147 492 vs. 212 169 tokens BUILDER+REVIEWER), terminando en `APPROVED` sin la sorpresa de veredicto parcial que motivó `OPT-020` en el ciclo 3 (S6). `Estado` se mantiene `pendiente` en `MEMORIES.md` porque `AGENTS.md` no se ha editado formalmente; la aplicación ha sido conductual por parte de ORCHESTRATOR.
+
+### Brechas de datos
+
+- `usage-slice` sigue sin devolver datos medidos de entrada fresca vs. caché para BUILDER/REVIEWER del ciclo 4 (vacío total de telemetría en las cuatro consultas de esta invocación, igual que los ciclos 1-3); todo el análisis de tokens se apoya en `medido:agent-result`.
+- La brecha estimado/medido de REVIEWER (~19,8 % por debajo) es la mayor observada en el plan; no hay suficiente detalle en `usage/REVIEWER.md` para separar cuánto se debe a la brevedad real de la revisión (15 llamadas, veredicto limpio) frente a una sobreestimación sistemática del propio REVIEWER.
+- No es posible aislar en tokens exactos qué parte del ahorro conjunto del ciclo 4 (−30,5 % vs. ciclo 3) corresponde a OPT-017/OPT-020 (consolidación de preguntas) frente a otros factores no controlados (p. ej. menor superficie de descubrimiento en el paso 04, que es mayoritariamente limpieza mecánica frente al paso 03, que exigió sondeo de driver).
+- No se puede cuantificar el ahorro de P4-1 sin un ciclo futuro en el que `STATUS.md` ya esté compactado y se mida la primera lectura de BUILDER/REVIEWER frente a la actual.
+
+### Estado de aprobación
+
+Pendiente del checkpoint humano de este ciclo (no resuelto en este modo de análisis).

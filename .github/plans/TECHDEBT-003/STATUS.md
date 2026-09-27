@@ -3,12 +3,13 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 2 |
-| Pasos completados | 01 (APPROVED ciclo 1; F1 de higiene EOL pendiente para el operador, ver REVIEW.md); 02 (APPROVED ciclo 2; H1-H4 no bloqueantes, ver REVIEW.md) |
-| Pasos bloqueados | 03 (solo AC3.5, Q4), 04 (solo AC4.5, Q6), 05 (solo AC5.5, Q7) hasta respuesta del operador. El paso 02 no tiene preguntas bloqueantes |
+| Ciclo | 4 |
+| Pasos completados | 01 (APPROVED ciclo 1; F1 de higiene EOL pendiente para el operador, ver REVIEW.md); 02 (APPROVED ciclo 2; H1-H4 no bloqueantes, ver REVIEW.md) ; 03 (NEEDS_CHANGES ciclo 3: AC3.1-AC3.3 y AC3.6 demostrados; AC3.4 aceptado por REVIEWER como limitación del driver; AC3.5 no demostrado, pendiente de Q4); ciclo 4: 03 APPROVED (AC3.5 demostrado, H2 retirado) y 04 APPROVED (REVIEWER ciclo 4) |
+| Pasos bloqueados | Ninguno. Q4, Q6 y Q7 respondidas antes del ciclo 4 (ver "Respuestas del operador (antes del ciclo 4)") |
+| Respuestas del operador (antes del ciclo 4) | Literal: "Q0. opción b / Q4. Opcion b / Q6. \"Gaffer Api\" / H2. Quitalo / Apruebo P3-1 y P3-2". Seguimiento: nivel de log de Q4 = "Information (Recomendado)"; Q7 = "c) No activar" (paso 05). Q5 sin respuesta → b) (solo los 12 registros). Q0 = b: corregir el paso 03 y avanzar al paso 04 en el mismo ciclo. P3-1/P3-2 → OPT-019/OPT-020 (OPT-019 lo aplica el operador; no aplicado por BUILDER) |
 | Actualización del plan (antes del ciclo 2) | Q2 respondida y después corregida por el operador (literal en `00-overview-and-open-questions.md`): la grada se identifica por su `Id` (`Guid`) existente, opcional en la petición; update sin borrado de gradas ausentes; `Id` desconocido/ajeno → 400 `Error.Facilities.Update.UnknownStand`. ULID descartado (anotado en "Posibles mejoras"); sin migración ni paquetes. Q9, Q11 y Q12 retiradas; Q10 y Q13 con valor por defecto. OPT-016 (nota `MySql.Data` `DisposeAsync` en `dev-stack.md`) incluida en el ciclo 2 como AC2.10 por decisión del operador. Ajuste final R-MAX (literal en `00-overview-and-open-questions.md`): con la facility ya a 4 gradas, una grada con `Id` no existente entre ellas se descarta sin error y el resto del update se aplica (AC2.11). Q14-Q18 respondidas por el operador (literal en `00`): Q14 = ignorar también la grada sin `Id` con 4 gradas; Q15 = crear la grada con `Id` desconocido/ajeno con menos de 4; Q16-Q18 por defecto. Clave `Error.Facilities.Update.UnknownStand` retirada (ningún caso la produce); Q13 por defecto reajustada a la clave `Error.Facilities.Update.DuplicatedStand` (AC2.12 nuevo). Q19 nueva (qué `Id` recibe la grada creada por Q15) con valor por defecto a) `Id` nuevo generado, no bloqueante. AC2.3, AC2.4, AC2.8 y AC2.11 reescritos. |
-| Siguiente | OPTIMIZER ciclo 2; checkpoint humano |
-| Bloqueos | Ninguno para el paso 01. Q1 sin respuesta: se aplica b) (sin `try/finally`), anotado como deuda. |
+| Siguiente | Checkpoint humano del ciclo 4 (OPTIMIZER y decisión del operador; paso 05 pendiente) |
+| Bloqueos | Ninguno. Q1 sin respuesta: se aplica b) (sin `try/finally`), anotado como deuda. AC3.4 aceptado por REVIEWER (ciclo 3) como limitación del driver `MySql.Data` 26.7.0; su test `[Explicit]` retirado en el ciclo 4 (H2), la medición queda en el ciclo 3. |
 
 ## Secuenciación (un paso = un ciclo)
 
@@ -18,8 +19,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | --- | --- | --- |
 | 1 | 01 - SqlConnectionProvider | APPROVED |
 | 2 | 02 - Update de Facility con gradas por `Id` (`Guid`) (+ OPT-016) | APPROVED |
-| 3 | 03 - Cancelación | - |
-| 4 | 04 - Cambios pequeños | - |
+| 3 | 03 - Cancelación | NEEDS_CHANGES (solo AC3.5, Q4) |
+| 4 | Corrección del paso 03 (AC3.5, H2) + 04 - Cambios pequeños (Q0 = b) | APPROVED (paso 03 completo + paso 04) |
 | 5 | 05 - Warnings | - |
 | 6 | Reserva | - |
 
@@ -32,6 +33,10 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 1 | 2026-09-27T12:09:55Z | 2026-09-27T12:13:30Z |
 | BUILDER | 2 | 2026-09-27T12:55:34Z | 2026-09-27T13:05:14Z |
 | REVIEWER | 2 | 2026-09-27T13:06:46Z | 2026-09-27T13:09:53Z |
+| BUILDER | 3 | 2026-09-27T13:37:49Z | 2026-09-27T13:48:34Z |
+| REVIEWER | 3 | 2026-09-27T13:50:10Z | 2026-09-27T13:54:34Z |
+| BUILDER | 4 | 2026-09-27T14:08:59Z | 2026-09-27T14:17:17Z |
+| REVIEWER | 4 | 2026-09-27T14:19:08Z | 2026-09-27T14:21:49Z |
 
 ## Prerrequisitos
 
@@ -62,6 +67,35 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 2 | 02 | Refactor + suite completa | `dotnet build gaffer-api.sln --no-incremental`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 56 advertencias (sin cambio; ninguna nueva en ficheros tocados), 0 errores; 243/243 (220 + 23) |
 | 2 | 02 | REVIEWER | `docker ps`; build `--no-incremental`; red en `git archive HEAD` (scratchpad); filtro del paso; suite completa | Up; 56 advertencias; red 12 fallos (11 aceptación + repositorio en el sitio); 89/89; 243/243 |
 | 2 | 02 | Greps | `grep -rn "UnknownStand" Gaffer.Api Gaffer.Api.Tests`; `grep -n "DELETE" Gaffer.Api/Infrastructure/SqlFacilityRepository.cs`; `grep -n "DisposeAsync" .github/doc/common/dev-stack.md` | 0 resultados; `DELETE` solo en `Delete` (L209) y en `DeleteStands`/`DeleteAddress` (L285-L298), llamados solo desde `Delete` (L206-L207); nota OPT-016 en L25 |
+| 3 | - | Preflight | `docker ps` | `Gaffer.Database` Up |
+| 3 | - | Línea base | `dotnet test gaffer-api.sln --verbosity quiet` | 243/243 |
+| 3 | 03 | Aceptación (red), tras añadir solo la superficie (parámetros `CancellationToken` sin usar) | `dotnet test gaffer-api.sln --filter "FullyQualifiedName~SqlConnectionProviderShould"` | 5 fallan: `Expected a <System.OperationCanceledException> to be thrown, but no exception was thrown.` (4 de AC3.3 + AC3.4, este tras 5 s) |
+| 3 | 03 | Aceptación (green AC3.3) | mismo filtro | 14/14 AC3.3 y previos en verde; AC3.4 sigue fallando (5 s, sin excepción): limitación del driver, ver abajo |
+| 3 | 03 | Sonda del driver (scratchpad, `dotnet run probe.cs`, `MySql.Data` 26.7.0 + Dapper 2.1.79, cadena de conexión de user-secrets) | `SELECT SLEEP(5)` con token cancelado a los 100 ms | `MySqlCommand.ExecuteScalarAsync(ct)` / `ExecuteReaderAsync(ct)`: 5019 / 5008 ms, resultado 0, sin excepción. Dapper `QueryAsync(CommandDefinition(ct))`: 4 ejecuciones de 5001-5032 ms sin excepción (una ejecución aislada previa dio `TaskCanceledException` en 105 ms, no reproducible). `MySqlCommand.Cancel()` explícito a los 100 ms: interrumpe pero el driver lanza `NullReferenceException` (126-155 ms) |
+| 3 | 03 | AC3.4 (medición) | `dotnet test gaffer-api.sln --filter "FullyQualifiedName~StopALongRunningQueryWhenItsTokenIsCancelled"` | Falla en 5 s: `Expected a <System.OperationCanceledException> to be thrown, but no exception was thrown.` Test marcado `[Explicit]` (se ejecuta solo con este filtro) |
+| 3 | 03 | Unitario (red, compilación) al hacer obligatorio el parámetro de acción | `dotnet build gaffer-api.sln` | CS7036 ×5 en `Acceptance/Features_Refactor/SearchPlayersFeatureShould.cs` (fuera del alcance): se opta por `CancellationToken cancellationToken = default` en las acciones (ver desviaciones) |
+| 3 | 03 | Unitario (red, ejecución) | `dotnet test gaffer-api.sln --no-build --filter "FullyQualifiedName~PassTheRequestToken\|FullyQualifiedName~WhenPropagatingTheCancellationToken"` | 18/18 fallan: 10 controladores `ReceivedCallsException` (el handler recibe `CancellationToken.None`); 8 repositorios `... to be empty because every provider call must receive the repository's token, but found at least one item {"ExecuteInTransactionAsync"}` / `{"QueryAsync SELECT * FROM ..."}` / `{"ExecuteAsync ..."}` |
+| 3 | 03 | Green | `dotnet test gaffer-api.sln --no-build --filter "FullyQualifiedName~Controller\|FullyQualifiedName~Repository\|FullyQualifiedName~SqlConnectionProvider\|FullyQualifiedName~ExceptionHandlingMiddleware" --verbosity quiet` | 92/92 (AC3.4 `[Explicit]` no incluido) |
+| 3 | 03 | Refactor + suite completa | `dotnet build gaffer-api.sln --no-incremental`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 56 advertencias (igual que la base; dos CS8625 nuevas del test propio corregidas), 0 errores; 265/265 (243 + 22), 0 omitidos |
+| 3 | 03 | AC3.6 | `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 |
+| 4 | - | Preflight | `docker ps` | `Gaffer.Database` Up |
+| 4 | 03 (corrección) | Unitario AC3.5 (red) | `dotnet test gaffer-api.sln --filter "FullyQualifiedName~ExceptionHandlingMiddlewareShould"` | 7/9; fallan `ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient` (`Expected context.Response.StatusCode to be 499, but found 500`) y `LogAnAbortedRequestOnceAsInformationWithoutError` (`Expected entries[0].Level to be LogLevel.Information {value: 2}, but found LogLevel.Error {value: 4}`). `KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted` ya en verde (caracterización) |
+| 4 | 03 (corrección) | Unitario AC3.5 (green) | mismo filtro | 9/9 |
+| 4 | 03 (corrección) | H2 | `grep -rn "StopALongRunning\|\[Explicit" Gaffer.Api.Tests --include=*.cs` | 0 (la única coincidencia de `Explicit` es el nombre `KeepBirthDateAndGenderWhenUpdatedWithExplicitNulls`) |
+| 4 | 03 (corrección) | Filtro del paso 03 | `dotnet test gaffer-api.sln --filter "FullyQualifiedName~Controller\|FullyQualifiedName~Repository\|FullyQualifiedName~SqlConnectionProvider\|FullyQualifiedName~ExceptionHandlingMiddleware" --verbosity quiet` | 95/95 (92 del ciclo 3 + 3 de AC3.5) |
+| 4 | 04 | Aceptación AC4.1 (caracterización, antes del cambio) | `dotnet test gaffer-api.sln --filter "FullyQualifiedName~TestServerDependenciesShould"` | 1/1 |
+| 4 | 04 | AC4.1 (mutación, prueba de que el test puede fallar) | se borra temporalmente de `TestFixture.cs` el registro de `UpdateFacilityCommandHandler`; mismo filtro; se restaura el fichero (`git diff --stat` vacío) | Falla: `Expected scope.ServiceProvider.GetService(serviceType) not to be <null> because ICommandHandler`1 is registered in production.` |
+| 4 | 04 | AC4.1 (después) | mismo filtro; `grep -n "AddScoped<" Gaffer.Api.Tests/TestFixture.cs` | 1/1; una sola coincidencia (L113, `IDatabaseConnectionProvider` contra la BD de test) |
+| 4 | 04 | AC4.2 | `grep -rn "IGafferApiClient\|Shared.Clients" Gaffer.Api --include=*.cs --include=*.csproj` | antes: `Gaffer.Api/Shared/Clients/IGafferApiClient.cs` L1, L3; después: 0 |
+| 4 | 04 | AC4.3 | `grep -nE "^\s*//" Gaffer.Api/Startup.cs Gaffer.Api/Startups/SwaggerStartup.cs` | antes: 24 líneas (4 de código en `Startup.cs`, 18 de código en `SwaggerStartup.cs`, 2 explicativas); después: 2 (`Startup.cs` L42-43, comentario explicativo del logger de arranque) |
+| 4 | 04 | Unitario AC4.4 (red, compilación) tras renombrar en tests y `UpdatePlayerCommandHandler` | `dotnet build gaffer-api.sln` | CS1061 `"Player" no contiene una definición para "SetBirthDate"` (`UpdatePlayerCommandHandler.cs(54,20)`) |
+| 4 | 04 | Unitario AC4.4 (green) | `grep -rn "BirthDateName\|commandFirstName" Gaffer.Api Gaffer.Api.Tests --include=*.cs`; `dotnet test gaffer-api.sln --filter "FullyQualifiedName~PlayerShould\|FullyQualifiedName~UpdatePlayerCommandHandler\|FullyQualifiedName~TestServerDependenciesShould"` | 0 coincidencias; 19/19 |
+| 4 | 04 | AC4.5 | `grep -n "infoTitle" Gaffer.Api/nswag.json` | L33 `"infoTitle": "Gaffer Api",` (antes `"My Title"`). Evidencia opcional con `dotnet-nswag` no ejecutada; salida generada sin tocar |
+| 4 | 04 | AC4.6 | `grep -c "new GafferApiVersioningDefinition" Gaffer.Api/Startups/VersioningStartup.cs` | 1 (antes 2) |
+| 4 | 04 | AC4.7 (`swagger.json` servido) | test temporal (scratchpad, copiado y borrado después) que arranca `StartupTestServer` y guarda `/swagger/{v1,v2,v3,AutogeneratedClient}/swagger.json`; "antes" sobre `git archive HEAD` en scratchpad, "después" sobre el árbol de trabajo; `cmp` | Los 4 documentos idénticos byte a byte (v1 200; v2/v3 404 en ambos, `ApiVersioning.Current = 1`). HEAD no incluye la corrección del paso 03 sin commit, que no altera el OpenAPI (NSwag omite `CancellationToken`) |
+| 4 | 03 + 04 | Refactor + suite completa | `dotnet build gaffer-api.sln --no-incremental`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 56 advertencias (igual que la base), 0 errores; ninguna nueva en ficheros tocados (la de `TestFixture.cs` `HttpClient` CS8618 es previa, línea desplazada). 269/269, 0 omitidos (265 − 0 del `[Explicit]`, que no contaba + 3 AC3.5 + 1 AC4.1) |
+| 4 | 03 + 04 | REVIEWER | `docker ps`; build `--no-incremental`; suite completa; red AC3.5 en copia scratchpad (middleware de HEAD); mutación AC4.1 (sin `ConfigureActions()` en TestFixture); greps AC4.2-AC4.6 | Up; 56 advertencias, 0 errores; 269/269; red 7/9 (499 vs 500, Information vs Error); mutación falla (`IQueryHandler`2` no resuelto); greps conformes |
+| 4 | 03 + 04 | AC3.6 (revalidación) | `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 |
 
 ## Ciclo 1 - Paso 01 (BUILDER)
 
@@ -113,6 +147,48 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | --- | --- | --- | --- |
 | AC2.3 | A: North=3dc2f263…, South=7685ac62… | A: North=3dc2f263…, South=7685ac62…, Unknown=661f7b45…, Foreign=e9d7e58f… (ningún `Id` creado igual a un enviado); B: aserción `BeEquivalentTo(otherBefore)` verde | unknown=665ece74…, foreign=f455e620… |
 | AC2.11 | A: North=53361cce…, South=728df315…, East=a98680ef…, West=cb15aa52… | A: North Renovated=53361cce…, South, East, West con los mismos `Id`; ninguna grada `Discarded*` ni `new`; cuerpo de respuesta vacío (igual que un update correcto); B sin cambios | new=39f97629…, foreign=77f98c91… |
+
+## Ciclo 3 - Paso 03 (BUILDER)
+
+| Tema | Detalle |
+| --- | --- |
+| Decisión del operador | "aprueba P2-1 Y P2-2 y procede con el paso 3". Q4 sin respuesta → AC3.5 **no implementado** (pendiente de Q4); `ExceptionHandlingMiddleware.cs` sin cambios. Ninguna otra pregunta de `00` afecta al paso 03 |
+| Producto | `IDatabaseConnectionProvider` (`CancellationToken cancellationToken = default` en `QueryScalarAsync`, `QueryAsync`, `ExecuteAsync`, `ExecuteInTransactionAsync`); `SqlConnectionProvider` (token en `OpenAsync`, `BeginTransactionAsync` y Dapper vía `CommandDefinition`; `ThrowIfCancellationRequested` antes de abrir y en la transacción anidada; si `BeginTransactionAsync` falla se cierra la conexión); `DummyConnectionProvider` (firmas); `SqlPlayerRepository`/`SqlFacilityRepository` (todas las llamadas al proveedor, incluidas `GetAddress`/`GetStands`, `ExecuteInTransactionAsync` y las privadas de insert/update/delete); `PlayerController`/`FacilitiesController` (10 acciones con parámetro `CancellationToken`, reenviado al handler). Handlers de `Commands`/`Queries` sin cambios: ya reenviaban el token |
+| No ampliado | `TestConnection`, `ClearAsync`, `CreateAsync` sin token: no están en el camino de una petición (arranque, health check, tests) |
+| Commit/rollback | `CommitAsync`/`RollbackAsync` sin token a propósito: un rollback no debe poder cancelarse; una operación cancelada dentro de la transacción la revierte (`RollBackATransactionWhoseOperationIsCancelled`) |
+| Tests nuevos (23; 22 en la suite por defecto) | AC3.3 (`SqlConnectionProviderShould`): `NotRunAQueryWhenItsTokenIsAlreadyCancelled`, `NotWriteAnythingWhenAnExecuteTokenIsAlreadyCancelled`, `NotWriteAnythingWhenATransactionTokenIsAlreadyCancelled`, `RollBackATransactionWhoseOperationIsCancelled` (fila no insertada comprobada con otro proveedor). AC3.4: `StopALongRunningQueryWhenItsTokenIsCancelled` (`[Explicit]`). AC3.1: 5 en `PlayerControllerShould` (`PassTheRequestTokenTo...`) y 5 en el nuevo `Unit/Controllers/FacilitiesControllerShould.cs`, cada uno con `Received(1).Handle(..., token)`. AC3.2: clase anidada `WhenPropagatingTheCancellationToken` en `SqlPlayerRepositoryShould` (4) y `SqlFacilityRepositoryShould` (4) con el nuevo doble `Unit/Repositories/TokenRecordingConnectionProvider.cs` |
+| AC3.2: medio de observación | Doble de prueba que sustituye `IDatabaseConnectionProvider`, registra el token de cada llamada y delega en el `SqlConnectionProvider` real (Docker). Motivo: con un sustituto NSubstitute puro, `QueryAsync<FacilityRow>` (tipo privado) devolvería `null` y `Get` no llegaría a `GetAddress`/`GetStands`. Cada test exige un mínimo de llamadas (1 jugador; 8/3/7/6 facility) y que todas reciban el token |
+| AC3.4 - limitación del driver (no se da por cumplido; decide REVIEWER) | `MySql.Data` 26.7.0 no actúa sobre el token una vez que el comando está en ejecución: `SELECT SLEEP(5)` cancelado a los ~100 ms termina en ~5 s sin excepción (test y sonda). El `Cancel()` explícito del comando interrumpe la consulta pero el driver lanza `NullReferenceException`, por lo que registrar `Cancel()` no es una alternativa limpia. Lo que sí se consigue: un token ya cancelado no abre conexión ni ejecuta, y las llamadas siguientes de la misma petición se detienen (AC3.3). Cambiar a `MySqlConnector` está fuera de alcance (`00`) |
+| Desviaciones | (1) Parámetro de acción con valor por defecto (`CancellationToken cancellationToken = default`): `Acceptance/Features_Refactor/SearchPlayersFeatureShould.cs` llama a las acciones directamente y está fuera del alcance de ficheros; ASP.NET Core enlaza igualmente `RequestAborted`. (2) Ficheros de test nuevos dentro de las carpetas del alcance: `Unit/Controllers/FacilitiesControllerShould.cs`, `Unit/Repositories/TokenRecordingConnectionProvider.cs`. (3) AC3.4 `[Explicit]` para no dejar la suite en rojo ni añadir 5 s por ejecución |
+| DI / `TestFixture` | Sin registros nuevos: `TestFixture.cs` no cambia |
+| Contrato | Los parámetros `CancellationToken` no forman parte del OpenAPI (NSwag los omite); tests de contrato en verde. No verificado sobre la salida generada de `Gaffer.Api.Client` (fuera de alcance) |
+| Q1 (deuda, sin cambios) | Una operación cancelada fuera de transacción después de abrir deja la conexión abierta hasta el fin del scope (misma deuda Q1); con token ya cancelado no se abre |
+
+## Ciclo 4 - Corrección del paso 03 + Paso 04 (BUILDER)
+
+### Corrección del paso 03 (REVIEW.md ciclo 3: H1/AC3.5, H2)
+
+| Tema | Detalle |
+| --- | --- |
+| AC3.5 (Q4 = b, log `Information`) | `ExceptionHandlingMiddleware`: `catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)` → `LogInformation` (una entrada, sin excepción adjunta) y estado 499 si la respuesta no ha empezado; sin cuerpo (el cliente ya no escucha), sin 500 ni `LogError`. Una `OperationCanceledException` sin `RequestAborted` cancelado sigue siendo 500 + `LogError` (caracterizado) |
+| Tests nuevos (3) | `ExceptionHandlingMiddlewareShould`: `ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient` (499, cuerpo vacío), `LogAnAbortedRequestOnceAsInformationWithoutError` (`TaskCanceledException`, derivada), `KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted` |
+| H2 | Retirado `StopALongRunningQueryWhenItsTokenIsCancelled` (`[Explicit]`, en rojo a propósito) de `SqlConnectionProviderShould.cs`. La medición de AC3.4 sigue registrada en el ciclo 3 (filas "Sonda del driver" y "AC3.4 (medición)") |
+| Ficheros | `Gaffer.Api/Shared/Exceptions/ExceptionHandlingMiddleware.cs` (1 fichero de producto, sin cambio de contrato OpenAPI: cumple Q0 = b), `Unit/Exceptions/ExceptionHandlingMiddlewareShould.cs`, `Unit/ConnectionProviders/SqlConnectionProviderShould.cs` |
+
+### Paso 04
+
+| AC | Cambio |
+| --- | --- |
+| AC4.1 | `TestFixture.cs`: los 10 `AddScoped<` de repositorios/handlers sustituidos por `services.ConfigureRepositories(builderContext.Configuration)` y `services.ConfigureActions()`; se mantiene el `IDatabaseConnectionProvider` por scope contra la BD de test. Q5 = b: bloque MVC/versionado de TestFixture sin cambios. Test nuevo `Integration/TestServerDependenciesShould.cs`: obtiene los tipos de servicio de los propios `ConfigureRepositories`/`ConfigureActions` de producción (2 + 8) y exige que el `TestServer` resuelva cada uno en un scope |
+| AC4.2 | `Gaffer.Api/Shared/Clients/IGafferApiClient.cs` → `Gaffer.Api.Tests/TestShared/IGafferApiClient.cs` (`namespace Gaffer.Api.Tests.TestShared`); carpeta `Shared/Clients` eliminada; `using Gaffer.Api.Shared.Clients` retirado en `FacilityFeaturesShould`, `JsonContractShould`, `SearchPlayersEndpointShould`, `GafferApiClientTest`, `TestFixture` y sustituido en `Integration/ApiShould.cs` |
+| AC4.3 | Código comentado borrado: `Startup.cs` (4 líneas `//services.*`) y `SwaggerStartup.cs` (18 líneas, `AddVersioning`/OAuth2) |
+| AC4.4 | `Player`: `SetLastName(newLastName)`, `SetSecondLastName(newSecondLastName)`, `GetBirthDate()`, `SetBirthDate(string newBirthDate)`, `SetBirthDate(DateTime newBirthDate)`, `SetGender(string newGender)`. `GetGenderName` se mantiene: devuelve el nombre del miembro del enum, el sufijo es correcto (criterio del plan "revisar"). Llamadores: `UpdatePlayerCommandHandler` L54, `Unit/Domain/PlayerShould.cs` (tests `ReturnBirthDate`, `SetBirthDate`) |
+| AC4.5 | `nswag.json` `infoTitle` = `"Gaffer Api"` (Q6). Salida generada de `Gaffer.Api.Client` sin tocar (la regenera el operador) |
+| AC4.6 | `VersioningStartup.cs`: la convención de `AddMvc` usa la instancia creada al inicio (se elimina la segunda `new GafferApiVersioningDefinition()`) |
+| AC4.7 | Suite 269/269; `swagger.json` servido idéntico antes/después |
+| Orden de revalidación | Filtros por AC tras cada limpieza (AC4.1, AC4.4) y suite completa + build `--no-incremental` al final (registrado arriba) |
+| DI / `TestFixture` (lección permanente) | Sin handlers nuevos; TestFixture pasa a reutilizar `ConfigureActions()`, por lo que un handler nuevo registrado en producción queda registrado en tests y cubierto por `TestServerDependenciesShould` |
+| Desviaciones | (1) Fichero de test nuevo `Gaffer.Api.Tests/Integration/TestServerDependenciesShould.cs` (lo exige AC4.1; el plan no fija ubicación). (2) Ficheros de test tocados solo por `using` tras mover `IGafferApiClient` (consecuencia directa de AC4.2). (3) Evidencia opcional de AC4.5 con `dotnet-nswag` no ejecutada. (4) Los ficheros editados con `sed` quedaron con LF en el árbol de trabajo; `.gitattributes` (`*.cs text eol=lf`) normaliza igualmente |
 
 ## Documentación modificada
 

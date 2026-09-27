@@ -33,9 +33,9 @@ public class Player(
         return LastName;
     }
 
-    public void SetLastName(string commandFirstName)
+    public void SetLastName(string newLastName)
     {
-        LastName = commandFirstName;
+        LastName = newLastName;
     }
 
     public string GetSecondLastName()
@@ -43,24 +43,24 @@ public class Player(
         return SecondLastName ?? string.Empty;
     }
 
-    public void SetSecondLastName(string? commandFirstName)
+    public void SetSecondLastName(string? newSecondLastName)
     {
-        SecondLastName = commandFirstName;
+        SecondLastName = newSecondLastName;
     }
 
-    public string GetBirthDateName()
+    public string GetBirthDate()
     {
         return Birthdate.ToString(CultureInfo.InvariantCulture);
     }
 
-    public void SetBirthDateName(string commandFirstName)
+    public void SetBirthDate(string newBirthDate)
     {
-        Birthdate = DateTime.Parse(commandFirstName, CultureInfo.InvariantCulture);
+        Birthdate = DateTime.Parse(newBirthDate, CultureInfo.InvariantCulture);
     }
 
-    public void SetBirthDateName(DateTime birthDate)
+    public void SetBirthDate(DateTime newBirthDate)
     {
-        Birthdate = birthDate;
+        Birthdate = newBirthDate;
     }
 
     public string GetGenderName()
@@ -68,9 +68,9 @@ public class Player(
         return Gender.ToString();
     }
 
-    public void SetGender(string commandFirstName)
+    public void SetGender(string newGender)
     {
-        Gender = Enum.Parse<Gender>(commandFirstName, ignoreCase: true);
+        Gender = Enum.Parse<Gender>(newGender, ignoreCase: true);
     }
 
     public void SetGender(Gender gender)

@@ -19,7 +19,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     {
         var (whereClause, parameters) = BuildFilters(criteria);
         var query = $"SELECT * FROM `Players`{whereClause};";
-        return await dbConnectionProvider.QueryAsync<Player>(query, parameters);
+        return await dbConnectionProvider.QueryAsync<Player>(query, parameters, cancellationToken);
     }
 
     private static (string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria criteria)
@@ -70,13 +70,13 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
             player.SecondLastName,
             player.Gender,
             player.Birthdate
-        });
+        }, cancellationToken);
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken)
     {
         var query = "DELETE FROM `Players` WHERE ID = @Id";
-        await dbConnectionProvider.ExecuteAsync(query, new { Id = id });
+        await dbConnectionProvider.ExecuteAsync(query, new { Id = id }, cancellationToken);
     }
 
     public async Task Update(Player player, CancellationToken cancellationToken)
@@ -98,6 +98,6 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
             player.SecondLastName,
             player.Gender,
             player.Birthdate
-        });
+        }, cancellationToken);
     }
 }

@@ -61,29 +61,39 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         => await RunOnConnectionAsync(() =>
             _sqlConnection.ExecuteAsync("CREATE Database if not exists @database", new { database }));
 
-    public Task<T> QueryScalarAsync<T>(string query, object? parameters = null)
+    public Task<T> QueryScalarAsync<T>(string query, object? parameters = null, CancellationToken cancellationToken = default)
         => RunOnConnectionAsync(async () =>
-            (await _sqlConnection.QueryFirstOrDefaultAsync<T>(query, parameters, _currentTransaction))!);
+            (await _sqlConnection.QueryFirstOrDefaultAsync<T>(Command(query, parameters, cancellationToken)))!,
+            cancellationToken);
 
-    public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null)
+    public async Task<List<T>> QueryAsync<T>(string query, object? parameters = null, CancellationToken cancellationToken = default)
         => (await RunOnConnectionAsync(() =>
-            _sqlConnection.QueryAsync<T>(query, parameters, _currentTransaction))).ToList();
+            _sqlConnection.QueryAsync<T>(Command(query, parameters, cancellationToken)), cancellationToken)).ToList();
 
-    public async Task ExecuteAsync(string query, object? parameters = null)
+    public async Task ExecuteAsync(string query, object? parameters = null, CancellationToken cancellationToken = default)
         => await RunOnConnectionAsync(() =>
-            _sqlConnection.ExecuteAsync(query, parameters, _currentTransaction));
+            _sqlConnection.ExecuteAsync(Command(query, parameters, cancellationToken)), cancellationToken);
 
-    public async Task ExecuteInTransactionAsync(Func<Task> operations)
+    public async Task ExecuteInTransactionAsync(Func<Task> operations, CancellationToken cancellationToken = default)
     {
         if (_currentTransaction != null)
         {
             // Already running inside an ambient transaction started by an outer call: just execute inline.
+            cancellationToken.ThrowIfCancellationRequested();
             await operations();
             return;
         }
 
-        await OpenIfNeededAsync();
-        _currentTransaction = await _sqlConnection.BeginTransactionAsync();
+        await OpenIfNeededAsync(cancellationToken);
+        try
+        {
+            _currentTransaction = await _sqlConnection.BeginTransactionAsync(cancellationToken);
+        }
+        catch
+        {
+            await _sqlConnection.CloseAsync();
+            throw;
+        }
         try
         {
             await operations();
@@ -134,9 +144,9 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
     /// A failing operation is not closed here (TECHDEBT-003 Q1 debt): the connection stays open until the next
     /// transaction ends or the provider is disposed with its scope.
     /// </summary>
-    private async Task<T> RunOnConnectionAsync<T>(Func<Task<T>> operation)
+    private async Task<T> RunOnConnectionAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
     {
-        var ownsConnection = await OpenIfNeededAsync();
+        var ownsConnection = await OpenIfNeededAsync(cancellationToken);
         var result = await operation();
         if (ownsConnection)
         {
@@ -145,15 +155,23 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         return result;
     }
 
-    /// <summary>Opens the connection if not already open. Returns whether the caller is responsible for closing it.</summary>
-    private async Task<bool> OpenIfNeededAsync()
+    /// <summary>
+    /// Opens the connection if not already open. Returns whether the caller is responsible for closing it.
+    /// An already cancelled <paramref name="cancellationToken"/> throws before touching the connection.
+    /// </summary>
+    private async Task<bool> OpenIfNeededAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_currentTransaction != null) return false;
 
         if (_sqlConnection.State != ConnectionState.Open)
         {
-            await _sqlConnection.OpenAsync();
+            await _sqlConnection.OpenAsync(cancellationToken);
         }
         return true;
     }
+
+    /// <summary>Single way to build a Dapper command: bound to the ambient transaction (if any) and to the caller's token.</summary>
+    private CommandDefinition Command(string query, object? parameters, CancellationToken cancellationToken)
+        => new(query, parameters, _currentTransaction, cancellationToken: cancellationToken);
 }

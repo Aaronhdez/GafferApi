@@ -16,11 +16,11 @@ public class PlayerController(
     ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler) : ControllerBase
 {
     [HttpGet("{id}")]
-    public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id)
+    public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
-        var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
+        var queryResult = await searchPlayersQueryHandler.Handle(query, cancellationToken);
         var player = queryResult.Select(row => new SearchPlayerResponse(row.Id, row.FirstName, row.LastName, row.SecondLastName,
             row.BirthDate, row.Gender
         )).FirstOrDefault();
@@ -29,16 +29,16 @@ public class PlayerController(
 
     [HttpPost("")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
-    public async Task<ActionResult<Guid>> Create([FromBody] CreatePlayerRequest request)
+    public async Task<ActionResult<Guid>> Create([FromBody] CreatePlayerRequest request, CancellationToken cancellationToken = default)
     {
         var createResult = await createPlayerCommandHandler.Handle(
             new CreatePlayerCommand(request.FirstName, request.LastName, request.SecondLastName, request.BirthDate,
-                request.Gender), CancellationToken.None);
+                request.Gender), cancellationToken);
         return CreatedAtAction(nameof(GetBy), new { id = createResult.Id }, createResult.Id);
     }
 
     [HttpPost("search")]
-    public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request)
+    public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request, CancellationToken cancellationToken = default)
     {
         var query = new SearchPlayersQuery();
         foreach (var filter in request.Filters)
@@ -46,7 +46,7 @@ public class PlayerController(
             query.Filters.Add(new QueryFilter { Name = filter.Name, Value = filter.Value });
         }
 
-        var queryResult = await searchPlayersQueryHandler.Handle(query, CancellationToken.None);
+        var queryResult = await searchPlayersQueryHandler.Handle(query, cancellationToken);
         return queryResult.Select(row => new SearchPlayerResponse(
                 row.Id,
                 row.FirstName,
@@ -59,13 +59,13 @@ public class PlayerController(
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete([FromRoute] Guid id)
+    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
     {
-        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(id),  CancellationToken.None);
+        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(id), cancellationToken);
     }
 
     [HttpPut("{id}")]
-    public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request)
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request, CancellationToken cancellationToken = default)
     {
         await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand
         {
@@ -75,7 +75,7 @@ public class PlayerController(
             SecondLastName = request.SecondLastName,
             BirthDate = request.BirthDate,
             Gender = request.Gender,
-        }, CancellationToken.None);
+        }, cancellationToken);
     }
 }
 

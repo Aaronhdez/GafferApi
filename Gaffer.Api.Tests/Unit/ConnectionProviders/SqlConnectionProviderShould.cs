@@ -167,6 +167,65 @@ public class SqlConnectionProviderShould
         (await provider.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
     }
 
+    [Test]
+    public async Task NotRunAQueryWhenItsTokenIsAlreadyCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+
+        var query = async () => await provider.QueryAsync<int>("SELECT 1;", cancellationToken: CancelledToken());
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
+    [Test]
+    public async Task NotWriteAnythingWhenAnExecuteTokenIsAlreadyCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+
+        var execute = async () => await provider.ExecuteAsync(PlayersInsert, new { Id = id }, CancelledToken());
+
+        await execute.Should().ThrowAsync<OperationCanceledException>();
+        await AssertPlayerNotWritten(id);
+    }
+
+    [Test]
+    public async Task NotWriteAnythingWhenATransactionTokenIsAlreadyCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+        var token = CancelledToken();
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(
+            () => provider.ExecuteAsync(PlayersInsert, new { Id = id }), token);
+
+        await transaction.Should().ThrowAsync<OperationCanceledException>();
+        await AssertPlayerNotWritten(id);
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
+    [Test]
+    public async Task RollBackATransactionWhoseOperationIsCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        using var cancellation = new CancellationTokenSource();
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
+        {
+            await provider.ExecuteAsync(PlayersInsert, new { Id = firstId }, cancellation.Token);
+            await cancellation.CancelAsync();
+            await provider.ExecuteAsync(PlayersInsert, new { Id = secondId }, cancellation.Token);
+        }, cancellation.Token);
+
+        await transaction.Should().ThrowAsync<OperationCanceledException>();
+        await AssertPlayerNotWritten(firstId);
+        await AssertPlayerNotWritten(secondId);
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
     [SetUp]
     [TearDown]
     public async Task ClearPlayers()
@@ -181,6 +240,14 @@ public class SqlConnectionProviderShould
     private const string PlayerCount = "SELECT COUNT(*) FROM `Players` WHERE Id = @Id;";
     private const string PlayerById = "SELECT Id FROM `Players` WHERE Id = @Id;";
     private const string PlayerDelete = "DELETE FROM `Players` WHERE Id = @Id;";
+
+    private static CancellationToken CancelledToken() => new(canceled: true);
+
+    private static async Task AssertPlayerNotWritten(Guid id)
+    {
+        await using var observer = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        (await observer.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
+    }
 
     private static void AssertClosedAndNotDisposed(SqlConnectionProvider provider)
     {
