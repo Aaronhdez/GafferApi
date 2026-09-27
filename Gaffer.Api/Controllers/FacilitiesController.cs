@@ -82,7 +82,7 @@ public class FacilitiesController(
                 request.Address.City,
                 request.Address.Region,
                 request.Address.Country),
-            Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList(),
+            Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
         }, CancellationToken.None);
     }
 }
@@ -145,6 +145,8 @@ public class UpdateFacilityAddressRequest
 
 public class UpdateFacilityStandRequest
 {
+    /// <summary>Id of an existing stand of the facility; omit it (or send null) to add a new stand.</summary>
+    public Guid? Id { get; set; }
     public string StandName { get; set; } = string.Empty;
     public int StandCapacity { get; set; }
 }

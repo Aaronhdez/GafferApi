@@ -42,3 +42,51 @@ Decisión del operador (verbatim): "aprueba las propuestas del optimizer, luego 
 
 - **P1-1** → aprobada, registrada como `OPT-015` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en un `.gitattributes` en la raíz del repo.
 - **P1-2** → aprobada, registrada como `OPT-016` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/doc/common/dev-stack.md`.
+
+## Ciclo 2 - Paso 02 (Update de Facility con gradas por `Id`)
+
+### Uso medido
+
+`usage-slice` repite el vacío total de telemetría del ciclo 1: sin datos con `--repo gaffer-api` (ventanas literales de `STATUS.md`), sin datos con `--repo TECHDEBT-003` (patrón OPT-008), sin datos ampliando a `--repo gaffer-api` el día completo `2026-09-27T00:00:00Z/23:59:59Z` (ninguna fila `claude-code`, solo `copilot` "sin datos"). Vacío total, no un clúster desplazado → aplica el criterio de corte de OPT-011: se usa `medido:agent-result`.
+
+| Agente | Tokens (medido:agent-result) | Llamadas a herramientas | Duración | Δ vs. ciclo 1 (tokens / llamadas / duración) |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER | 126 322 | 71 | 663 298 ms (~11 min 3 s) | +96 % / +103 % / +59 % |
+| REVIEWER | 75 680 | 26 | 236 395 ms (~3 min 56 s) | +67 % / +73 % / +17 % |
+
+Comparación con `usage/*.md`: BUILDER estimó ~110k+22k (~132k) frente a 126 322 medido (~4 % por debajo); REVIEWER estimó ~70k+7k (~77k) frente a 75 680 medido (~2 % por debajo). Ambas estimaciones siguen siendo razonablemente precisas; sin brecha estimado/medido que investigar.
+
+Contexto adicional no capturado por el ciclo BUILDER→REVIEWER: entre los ciclos 1 y 2, PLANNER se invocó 4 veces para revisar el paso 02 (ULID→Guid, R-MAX, Q14-Q18), con 69 389 + 45 876 + 41 815 + 53 963 = **211 043 tokens** y 32+17+18+19 = 86 llamadas a herramienta. Ese total de replanificación **supera** el coste combinado de BUILDER+REVIEWER de este mismo ciclo (126 322 + 75 680 = 202 002).
+
+### Spikes detectados
+
+| Spike | Valor / origen | Causa probable |
+| --- | --- | --- |
+| S3 | Replanificación entre ciclos: 4 invocaciones de PLANNER, 211 043 tokens totales, más que el ciclo 2 completo de BUILDER+REVIEWER. Cada invocación relee `00-overview-and-open-questions.md`, `02-facility-update-stable-stand-ids.md` y `STATUS.md` completos | El plan del paso 02 se corrigió de forma incremental (ULID descartado → `Guid`; luego R-MAX; luego Q14-Q18) en 4 rondas separadas de decisión del operador, cada una disparando una invocación completa de PLANNER en vez de una única consolidación de todas las decisiones pendientes antes de invocar. Escala con el número de rondas de decisión, no con el tamaño del cambio final (los ACs reescritos por ronda son pocos: AC2.3, AC2.4, AC2.8, AC2.11) |
+| S4 | BUILDER: llamadas a herramienta +103 % (35→71) y duración +59 % frente a un crecimiento de alcance de ~4,6x en tests nuevos (5→23) y ~5x en ficheros tocados (1→5) — el coste creció proporcionalmente *menos* que el alcance, salvo por un extra identificado: "una llave sobrante al empalmar tests del repositorio con head/tail" obligó a un build adicional (`usage/BUILDER.md`, ciclo 2) | Empalmar bloques de test nuevos en un fichero existente con herramientas de shell (`head`/`tail`, coherente con "sin Python ni pwsh en Git Bash" del ciclo 1) es propenso a desajustar el recuento de llaves; un `Edit` dirigido a un ancla estable (p. ej. antes del cierre de la clase) no tiene ese riesgo. Coste puntual, no aislable en tokens exactos sin `usage-slice` |
+
+No se repiten propuestas ya registradas en `MEMORIES.md`. S3 es un patrón distinto de OPT-002 (que cubre el reenvío de requisitos *antes* de iniciar la planificación); aquí la replanificación ocurre *después* de la aprobación inicial del paso, en rondas sucesivas de corrección.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P2-1 | Cuando una decisión del operador obligue a revisar un paso ya aprobado (post-planificación), ORCHESTRATOR debe recoger explícitamente todas las ambigüedades pendientes conocidas en ese momento (revisando `00-overview-and-open-questions.md`) y plantearlas al operador en una sola pregunta consolidada antes de invocar a PLANNER, en vez de invocar a PLANNER de forma inmediata tras cada mensaje individual del operador. Extiende el principio de OPT-002 (brief de una sola pasada) a las rondas de revisión posteriores a la aprobación | `AGENTS.md` (sección "Human-Controlled Flow") o `.claude/commands/harness-run` (lógica de re-invocación de PLANNER en ORCHESTRATOR) | Reduce el número de invocaciones completas de PLANNER por corrección de plan; en este ciclo, consolidar las 4 rondas (211 043 tokens, 86 llamadas) en 1-2 invocaciones podría ahorrar un 40-60 % de ese coste en escenarios equivalentes futuros. No aplicable retroactivamente a este ciclo | `medido:agent-result` (4 invocaciones de PLANNER reportadas por el harness); `STATUS.md` (histórico de decisiones Q2, R-MAX, Q14-Q19) |
+| P2-2 | Al añadir varios métodos de test nuevos a un fichero existente, usar `Edit` dirigido a un ancla estable (p. ej. inmediatamente antes del cierre de la clase) en vez de empalmar con `head`/`tail` de shell, para evitar desajustes de llaves que fuercen un build adicional de diagnóstico | Skill `incremental-implementation` o `test-driven-development` de BUILDER (`.claude/agents/builder.md`) | Evita 1 build adicional (~1 ciclo de `dotnet build --no-incremental` + diagnóstico) cada vez que se empalman bloques de test grandes con herramientas de shell; magnitud exacta no aislable sin `usage-slice` | `usage/BUILDER.md` ciclo 2 ("una llave sobrante al empalmar tests del repositorio con head/tail (1 build extra)") |
+
+### Efecto observado de propuestas previas (OPT-015, OPT-016)
+
+Ambas se confirman **aplicadas** por evidencia de fichero y de `REVIEW.md` (aunque el `Estado` en `MEMORIES.md` solo cambia a `aplicada` con confirmación explícita del operador, fuera del alcance de este modo de análisis):
+
+- **OPT-015** (`.gitattributes`): el fichero existe en la raíz (`*.cs text eol=lf`). `REVIEW.md` ciclo 2 confirma el efecto directamente: `git ls-files --eol` muestra los `.cs` editados como `i/lf w/crlf attr/text eol=lf` (se normalizan a LF al commitear) y anota explícitamente "el diff no es reescritura completa (distinto de F1 del ciclo 1)". El spike S1 del ciclo 1 no se repitió en el ciclo 2 pese a tocar 5 ficheros de producto.
+- **OPT-016** (nota `DisposeAsync` en `dev-stack.md`): la nota se añadió como AC2.10 (confirmado por `grep -n "DisposeAsync" dev-stack.md` → línea 25) y por `REVIEW.md` ("Demostrado"). El paso 02 no volvió a tocar el ciclo de vida de `SqlConnectionProvider`, así que este ciclo no ofrece una prueba directa de que evitó repetir el sondeo en scratchpad (S2); el efecto queda confirmado como "aplicado" pero "sin datos" de ahorro adicional hasta que un paso futuro (03-05) toque de nuevo conexiones MySQL.
+
+### Brechas de datos
+
+- `usage-slice` sigue sin devolver datos medidos de entrada fresca vs. caché para BUILDER/REVIEWER del ciclo 2 (mismo vacío total de telemetría que el ciclo 1); no se puede separar cuánto del crecimiento de tokens es caché repetido vs. entrada nueva.
+- No se puede aislar el coste exacto en tokens de S3 (replanificación) por invocación individual más allá de los totales agregados ya reportados por el harness; tampoco se puede saber si alguna de las 4 rondas habría sido evitable por sí sola sin conocer el contenido exacto de cada mensaje del operador entre invocaciones.
+- El ahorro de OPT-016 sobre un sondeo futuro evitado no es verificable hasta que un paso posterior de este plan (03-05) vuelva a tocar conexiones MySQL.
+
+### Estado de aprobación
+
+Pendiente de decisión del operador en el checkpoint de este ciclo (P2-1, P2-2).

@@ -22,6 +22,7 @@
 - JSON handling with Newtonsoft.Json only (`AddNewtonsoftJson` MVC formatter, `StringEnumConverter`); `System.Text.Json` is no longer configured for MVC input/output (tests still use it only to read HTTP responses)
 - Data access with Dapper
 - MySQL connectivity: `Gaffer.Api` uses `MySql.Data` (`MySqlConnector` was removed as an unused reference); `Gaffer.Api.Migrations` uses `MySqlConnector`
+  - Driver note (OPT-016): with `MySql.Data` 26.7.0, `MySqlConnection.DisposeAsync()` does not raise `Component.Disposed` nor release the `Component` of an already closed connection (it can be reopened); only the synchronous `Dispose()` performs that release. Tests about releasing the connection when its scope ends rely on `Dispose()`. Source: `.github/plans/TECHDEBT-003/STATUS.md`, cycle 1, row "AC1.2: hallazgo del driver".
 - Database migrations with FluentMigrator
 
 ## Architecture Patterns Observed

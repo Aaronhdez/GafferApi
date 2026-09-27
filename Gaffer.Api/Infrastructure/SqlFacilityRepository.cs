@@ -140,11 +140,63 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
                 facility.Capacity
             });
 
-            await DeleteStands(facility.Id, cancellationToken);
-            await DeleteAddress(facility.Id, cancellationToken);
-            await InsertAddress(facility, cancellationToken);
-            await InsertStands(facility, cancellationToken);
+            await UpdateAddress(facility, cancellationToken);
+            await UpdateStands(facility, cancellationToken);
         });
+    }
+
+    /// <summary>Updates in place the address linked to the facility; its <c>Id</c> never changes.</summary>
+    private async Task UpdateAddress(Facility facility, CancellationToken cancellationToken)
+    {
+        const string updateAddressQuery =
+            "UPDATE `Addresses` SET " +
+            "Street = @Street, " +
+            "StreetNumber = @StreetNumber, " +
+            "PostalCode = @PostalCode, " +
+            "City = @City, " +
+            "Region = @Region, " +
+            "Country = @Country " +
+            "WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
+
+        await dbConnectionProvider.ExecuteAsync(updateAddressQuery, new
+        {
+            FacilityId = facility.Id,
+            facility.Address.Street,
+            facility.Address.StreetNumber,
+            facility.Address.PostalCode,
+            facility.Address.City,
+            facility.Address.Region,
+            facility.Address.Country
+        });
+    }
+
+    /// <summary>
+    /// Updates in place the stands already linked to the facility and inserts the others.
+    /// Linked stands missing from <paramref name="facility"/> are left untouched (never deleted).
+    /// </summary>
+    private async Task UpdateStands(Facility facility, CancellationToken cancellationToken)
+    {
+        const string linkedStandIdsQuery = "SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
+        var linkedStandIds = (await dbConnectionProvider.QueryAsync<Guid>(linkedStandIdsQuery, new { FacilityId = facility.Id }))
+            .ToHashSet();
+        var standsByLinked = facility.Stands.ToLookup(stand => linkedStandIds.Contains(stand.Id));
+
+        const string updateStandQuery =
+            "UPDATE `Stands` SET StandName = @StandName, StandCapacity = @StandCapacity WHERE Id = @Id;";
+        foreach (var stand in standsByLinked[true])
+        {
+            await dbConnectionProvider.ExecuteAsync(updateStandQuery, new
+            {
+                stand.Id,
+                stand.StandName,
+                stand.StandCapacity
+            });
+        }
+
+        foreach (var stand in standsByLinked[false])
+        {
+            await InsertStand(facility.Id, stand, cancellationToken);
+        }
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken)
@@ -203,23 +255,28 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         foreach (var stand in facility.Stands)
         {
-            const string insertStandQuery =
-                "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, @StandName, @StandCapacity);";
-            await dbConnectionProvider.ExecuteAsync(insertStandQuery, new
-            {
-                stand.Id,
-                stand.StandName,
-                stand.StandCapacity
-            });
-
-            const string insertFacilityStandRelationQuery =
-                "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);";
-            await dbConnectionProvider.ExecuteAsync(insertFacilityStandRelationQuery, new
-            {
-                FacilityId = facility.Id,
-                StandId = stand.Id
-            });
+            await InsertStand(facility.Id, stand, cancellationToken);
         }
+    }
+
+    private async Task InsertStand(Guid facilityId, Stand stand, CancellationToken cancellationToken)
+    {
+        const string insertStandQuery =
+            "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, @StandName, @StandCapacity);";
+        await dbConnectionProvider.ExecuteAsync(insertStandQuery, new
+        {
+            stand.Id,
+            stand.StandName,
+            stand.StandCapacity
+        });
+
+        const string insertFacilityStandRelationQuery =
+            "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);";
+        await dbConnectionProvider.ExecuteAsync(insertFacilityStandRelationQuery, new
+        {
+            FacilityId = facilityId,
+            StandId = stand.Id
+        });
     }
 
     private async Task DeleteStands(Guid facilityId, CancellationToken cancellationToken)

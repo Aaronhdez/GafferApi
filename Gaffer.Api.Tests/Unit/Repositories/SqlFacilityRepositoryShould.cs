@@ -232,25 +232,14 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
     public class WhenUpdatingAFacility : SqlFacilityRepositoryShould
     {
         [Test]
-        public async Task ReplaceAllFieldsAddressAndStands()
+        public async Task UpdateFieldsAddressAndStandsInPlaceWithoutDeletingTheStandsNotSent()
         {
-            var originalStands = new List<Stand>
-            {
-                new(Guid.NewGuid(), "North", 4500),
-                new(Guid.NewGuid(), "South", 4500),
-            };
-            var original = new Facility(
-                Guid.NewGuid(),
-                "City Arena",
-                true,
-                new DateTime(2020, 7, 20),
-                FacilityType.Arena,
-                18000,
-                new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
-                originalStands);
+            var north = new Stand(Guid.NewGuid(), "North", 4500);
+            var south = new Stand(Guid.NewGuid(), "South", 4500);
+            var original = BuildCityArena([north, south]);
             await _repository.Save(original, CancellationToken.None);
 
-            var newStands = new List<Stand> { new(Guid.NewGuid(), "East", 6000) };
+            var east = new Stand(Guid.NewGuid(), "East", 6000);
             var updated = new Facility(
                 original.Id,
                 "Renovated Arena",
@@ -258,37 +247,101 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 new DateTime(2023, 3, 15),
                 FacilityType.Stadium,
                 60000,
-                new Address(Guid.NewGuid(), "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
-                newStands);
+                new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
+                [new Stand(north.Id, "North Renovated", 5000), east]);
 
             await _repository.Update(updated, CancellationToken.None);
 
+            var result = await GetById(original.Id);
+            result.Name.Should().Be(updated.Name);
+            result.Active.Should().Be(updated.Active);
+            result.BuildDate.Should().Be(updated.BuildDate);
+            result.Type.Should().Be(updated.Type);
+            result.Capacity.Should().Be(updated.Capacity);
+            result.Address.Id.Should().Be(original.Address.Id);
+            result.Address.Street.Should().Be("New Road");
+            result.Address.City.Should().Be("Seville");
+            result.Stands.Select(Describe).Should().BeEquivalentTo([
+                $"{north.Id}:North Renovated:5000",
+                $"{south.Id}:South:4500",
+                $"{east.Id}:East:6000"
+            ]);
+
+            var addresses = await _databaseConnectionProvider.QueryAsync<AddressRow>(
+                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Addresses`;");
+            addresses.Select(address => address.Id).Should().Equal(original.Address.Id);
+            var addressLinks = await _databaseConnectionProvider.QueryAsync<FacilityAddressRow>(
+                "SELECT FacilityId, AddressId FROM `Facilities_Addresses`;");
+            addressLinks.Select(link => $"{link.FacilityId}:{link.AddressId}")
+                .Should().Equal($"{original.Id}:{original.Address.Id}");
+            var stands = await _databaseConnectionProvider.QueryAsync<StandRow>(
+                "SELECT Id, StandName, StandCapacity FROM `Stands`;");
+            stands.Select(stand => stand.Id).Should().BeEquivalentTo([north.Id, south.Id, east.Id]);
+            var standLinks = await _databaseConnectionProvider.QueryAsync<FacilityStandRow>(
+                "SELECT FacilityId, StandId FROM `Facilities_Stands`;");
+            standLinks.Select(link => $"{link.FacilityId}:{link.StandId}").Should().BeEquivalentTo([
+                $"{original.Id}:{north.Id}",
+                $"{original.Id}:{south.Id}",
+                $"{original.Id}:{east.Id}"
+            ]);
+        }
+
+        [Test]
+        public async Task LeaveEverythingUnchangedWhenAnOperationOfTheUpdateFails()
+        {
+            var north = new Stand(Guid.NewGuid(), "North", 4500);
+            var south = new Stand(Guid.NewGuid(), "South", 4500);
+            var original = BuildCityArena([north, south]);
+            await _repository.Save(original, CancellationToken.None);
+            var standNameLongerThanItsColumn = new string('x', 300);
+            var updated = new Facility(
+                original.Id,
+                "Renovated Arena",
+                false,
+                new DateTime(2023, 3, 15),
+                FacilityType.Stadium,
+                60000,
+                new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
+                [new Stand(north.Id, "North Renovated", 5000), new Stand(Guid.NewGuid(), standNameLongerThanItsColumn, 1000)]);
+
+            var act = async () => await _repository.Update(updated, CancellationToken.None);
+
+            var failure = await act.Should().ThrowAsync<Exception>();
+            TestContext.Out.WriteLine(failure.Which.Message);
+            var result = await GetById(original.Id);
+            result.Name.Should().Be("City Arena");
+            result.Capacity.Should().Be(18000);
+            result.Address.Id.Should().Be(original.Address.Id);
+            result.Address.Street.Should().Be("Arena Road");
+            result.Stands.Select(Describe).Should().BeEquivalentTo([
+                $"{north.Id}:North:4500",
+                $"{south.Id}:South:4500"
+            ]);
+            (await _databaseConnectionProvider.QueryScalarAsync<int>("SELECT COUNT(*) FROM `Stands`;")).Should().Be(2);
+            (await _databaseConnectionProvider.QueryScalarAsync<int>("SELECT COUNT(*) FROM `Facilities_Stands`;")).Should().Be(2);
+        }
+
+        private static Facility BuildCityArena(List<Stand> stands) => new(
+            Guid.NewGuid(),
+            "City Arena",
+            true,
+            new DateTime(2020, 7, 20),
+            FacilityType.Arena,
+            18000,
+            new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
+            stands);
+
+        private async Task<Facility> GetById(Guid id)
+        {
             var result = await _repository.Get(new FacilitySearchCriteria
             {
-                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{original.Id}" }]
+                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{id}" }]
             }, CancellationToken.None);
-
             result.Should().ContainSingle();
-            result[0].Name.Should().Be(updated.Name);
-            result[0].Active.Should().Be(updated.Active);
-            result[0].BuildDate.Should().Be(updated.BuildDate);
-            result[0].Type.Should().Be(updated.Type);
-            result[0].Capacity.Should().Be(updated.Capacity);
-            result[0].Address.Id.Should().Be(updated.Address.Id);
-            result[0].Address.Street.Should().Be(updated.Address.Street);
-            result[0].Stands.Count.Should().Be(1);
-            result[0].Stands.Should().Contain(s => s.Id == newStands[0].Id && s.StandName == newStands[0].StandName);
-
-            var remainingAddresses = await _databaseConnectionProvider.QueryAsync<AddressRow>(
-                "SELECT Id, Street, StreetNumber, PostalCode, City, Region, Country FROM `Addresses`;");
-            remainingAddresses.Should().ContainSingle();
-            remainingAddresses[0].Id.Should().Be(updated.Address.Id);
-
-            var remainingStands = await _databaseConnectionProvider.QueryAsync<StandRow>(
-                "SELECT Id, StandName, StandCapacity FROM `Stands`;");
-            remainingStands.Should().ContainSingle();
-            remainingStands[0].Id.Should().Be(newStands[0].Id);
+            return result[0];
         }
+
+        private static string Describe(Stand stand) => $"{stand.Id}:{stand.StandName}:{stand.StandCapacity}";
 
         [Test]
         public void NotAllowConstructingAFacilityWithMoreThanFourStandsSoDbIsNeverMutated()
