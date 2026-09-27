@@ -234,7 +234,9 @@ No se repiten propuestas ya registradas en `MEMORIES.md`. S8 es un hecho nuevo y
 
 ### Estado de aprobación
 
-Pendiente de decisión del operador en el checkpoint de este ciclo (verdict `APPROVED`, plan probablemente cerrado; DOCUMENTER requiere aprobación explícita).
+Decisión del operador (verbatim): "apruebo P5-1 y pasa al documentador".
+
+- **P5-1** → aprobada, registrada como `OPT-022` en `MEMORIES.md`. Pendiente de aplicación (fuera de alcance de OPTIMIZER) en `.github/doc/common/test-stack-documentation.md` (o `test-stack.md`).
 
 ## Resumen de uso de todo el plan (ciclos 1-5, cierre probable)
 

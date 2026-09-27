@@ -2,13 +2,13 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
+| Estado | DONE |
 | Ciclo | 5 |
 | Pasos completados | 01 (APPROVED ciclo 1; F1 de higiene EOL pendiente para el operador, ver REVIEW.md); 02 (APPROVED ciclo 2; H1-H4 no bloqueantes, ver REVIEW.md) ; 03 (NEEDS_CHANGES ciclo 3: AC3.1-AC3.3 y AC3.6 demostrados; AC3.4 aceptado por REVIEWER como limitación del driver; AC3.5 no demostrado, pendiente de Q4); ciclo 4: 03 APPROVED (AC3.5 demostrado, H2 retirado) y 04 APPROVED (REVIEWER ciclo 4); ciclo 5: 05 APPROVED (REVIEWER ciclo 5; H1-H5 informativos/no bloqueantes, ver REVIEW.md) |
 | Pasos bloqueados | Ninguno. Q4, Q6 y Q7 respondidas antes del ciclo 4 (ver "Respuestas del operador (antes del ciclo 4)") |
 | Respuestas del operador (antes del ciclo 4) | Literal: "Q0. opción b / Q4. Opcion b / Q6. \"Gaffer Api\" / H2. Quitalo / Apruebo P3-1 y P3-2". Seguimiento: nivel de log de Q4 = "Information (Recomendado)"; Q7 = "c) No activar" (paso 05). Q5 sin respuesta → b) (solo los 12 registros). Q0 = b: corregir el paso 03 y avanzar al paso 04 en el mismo ciclo. P3-1/P3-2 → OPT-019/OPT-020 (OPT-019 lo aplica el operador; no aplicado por BUILDER) |
 | Actualización del plan (antes del ciclo 2) | Q2 respondida y después corregida por el operador (literal en `00-overview-and-open-questions.md`): la grada se identifica por su `Id` (`Guid`) existente, opcional en la petición; update sin borrado de gradas ausentes; `Id` desconocido/ajeno → 400 `Error.Facilities.Update.UnknownStand`. ULID descartado (anotado en "Posibles mejoras"); sin migración ni paquetes. Q9, Q11 y Q12 retiradas; Q10 y Q13 con valor por defecto. OPT-016 (nota `MySql.Data` `DisposeAsync` en `dev-stack.md`) incluida en el ciclo 2 como AC2.10 por decisión del operador. Ajuste final R-MAX (literal en `00-overview-and-open-questions.md`): con la facility ya a 4 gradas, una grada con `Id` no existente entre ellas se descarta sin error y el resto del update se aplica (AC2.11). Q14-Q18 respondidas por el operador (literal en `00`): Q14 = ignorar también la grada sin `Id` con 4 gradas; Q15 = crear la grada con `Id` desconocido/ajeno con menos de 4; Q16-Q18 por defecto. Clave `Error.Facilities.Update.UnknownStand` retirada (ningún caso la produce); Q13 por defecto reajustada a la clave `Error.Facilities.Update.DuplicatedStand` (AC2.12 nuevo). Q19 nueva (qué `Id` recibe la grada creada por Q15) con valor por defecto a) `Id` nuevo generado, no bloqueante. AC2.3, AC2.4, AC2.8 y AC2.11 reescritos. |
-| Siguiente | OPTIMIZER ciclo 5 y checkpoint humano (DOCUMENTER solo con aprobación explícita) |
+| Siguiente | Ninguno: DOCUMENTER completado (operador: "apruebo P5-1 y pasa al documentador"); plan `DONE` |
 | Bloqueos | Ninguno. Q1 sin respuesta: se aplica b) (sin `try/finally`), anotado como deuda. AC3.4 aceptado por REVIEWER (ciclo 3) como limitación del driver `MySql.Data` 26.7.0; su test `[Explicit]` retirado en el ciclo 4 (H2), la medición queda en el ciclo 3. |
 
 ## Secuenciación (un paso = un ciclo)
@@ -254,4 +254,33 @@ CS0169 y CS8601 del plan no aparecen en la base. `Gaffer.Api.Client`: 0 warnings
 
 ## Documentación modificada
 
-Pendiente (DOCUMENTER).
+Basado únicamente en código aprobado, `STATUS.md` y `REVIEW.md` (ciclos 1-5, todos `APPROVED`).
+
+### Creados
+
+| Fichero | Motivo |
+| --- | --- |
+| `doc/features/facility-update.md` | Doc funcional nueva: `PUT /facilities/{id}` con gradas emparejadas por `Id` (paso 02), incluidas las reglas R-MAX, `DuplicatedStand` y el descarte silencioso con 4 gradas. No existía documentación canónica de este endpoint en `doc/features/`. |
+| `doc/features/technical/facility-update.md` | Doc técnica nueva correspondiente: overview, diagrama de secuencia, tabla de métodos (`MergeStands`, `UpdateAddress`, `UpdateStands`, `InsertStand` reutilizado), dependencias, ejemplos de uso y cómo probar. |
+
+### Actualizados (impacto directo — pasos 01, 02, 03, 04 de este plan)
+
+| Fichero | Cambio |
+| --- | --- |
+| `doc/features/error-handling.md` | Añadido comportamiento de petición cancelada por el cliente (499, log `Information`, sin `LogError`) del paso 03/corrección AC3.5; nuevo caso de uso y limitación del driver `MySql.Data` ante cancelación en ejecución; enlace a `facility-update.md` para los 400 propios de `DuplicatedStand`/`Create.Validation`. |
+| `doc/features/technical/error-handling.md` | `ExceptionHandlingMiddleware.Invoke` con el segundo `catch` (`HandleAbortedRequest`), rama nueva en el diagrama de secuencia, filas nuevas en la tabla de métodos (`Invoke`, `HandleAbortedRequest`, entrada del conversor `CannotUpdateFacilityDuplicatedStandException`), recuento de conversores actualizado de 13 a 14, ejemplo de uso y referencias en "How to test" para los tests nuevos de `ExceptionHandlingMiddlewareShould`. |
+| `doc/features/database-connection-reliability.md` | Añadido comportamiento de cancelación por operación (abre solo si hace falta, cierra sin liberar hasta el fin del scope) y su límite (no interrumpe una consulta ya en ejecución en MySQL); nuevo caso de uso y dos limitaciones nuevas (cancelación mid-query, deuda Q1 de conexión abierta tras un fallo fuera de transacción). |
+| `doc/features/technical/database-connection-lifecycle.md` | Overview, diagrama de secuencia, tabla de métodos y dependencias actualizados con el patrón `RunOnConnectionAsync`/`OpenIfNeededAsync` (paso 01) y la propagación de `CancellationToken` hasta `IDatabaseConnectionProvider`/Dapper (paso 03); nueva sección "How to test" con los tests de `SqlConnectionProviderShould`, `TokenRecordingConnectionProvider` y `PassTheRequestTokenTo...`. |
+| `doc/features/technical/player-update.md` | Corregidos los nombres de método obsoletos tras el paso 04 (small changes): `SetBirthDateName`/`GetBirthDateName` → `SetBirthDate`/`GetBirthDate`; parámetro `commandFirstName` de `SetSecondLastName` renombrado a `newSecondLastName`; retirada la nota de deuda ya resuelta. |
+
+### Actualizados (impacto indirecto)
+
+Ninguno adicional: no se detectaron otros documentos existentes en `doc/features/`/`doc/features/technical/` afectados por el diff aprobado (`git diff --stat` entre `e47a8f6` y `HEAD`, más lectura dirigida de `IDatabaseConnectionProvider.cs`, `ExceptionHandlingMiddleware.cs`, `SqlConnectionProvider.cs`, `SqlFacilityRepository.cs`, `UpdateFacilityCommandHandler.cs`, `Player.cs`). `doc/features/api-contract-and-access.md` y `doc/features/technical/api-client-versioning.md` no requieren cambios: ningún cambio de contrato observable (`CancellationToken` no aparece en el OpenAPI servido; `nswag.json infoTitle` es cosmético, no versionado).
+
+### `.github/doc/common/*-stack*.md`
+
+Sin cambios. El diff aprobado no modifica referencias de paquetes ni de herramientas de test (`git diff --stat e47a8f6 HEAD -- '**/*.csproj' Directory.Build.props '**/nswag.json'` → solo `nswag.json` `infoTitle`, sin paquetes). Las notas de driver pendientes (`OPT-019`, cancelación de `MySql.Data` en ejecución; `OPT-022`, `StartupTestServer` vs `TestFixture.TestServer`) siguen `pendiente` en `MEMORIES.md`: no las aplico porque no son consecuencia de un cambio de paquete/herramienta de test en este diff y su aplicación es una propuesta de OPTIMIZER a la espera de aprobación explícita del operador, no un hallazgo mío.
+
+### Fuera de mi alcance de edición (aviso para el operador)
+
+`.github/doc/features/facility-crud.md` (formato legado, fuera de `doc/features/`) sigue describiendo el `Update` de facility como "full replace of `Address` and `Stands` (delete + reinsert)", que ya no es cierto tras el paso 02 de este plan (ahora es una fusión in situ por `Id`, sin borrado). No está en mi alcance de edición (`doc/features/`, `doc/features/technical/`, `.github/doc/common/*-stack*.md`); requiere corrección o retirada por el operador.
