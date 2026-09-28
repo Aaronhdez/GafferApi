@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Shared.ConnectionProviders;
@@ -304,6 +305,45 @@ public class SqlConnectionProviderShould
         AssertClosedAndNotDisposed(provider);
     }
 
+    [Test]
+    public async Task AbortARunningQueryWhenItsTokenIsCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var marker = Guid.NewGuid().ToString("N");
+        using var cancellation = new CancellationTokenSource(CancelAfter);
+        var elapsed = Stopwatch.StartNew();
+
+        var query = async () => await provider.QueryScalarAsync<int>(SlowQuery(marker), cancellationToken: cancellation.Token);
+
+        await query.Should().ThrowAsync<OperationCanceledException>();
+        elapsed.Elapsed.Should().BeLessThan(CancellationDeadline);
+        (await RunningQueriesWith(marker)).Should().Be(0);
+        AssertClosedAndNotDisposed(provider);
+        (await provider.QueryScalarAsync<int>("SELECT 1;")).Should().Be(1);
+    }
+
+    [Test]
+    public async Task RollBackATransactionWhoseRunningOperationIsCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        var id = Guid.NewGuid();
+        var marker = Guid.NewGuid().ToString("N");
+        using var cancellation = new CancellationTokenSource();
+        var elapsed = Stopwatch.StartNew();
+
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
+        {
+            await provider.ExecuteAsync(PlayersInsert, new { Id = id }, cancellation.Token);
+            cancellation.CancelAfter(CancelAfter);
+            await provider.QueryScalarAsync<int>(SlowQuery(marker), cancellationToken: cancellation.Token);
+        }, cancellation.Token);
+
+        await transaction.Should().ThrowAsync<OperationCanceledException>();
+        elapsed.Elapsed.Should().BeLessThan(CancellationDeadline);
+        await AssertPlayerNotWritten(id);
+        AssertClosedAndNotDisposed(provider);
+    }
+
     [SetUp]
     [TearDown]
     public async Task ClearPlayers()
@@ -326,6 +366,21 @@ public class SqlConnectionProviderShould
         var failure = (await operation.Should().ThrowAsync<DbException>()).Which;
         failure.GetType().Name.Should().Be("MySqlException");
         failure.Message.Should().Contain(messageFragment);
+    }
+
+    private static readonly TimeSpan CancelAfter = TimeSpan.FromMilliseconds(100);
+    private static readonly TimeSpan CancellationDeadline = TimeSpan.FromSeconds(2);
+
+    /// <summary>A 5 s server-side query tagged with <paramref name="marker"/> so it can be found in the process list.</summary>
+    private static string SlowQuery(string marker) => $"SELECT SLEEP(5) /* {marker} */;";
+
+    /// <summary>Counts, from another connection, the server queries still running with <paramref name="marker"/>.</summary>
+    private static async Task<long> RunningQueriesWith(string marker)
+    {
+        await using var observer = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        return await observer.QueryScalarAsync<long>(
+            "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID <> CONNECTION_ID() AND INFO LIKE @Pattern;",
+            new { Pattern = $"%{marker}%" });
     }
 
     private static CancellationToken CancelledToken() => new(canceled: true);

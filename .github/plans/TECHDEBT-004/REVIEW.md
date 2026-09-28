@@ -93,3 +93,52 @@ Veredicto: **APPROVED** (paso 02). Q3 = a) confirmada por el operador; Q4 sin re
 | R2-2 | Observación | El host y `ProductContext` leen la variable por separado; solo divergirían si el proceso la muta entre ambas lecturas. `ProductContext.Environment` no se consume en `Gaffer.Api` (solo `Name` y `StartupSettingsFileName` en `Startup.cs`). |
 | R2-3 | Riesgo (fuera de alcance, no verificado) | NSwag: `HostFactoryResolver` busca `BuildWebHost`/`CreateWebHostBuilder`/`CreateHostBuilder`; `CreateGafferHostBuilder` no coincide, por lo que el descubrimiento sigue interceptando `Main`, que construye el mismo host. Riesgo a nivel de fuente bajo; la verificación queda para la regeneración del operador / paso 05. |
 | R2-4 | Menor / informativo | `HostingEnvironmentShould` está en `Integration/` aunque no usa BD (`DatabaseConfig__Enabled=false`); aceptable porque construye el host real. |
+
+## Ciclo 3 - Paso 03
+
+Veredicto: **APPROVED** (paso 03). Estado del plan: `APPROVED` para el paso 03; paso 04 bloqueado hasta Q9/Q10/Q12 y paso 05 hasta Q17/Q18/Q19 (ver `STATUS.md`).
+
+### Alcance revisado
+
+| Comprobación | Resultado |
+| --- | --- |
+| `git status --short` | `M` `Gaffer.Api.csproj`, `SqlConnectionProvider.cs`, `SqlConnectionProviderShould.cs`; ficheros del plan (`STATUS.md`, `usage/BUILDER.md`, `OPTIMIZATION.md`) y `MEMORIES.md` (P2-1 de OPTIMIZER, aprobado por el operador; no es producto). Sin ficheros nuevos. |
+| Paso 02 frente a paso 03 | Paso 02 ya está en `c8eac83` (`Program.cs`, `HostingEnvironmentShould`, `EnvironmentNameResolutionShould`); el diff de trabajo contiene solo el paso 03. |
+| Diff completo | `.csproj`: `MySql.Data` 26.7.0 → `MySqlConnector` 2.6.1 (1 línea). Proveedor: `using MySqlConnector;`; `DisposeAsync` pasa de `CloseAsync()`+`Dispose()` a `await _sqlConnection.DisposeAsync()`; `<summary>` de `Command` anota `KILL QUERY`. Tests: 2 nuevos + helpers `SlowQuery`, `RunningQueriesWith`, constantes `CancelAfter`/`CancellationDeadline`. |
+| `TestFixture.cs` | No aplica: sin handlers ni registros DI nuevos. |
+| `appsettings*`, `scripts/*.ps1`, `Gaffer.Api.Migrations` | Sin cambios (sin opciones nuevas de cadena de conexión; Q5 = a) no toca Migrations). |
+| Preflight | `docker ps`: `Gaffer.Database mariadb Up 28 hours`. |
+
+### Evidencia propia (REVIEWER)
+
+| Comando | Resultado |
+| --- | --- |
+| `dotnet build gaffer-api.sln --no-incremental -v q` | 0 Advertencia(s), 0 Errores |
+| `dotnet test ... --filter "FullyQualifiedName~SqlConnectionProvider\|FullyQualifiedName~DatabaseStartup\|FullyQualifiedName~DatabaseFailure"` | exit 0; 35/35 |
+| `dotnet test gaffer-api.sln --no-build --verbosity quiet` | exit 0; 289/289 (287 + 2) |
+| Repetibilidad: filtro de los 2 tests nuevos, 7 ejecuciones | 7 × 2/2 verdes; AC3.2 189-209 ms, AC3.3 134-147 ms (NUnit, incluye SetUp/TearDown) |
+| Red independiente: copia `git archive HEAD` (con `MySql.Data` 26.7.0) en scratchpad + solo el fichero de tests actual | 2/2 con error, **5 s** cada uno: `Expected a <System.OperationCanceledException> to be thrown, but no exception was thrown.` |
+| Sonda de duda en la misma copia con el proveedor y `.csproj` actuales + aserción extra `InnerException.Message` contiene `"interrupted"` en ambos tests | 2/2 verdes (190 / 168 ms): la cancelación mata una consulta **ya en curso** en el servidor (MariaDB "Query execution was interrupted"), no solo la apertura. Copia borrada. |
+| `grep -rn "MySql.Data" --include=*.cs --include=*.csproj .` sin `bin/`/`obj/` | 0 coincidencias (exit 1) |
+| `dotnet list gaffer-api.sln package --include-transitive` filtrado | `MySqlConnector 2.6.1` directo en `Gaffer.Api` y `Gaffer.Api.Migrations`, transitivo en `Gaffer.Api.Tests`; sin `MySql.Data` |
+
+### Criterios
+
+| AC | Estado | Evidencia |
+| --- | --- | --- |
+| AC3.1 | Demostrado | grep 0; `.csproj` con `MySqlConnector` 2.6.1 (Q5 = a)); `list package` sin `MySql.Data`. |
+| AC3.2 | Demostrado (red→green) | `AbortARunningQueryWhenItsTokenIsCancelled`, sin `[Explicit]`: OCE < 2 s, `PROCESSLIST` = 0 desde otra conexión, `Closed` y no dispuesto, `SELECT 1` posterior = 1. Red reproducido: 5 s sin excepción con `MySql.Data`. |
+| AC3.3 | Demostrado (red→green) | `RollBackATransactionWhoseRunningOperationIsCancelled`: OCE < 2 s, jugador no escrito (otro proveedor), `Closed`. Red reproducido: 5 s sin excepción. |
+| AC3.4 | Demostrado | Los 33 tests previos del filtro, sin cambios de aserciones (el diff de tests solo añade), verdes con ambos drivers. `ReleaseTheConnectionOnlyWhenItsScopeIsDisposed` sin cambios y verde tras el nuevo `DisposeAsync`. |
+| AC3.5 | Demostrado | `DatabaseFailureShould`, `DatabaseStartupShould` y `ReportAnUnreachableDatabaseWithoutThrowing` dentro del 35/35; filtro `catch` de `TestConnection` sin cambios (`MySqlConnector.MySqlException` es `DbException`). |
+| AC3.6 | Demostrado (documental) | Registrado en `STATUS.md` (sonda de BUILDER): tipos para fallo de conexión y SQL inválido, `DisposeAsync` frente a `Dispose()`, sin opciones nuevas de cadena de conexión. La parte de cancelación en curso (OCE con `InnerException` "interrupted") la corroboró la sonda propia; el resto no se volvió a ejecutar (sonda fuera del repo). |
+| AC3.7 | Demostrado | Suite 287 → 289; build 0/0; `JsonContractShould` y contratos dentro de la suite verde. |
+
+### Hallazgos
+
+| ID | Severidad | Detalle |
+| --- | --- | --- |
+| R3-1 | Menor / no bloqueante | En AC3.2 el temporizador de 100 ms arranca antes de `OpenAsync`. Si la apertura tardase > 100 ms (pool frío, máquina cargada), el token cancelaría la apertura y el test seguiría en verde sin demostrar el aborto en curso (falso verde posible, no fallo intermitente). Hoy la sonda muestra que sí es la consulta en curso. Endurecimiento posible: comprobar `InnerException` `MySqlException` "interrupted" o arrancar `CancelAfter` tras abrir, como en AC3.3. |
+| R3-2 | Observación (determinismo) | Los tests dependen del reloj (Q6 = a)): 100 ms / límite 2 s / consulta de 5 s. Observado 134-224 ms en 11 ejecuciones (BUILDER + REVIEWER): margen ~10× frente al límite y el red (5 s) nunca puede pasar. Riesgo de flake solo bajo carga extrema (p. ej. CI compartida, paso 05); aceptable. |
+| R3-3 | Observación | R1-2 (excepción del `CloseAsync` del `finally` ocultando la original) no reproducido en ninguno de los caminos de fallo/cancelación con `MySqlConnector`; se acepta como riesgo residual sin código defensivo, coherente con el alcance mínimo. |
+| R3-4 | Observación | `Dispose()` síncrono sigue con `Close()` + `Dispose()`; redundante con `MySqlConnector` pero inocuo y fuera del objetivo. `dev-stack.md`/`dev-stack-documentation.md` quedan para DOCUMENTER (Q7), según el plan. |

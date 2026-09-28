@@ -109,4 +109,64 @@ No se repiten como filas nuevas en `MEMORIES.md` los hallazgos que ya son refuer
 
 ### Estado de aprobación
 
-Pendiente de checkpoint humano de este ciclo. P2-1 es la única propuesta nueva de este ciclo (`OPT-NNN` provisional).
+P2-1: **Aprobada**. Operador, instrucción verbatim "aprueba P2-1 y luego ejecuta el ciclo 3", 2026-09-28. Registrada como `OPT-024` en `.github/agent-harness/MEMORIES.md` (`Estado: pendiente`, `Efecto observado: sin datos`); la aplicación a `CLAUDE.md` o a la skill de BUILDER queda pendiente de que el operador la lleve a cabo (OPTIMIZER no edita `CLAUDE.md` ni skills).
+
+## Ciclo 3 - Paso 03 (Migración a MySqlConnector + cancelación en curso)
+
+### Uso medido (`usage-slice`)
+
+Ventanas literales de `STATUS.md` (`Inicio`/`Fin` del ciclo 3):
+
+```
+node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=2026-09-28T15:46:28Z/2026-09-28T15:52:56Z --window REVIEWER=2026-09-28T15:54:28Z/2026-09-28T15:58:13Z
+```
+
+| Ventana | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| BUILDER | 22 | 44 | 1 001 565 | 48 483 | 4 670 | 2,76 | medido:token-consumer |
+| REVIEWER | 12 | 24 | 418 794 | 33 976 | 277 | 1,29 | medido:token-consumer |
+
+Totales: BUILDER 1 054 762 tokens; REVIEWER 453 071 tokens. Caché (lectura+escritura) sigue siendo casi todo el tráfico: BUILDER 99,55 % (1 050 048/1 054 762), REVIEWER 99,93 % (452 770/453 071); entrada fresca casi nula (44 y 24 tokens).
+
+Totales pasados por el ORCHESTRATOR para este ciclo (`medido:agent-result`, cota inferior por `OPT-023`): BUILDER 71 949 tokens / 39 `tool_uses` / 472 267 ms; REVIEWER 55 025 tokens / 18 `tool_uses` / 256 987 ms.
+
+### Comparación con los ciclos 1 y 2
+
+| Métrica | Ciclo 1 | Ciclo 2 | Ciclo 3 | Variación C2→C3 |
+| --- | ---: | ---: | ---: | --- |
+| BUILDER total (`medido:token-consumer`) | 826 130 | 584 229 | 1 054 762 | +80,6 % |
+| REVIEWER total (`medido:token-consumer`) | 231 340 | 199 916 | 453 071 | +126,6 % |
+| BUILDER caché/evento | ≈41 090 | ≈36 303 | ≈47 729 | +31,5 % |
+| REVIEWER caché/evento | ≈28 899 | ≈28 544 | ≈37 731 | +32,2 % |
+| BUILDER `medido:agent-result` | 61 231 | 63 572 | 71 949 | +13,2 % |
+| REVIEWER `medido:agent-result` | 41 898 | 43 454 | 55 025 | +26,6 % |
+| Brecha BUILDER `token-consumer`/`agent-result` | 13,49x | 9,19x | 14,66x | se ensancha de nuevo, máximo del plan |
+| Brecha REVIEWER `token-consumer`/`agent-result` | 5,52x | 4,60x | 8,23x | se ensancha de nuevo, máximo del plan |
+| `STATUS.md` (líneas, fin de ciclo) | n/d (no leído por BUILDER en ciclo 1) | 131 (H4, ciclo 2) | 171 (este fichero, actual) | +30,5 % |
+
+### Hallazgos
+
+| ID | Valor / origen | Causa probable |
+| --- | --- | --- |
+| H1 (spike, revierte la tendencia de H1/ciclo 2) | El total medido sube en ambos roles frente al ciclo 2 (BUILDER +80,6 %, REVIEWER +126,6 %) y es el máximo de los tres ciclos del plan, pese a que el paso 03 tiene un número de AC similar al paso 02 (7 vs. 7). El caché/evento también sube (BUILDER +31,5 %, REVIEWER +32,2 %), revirtiendo la caída observada en el ciclo 2 (refuerzo positivo de `OPT-006`/`OPT-007`) | La subida de caché/evento coincide en magnitud (+30-32 %) con el crecimiento de `STATUS.md` en el mismo intervalo (131→171 líneas, +30,5 %), fichero que BUILDER y REVIEWER leen al iniciar el ciclo (`usage/BUILDER.md`/`usage/REVIEWER.md` ciclo 3: `STATUS.md` entre los ficheros leídos, igual que en el ciclo 2 pero no en el ciclo 1, cuando el fichero aún era pequeño). Es el tercer plan (tras TECHDEBT-002/TECHDEBT-003) en el que el crecimiento sin compactar de `STATUS.md` correlaciona con el coste por evento; refuerza `OPT-021` (pendiente, sin aplicar) con una magnitud casi idéntica a la del crecimiento del propio fichero |
+| H2 (refuerzo de `OPT-023`, no nueva) | La brecha `medido:token-consumer`/`medido:agent-result` se ensancha de nuevo tras el estrechamiento del ciclo 2: BUILDER 9,19x→14,66x, REVIEWER 4,60x→8,23x — ambas cifras son el máximo del plan hasta ahora, superando incluso al ciclo 1 | Confirma que el estrechamiento del ciclo 2 (H2, ciclo 2) no era una tendencia sostenida sino variación entre pasos; no hay causa confirmada del propio ensanchamiento más allá de que a más caché total, mayor la fracción no capturada por `agent-result` (coherente con la naturaleza de `agent-result` como cota inferior, `OPT-023`) |
+| H3 (dato nuevo, menor) | `usage/BUILDER.md` ciclo 3: "sonda en scratchpad (`dotnet run`, la 1.ª ejecución volcó una traza: filtrar con grep desde el inicio)" — la primera ejecución de la sonda de la AC3.6 (consola `net10.0` fuera del repo) volcó una traza sin filtrar antes de que BUILDER empezara a filtrar con `grep` | Mismo patrón de fondo que `OPT-006` (salidas de comando sin resumir que se retransmiten como caché) pero en un contexto distinto: sondas ad-hoc de `dotnet run`/`dotnet fsi` (ya usadas en `OPT-012`/`OPT-019` para caracterizar el driver), no builds/tests del propio repo. Ninguna entrada de `MEMORIES.md` cubre explícitamente el filtrado de sondas ad-hoc desde la primera ejecución |
+| H4 (observación, no cuantificable) | REVIEWER repitió los 2 tests nuevos 7 veces y reprodujo build+tests en una copia `git archive HEAD` dos veces, más `dotnet list package --include-transitive`; BUILDER repitió el filtro 3 veces (AC3.2/AC3.3, ambos dependientes del reloj, Q6 = a)) | Verificación de repetibilidad proporcional al riesgo real (tests basados en temporizador de 100 ms / límite de 2 s, `REVIEW.md` R3-2); no hay evidencia de que sea un patrón evitable — se registra como posible contribuyente al total medido, no como hallazgo accionable |
+
+No se repiten como propuesta nueva H1 (→ refuerzo de `OPT-021`), H2 (→ refuerzo de `OPT-023`) ni H4 (sin propuesta clara). Solo H3 da lugar a una propuesta nueva.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P3-1 | Extender el principio de `OPT-006` (filtrar salidas de comando grandes en vez de retransmitirlas íntegras) a las sondas ad-hoc de `dotnet run`/`dotnet fsi` en scratchpad (el mismo patrón de sonda ya usado en `OPT-012`/`OPT-019`): instruir a BUILDER para redirigir/filtrar la salida de una sonda temporal desde su primera ejecución (p. ej. `2>&1 \| tail -n 40` o un `grep` del resultado/excepción esperada), en vez de ejecutarla sin filtro y filtrar solo a partir de la segunda ejecución | Skill `debugging-and-error-recovery` o `source-driven-development` de BUILDER (`.claude/agents/builder.md`), o sección "Minimal Reading" de `CLAUDE.md` | Evita al menos una traza completa sin filtrar retransmitida como caché en los turnos posteriores de la sesión de BUILDER; magnitud exacta no aislable (`usage-slice` no desglosa por comando, un solo incidente este ciclo) | `usage/BUILDER.md` ciclo 3 ("sonda en scratchpad (dotnet run, la 1.ª ejecución volcó una traza: filtrar con grep desde el inicio)") |
+
+### Brechas de datos
+
+- No es posible aislar, dentro de los 1 054 762 tokens de BUILDER, qué fracción corresponde específicamente a la traza sin filtrar de la sonda (H3/P3-1) frente al resto del paso 03; `usage-slice` no desglosa por comando/turno.
+- La correlación entre el crecimiento de `STATUS.md` (+30,5 %) y el crecimiento de caché/evento (+31,5 % BUILDER, +32,2 % REVIEWER) es sugerente pero no se puede confirmar como causal con los datos disponibles: haría falta un ciclo en el que `STATUS.md` se compacte (aplicación de `OPT-021`) manteniendo un alcance de paso comparable, para aislar el efecto del fichero del efecto de la complejidad propia del paso (migración de driver + sonda externa, más elaborada que el paso 02).
+- El ensanchamiento de la brecha `token-consumer`/`agent-result` a un máximo del plan (14,66x BUILDER, 8,23x REVIEWER) no tiene causa aislada más allá de la hipótesis de que escala con el volumen total de caché; se necesitaría un cuarto ciclo con volumen de caché similar al ciclo 2 (el más bajo del plan) para comprobar si la brecha vuelve a estrecharse o si el ensanchamiento es monótono.
+
+### Estado de aprobación
+
+Pendiente de checkpoint humano (este es el resultado del ciclo 3, aún no presentado al operador en este análisis).

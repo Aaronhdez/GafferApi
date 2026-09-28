@@ -3,10 +3,10 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 2 |
-| Pasos completados | 01 (APPROVED por REVIEWER, ciclo 1); 02 (APPROVED por REVIEWER, ciclo 2) |
+| Ciclo | 3 |
+| Pasos completados | 01 (APPROVED por REVIEWER, ciclo 1); 02 (APPROVED por REVIEWER, ciclo 2); 03 (APPROVED por REVIEWER, ciclo 3) |
 | Pasos bloqueados | 04 hasta Q9, Q10, Q12; 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
-| Siguiente | OPTIMIZER ciclo 2 y checkpoint humano |
+| Siguiente | OPTIMIZER ciclo 3 y checkpoint humano |
 | Bloqueos | Ninguno |
 
 ## Decisiones aplicadas en el ciclo 1
@@ -28,6 +28,15 @@ Operador en el checkpoint del ciclo 1: "opción b y luego a" (la opción a decí
 | Q3 | a) confirmada | Se lee `ASPNETCORE_ENVIRONMENT`; si falta, está vacía o solo tiene espacios → `Development`. |
 | Q4 | c) (sin respuesta; valor por defecto del plan) | `SetConfigurationProviders`, `AddDevelopmentSettings` y el `ConfigurationBuilder` sin uso de `CreateProductContext` (antes `GetProductContext`) **se mantienen** y quedan anotados. AC2.5 no aplica. |
 
+## Decisiones aplicadas en el ciclo 3
+
+Operador en el checkpoint del ciclo 2: "aprueba P2-1 y luego ejecuta el ciclo 3" (P2-1 lo registra OPTIMIZER).
+
+| Pregunta | Valor aplicado | Efecto |
+| --- | --- | --- |
+| Q5 | a) (sin respuesta) | `MySqlConnector` 2.6.1, la misma versión que `Gaffer.Api.Migrations`. |
+| Q6 | a) (sin respuesta) | `SELECT SLEEP(5)` cancelado a los 100 ms → `OperationCanceledException` en < 2 s, fuera de `PROCESSLIST`, conexión usable. |
+
 ## Secuenciación (un paso = un ciclo)
 
 En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIEWER del ciclo anterior, si las hay) y REVIEWER solo aprueba el paso de ese ciclo. El ciclo 6 es la única reserva para `NEEDS_CHANGES`; cómo se combina una corrección con el paso siguiente es Q0.
@@ -36,7 +45,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | --- | --- | --- |
 | 1 | 01 - TreatWarningsAsErrors (`Gaffer.Api`) + `.gitattributes` + cierre de conexión con `try/finally` | APPROVED |
 | 2 | 02 - Entorno desde variable de entorno (`Development` por defecto) | APPROVED |
-| 3 | 03 - Migración a `MySqlConnector` + cancelación en curso | - |
+| 3 | 03 - Migración a `MySqlConnector` + cancelación en curso | APPROVED |
 | 4 | 04 - CRUD de gradas + lock en transacción | - |
 | 5 | 05 - CI con GitHub Actions | - |
 | 6 | Reserva | - |
@@ -50,6 +59,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 1 | 2026-09-27T17:36:05Z | 2026-09-27T17:38:43Z |
 | BUILDER | 2 | 2026-09-27T17:54:07Z | 2026-09-27T17:57:48Z |
 | REVIEWER | 2 | 2026-09-27T18:00:01Z | 2026-09-27T18:02:40Z |
+| BUILDER | 3 | 2026-09-28T15:46:28Z | 2026-09-28T15:52:56Z |
+| REVIEWER | 3 | 2026-09-28T15:54:28Z | 2026-09-28T15:58:13Z |
 
 ## Prerrequisitos
 
@@ -83,6 +94,16 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 2 | 02 | AC2.5 (Q4 = c)) | `grep -rn "SetConfigurationProviders\|AddDevelopmentSettings" Gaffer.Api --include=*.cs` | 4 coincidencias (sin cambios, esperado con Q4 = c)) |
 | 2 | 02 | Alcance | `git diff --stat -- Gaffer.Api/Program.cs Gaffer.Api/ProductContext.cs`; `git status --short` | `Program.cs` 29+/7-; `ProductContext.cs` sin cambios; nuevos `Integration/HostingEnvironmentShould.cs` y `Unit/Startups/EnvironmentNameResolutionShould.cs` (`w/lf`, `eol=lf`) |
 | 2 | 02 | REVIEWER | Build `--no-incremental`; filtro 15/15; suite 287/287 (también con `ASPNETCORE_ENVIRONMENT=Staging` preestablecida); red reproducido en copia aislada (6/13 fallan, como BUILDER) | Ver `REVIEW.md`: APPROVED |
+| 3 | 03 | Prerrequisitos (paso 02 ya en `c8eac83`; árbol con solo `MEMORIES.md`/`OPTIMIZATION.md` modificados) | `docker ps`; `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | `Gaffer.Database Up 28 hours`; 0 advertencias / 0 errores; 287/287, exit 0 |
+| 3 | 03 | Aceptación red (AC3.2, AC3.3) con `MySql.Data` 26.7.0 | 2 tests nuevos en `SqlConnectionProviderShould`; `dotnet test gaffer-api.sln --filter "FullyQualifiedName~AbortARunningQuery\|FullyQualifiedName~RollBackATransactionWhoseRunningOperation"` | exit 1; 2/2 con error, **5 s** cada uno: `Expected a <System.OperationCanceledException> to be thrown, but no exception was thrown.` (ejecutado en el árbol antes de cambiar el driver; no hizo falta stash) |
+| 3 | 03 | Cambio de driver | `Gaffer.Api.csproj`: `MySql.Data` 26.7.0 → `MySqlConnector` 2.6.1; `SqlConnectionProvider.cs`: `using MySqlConnector;` (ningún otro cambio de tipos o API necesario) | Compila, 0 advertencias |
+| 3 | 03 | Aceptación green + caracterización (AC3.2-AC3.5) | `dotnet test gaffer-api.sln --no-build --filter "FullyQualifiedName~SqlConnectionProvider\|FullyQualifiedName~DatabaseStartup\|FullyQualifiedName~DatabaseFailure" --verbosity quiet` | exit 0; 35/35 (33 previos sin cambiar aserciones + 2 nuevos). AC3.2 162 ms, AC3.3 138 ms (duración NUnit, incluye SetUp/TearDown) |
+| 3 | 03 | Sonda AC3.6 (scratchpad, fuera del repo) | Consola `net10.0` con `MySqlConnector` 2.6.1 + Dapper 2.1.79, connection string de los user-secrets de `Gaffer.Api.Tests` (no impreso) | Ver "Paso 03 - evidencia por criterio" (AC3.6) |
+| 3 | 03 | Refactor | `DisposeAsync`: `CloseAsync()` + `Dispose()` síncrono (apaño de `MySql.Data`) → `await _sqlConnection.DisposeAsync()`; `<summary>` de `Command` anota que cancelar aborta la consulta en curso; build `--no-incremental -v q`; mismo filtro; suite completa | 0 advertencias / 0 errores; 35/35; **289/289**, exit 0 (287 + 2 nuevos) |
+| 3 | 03 | Repetibilidad AC3.2/AC3.3 | Mismo filtro de los 2 tests, 3 ejecuciones | 3 × 2/2 verdes: 217/148, 224/166, 199/139 ms |
+| 3 | 03 | AC3.1 | `grep -rn "MySql.Data" --include=*.cs --include=*.csproj .` (sin `bin/`/`obj/`); `dotnet list gaffer-api.sln package --include-transitive \| grep -iE "Project\|MySql"` | grep: 0 coincidencias (exit 1). `list package`: `MySqlConnector 2.6.1` directo en `Gaffer.Api` y `Gaffer.Api.Migrations`, transitivo `2.6.1` en `Gaffer.Api.Tests`; `FluentMigrator.*.MySql 8.0.1` (Migrations); sin `MySql.Data` |
+| 3 | 03 | Alcance | `git status --short`; `git diff --stat`; `git ls-files --eol` de los 3 ficheros | Solo `Gaffer.Api.csproj` (1 línea), `SqlConnectionProvider.cs` (+8/-4), `SqlConnectionProviderShould.cs` (+55) y ficheros del plan. Los 3 en `i/lf w/lf`. `appsettings*`, `scripts/*.ps1`, `TestFixture.cs` y cliente generado sin cambios |
+| 3 | 03 | REVIEWER | Build `--no-incremental`; filtro 35/35; suite 289/289; 2 tests nuevos 7 × 2/2 (134-209 ms); red reproducido en copia `git archive HEAD` (2/2 fallan, 5 s); sonda: `InnerException` "interrupted" en ambos tests | Ver `REVIEW.md`: APPROVED |
 
 ## Paso 01 - evidencia por criterio
 
@@ -115,6 +136,24 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | --- | --- |
 | NSwag (paso 05 / regeneración del operador) | El método extraído se llama `CreateGafferHostBuilder` y no `CreateHostBuilder`, a propósito: así `HostFactoryResolver` no lo detecta y NSwag sigue resolviendo el host a través de `Main`, como hasta ahora. No verificado por BUILDER (no genera el cliente). |
 | Entorno distinto de `Development` | Consecuencia estándar ya descrita en `02-hosting-environment.md` (sin User Secrets, sin `appsettings.Development.json`, sin `UseDeveloperExceptionPage`). No verificado con `dotnet run` (opcional en el plan). |
+
+## Paso 03 - evidencia por criterio
+
+| AC | Evidencia |
+| --- | --- |
+| AC3.1 | grep 0 coincidencias; `Gaffer.Api.csproj` → `MySqlConnector` 2.6.1 (Q5 = a)); `dotnet list package --include-transitive` sin `MySql.Data` (ver tabla de comandos). |
+| AC3.2 | `AbortARunningQueryWhenItsTokenIsCancelled` (sin `[Explicit]`): `QueryScalarAsync("SELECT SLEEP(5) /* <guid> */")` con `CancellationTokenSource(100 ms)` → `OperationCanceledException`, `Stopwatch` < 2 s; `information_schema.PROCESSLIST` consultado con otro proveedor (`ID <> CONNECTION_ID() AND INFO LIKE '%<guid>%'`) → 0; `ConnectionState.Closed`, no dispuesto; `SELECT 1` posterior con el mismo proveedor → 1. Red `MySql.Data`: 5 s sin excepción. |
+| AC3.3 | `RollBackATransactionWhoseRunningOperationIsCancelled`: dentro de `ExecuteInTransactionAsync`, `INSERT` de un jugador y luego `SLEEP(5)` cancelado a 100 ms → `OperationCanceledException` en < 2 s; el jugador no existe visto desde otro proveedor (rollback); conexión `Closed`. Red `MySql.Data`: 5 s, sin excepción (la transacción confirmaba). |
+| AC3.4 | Los 33 tests previos del filtro (incluidos AC1.5-AC1.9 y los de token ya cancelado de TECHDEBT-003) verdes antes (con `MySql.Data`, suite 287/287) y después, sin cambiar aserciones. `ReleaseTheConnectionOnlyWhenItsScopeIsDisposed` no necesitó cambios: `MySqlConnector` lanza `Component.Disposed` también desde `DisposeAsync` (sonda), también tras el refactor. `AssertPropagatesTheDriverFailure` (comprueba el nombre `MySqlException`) sigue verde: ahora es `MySqlConnector.MySqlException`. |
+| AC3.5 | `ReportAnUnreachableDatabaseWithoutThrowing`, `DatabaseStartupShould` y `DatabaseFailureShould` verdes (en el filtro 35/35). El filtro `catch` de `TestConnection` no cambia (el fallo de conexión de `MySqlConnector` es `MySqlException`, que es `DbException`). |
+| AC3.6 | Sonda: (a) fallo de conexión (puerto cerrado, `Connection Timeout=2`) → `MySqlConnector.MySqlException` "Connect Timeout expired", sin `InnerException`. (b) SQL inválido (`SELEC 1;`) → `MySqlConnector.MySqlException` "You have an error in your SQL syntax ... MariaDB ...". (c) cancelación en curso → `System.OperationCanceledException` con `InnerException` `MySqlConnector.MySqlException` "Query execution was interrupted". `DisposeAsync` y `Dispose()` sobre conexión abierta: ambos dejan `State=Closed` y lanzan `Disposed` 1 vez (también `CloseAsync` + `DisposeAsync`: 1 vez). Opciones de cadena de conexión: **ninguna nueva**; el código no usa variables de usuario `@x` (grep `SET @\|:=` sin coincidencias) y el mapeo de `Guid` (`CHAR(36)`, `GuidFormat=Default`) y fechas funciona sin opciones (suite 289/289). `appsettings*` y `scripts/*.ps1` sin cambios. |
+| AC3.7 | Suite 287 → 289 (+2); build `--no-incremental` 0/0; `JsonContractShould` y contratos dentro de la suite en verde. |
+
+| Riesgo / nota | Detalle |
+| --- | --- |
+| R1-2 (revisado en el paso 03) | Un `CloseAsync` que lanzase en el `finally` de `RunOnConnectionAsync` ocultaría la excepción original. Observado con `MySqlConnector`: en todos los casos de fallo y cancelación (incluida la cancelación en curso, AC3.2/AC3.3) se propaga la excepción original y el estado final es `Closed`. `CloseAsync` devuelve la sesión al pool (el reset se difiere a la siguiente apertura), por lo que no se añadió código defensivo; queda como riesgo residual no reproducido. |
+| Red sin stash | El red de AC3.2/AC3.3 se ejecutó en el árbol de trabajo con los tests ya añadidos y el driver aún en `MySql.Data`, antes de cambiarlo; no hizo falta copia ni `git stash`. |
+| Duración | AC3.2/AC3.3 dependen de un temporizador de 100 ms y un límite de 2 s (Q6 = a)); observados 139-224 ms en 4 ejecuciones. |
 
 ## EOL (AC1.4, listado; Q2 = b): no se convierte nada)
 

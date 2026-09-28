@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Net.Sockets;
 using Dapper;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace Gaffer.Api.Shared.ConnectionProviders;
 
@@ -124,9 +124,8 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         {
             await _currentTransaction.DisposeAsync();
         }
-        await _sqlConnection.CloseAsync();
-        // MySql.Data's DisposeAsync does not run Component disposal; after CloseAsync the synchronous Dispose does no I/O.
-        _sqlConnection.Dispose();
+        // MySqlConnector's DisposeAsync closes the connection asynchronously and raises Component.Disposed.
+        await _sqlConnection.DisposeAsync();
     }
 
     public void Dispose()
@@ -175,7 +174,10 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         return true;
     }
 
-    /// <summary>Single way to build a Dapper command: bound to the ambient transaction (if any) and to the caller's token.</summary>
+    /// <summary>
+    /// Single way to build a Dapper command: bound to the ambient transaction (if any) and to the caller's token.
+    /// Cancelling the token aborts a query already running on the server (MySqlConnector sends <c>KILL QUERY</c>).
+    /// </summary>
     private CommandDefinition Command(string query, object? parameters, CancellationToken cancellationToken)
         => new(query, parameters, _currentTransaction, cancellationToken: cancellationToken);
 }
