@@ -3,10 +3,10 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 1 |
-| Pasos completados | 01 (APPROVED por REVIEWER, ciclo 1) |
-| Pasos bloqueados | 02 hasta confirmar Q3; 04 hasta Q9, Q10, Q12; 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
-| Siguiente | OPTIMIZER ciclo 1; checkpoint humano (ciclo 2 = paso 02) |
+| Ciclo | 2 |
+| Pasos completados | 01 (APPROVED por REVIEWER, ciclo 1); 02 (APPROVED por REVIEWER, ciclo 2) |
+| Pasos bloqueados | 04 hasta Q9, Q10, Q12; 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
+| Siguiente | OPTIMIZER ciclo 2 y checkpoint humano |
 | Bloqueos | Ninguno |
 
 ## Decisiones aplicadas en el ciclo 1
@@ -19,6 +19,15 @@ Operador: "Apruebo el plan" (sin responder preguntas). Se aplican los valores po
 | Q2 | b) (sin respuesta) | Solo se listan los ficheros; no se convierte ningún EOL. Renormalizar queda para el operador. |
 | Q8 | no es c) | Sin renumeración. |
 
+## Decisiones aplicadas en el ciclo 2
+
+Operador en el checkpoint del ciclo 1: "opción b y luego a" (la opción a decía "Ciclo 2 (confirmando Q3)").
+
+| Pregunta | Valor aplicado | Efecto |
+| --- | --- | --- |
+| Q3 | a) confirmada | Se lee `ASPNETCORE_ENVIRONMENT`; si falta, está vacía o solo tiene espacios → `Development`. |
+| Q4 | c) (sin respuesta; valor por defecto del plan) | `SetConfigurationProviders`, `AddDevelopmentSettings` y el `ConfigurationBuilder` sin uso de `CreateProductContext` (antes `GetProductContext`) **se mantienen** y quedan anotados. AC2.5 no aplica. |
+
 ## Secuenciación (un paso = un ciclo)
 
 En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIEWER del ciclo anterior, si las hay) y REVIEWER solo aprueba el paso de ese ciclo. El ciclo 6 es la única reserva para `NEEDS_CHANGES`; cómo se combina una corrección con el paso siguiente es Q0.
@@ -26,7 +35,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | Ciclo | Paso previsto | Veredicto |
 | --- | --- | --- |
 | 1 | 01 - TreatWarningsAsErrors (`Gaffer.Api`) + `.gitattributes` + cierre de conexión con `try/finally` | APPROVED |
-| 2 | 02 - Entorno desde variable de entorno (`Development` por defecto) | - |
+| 2 | 02 - Entorno desde variable de entorno (`Development` por defecto) | APPROVED |
 | 3 | 03 - Migración a `MySqlConnector` + cancelación en curso | - |
 | 4 | 04 - CRUD de gradas + lock en transacción | - |
 | 5 | 05 - CI con GitHub Actions | - |
@@ -39,6 +48,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | PLANNER | 0 | n/a | n/a |
 | BUILDER | 1 | 2026-09-27T17:30:59Z | 2026-09-27T17:34:46Z |
 | REVIEWER | 1 | 2026-09-27T17:36:05Z | 2026-09-27T17:38:43Z |
+| BUILDER | 2 | 2026-09-27T17:54:07Z | 2026-09-27T17:57:48Z |
+| REVIEWER | 2 | 2026-09-27T18:00:01Z | 2026-09-27T18:02:40Z |
 
 ## Prerrequisitos
 
@@ -63,6 +74,15 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 1 | 01 | AC1.1 | `git diff --stat -- '*.csproj' Directory.Build.props` | Solo `Gaffer.Api/Gaffer.Api.csproj \| 2 +-` |
 | 1 | 01 | AC1.4 (Q1 = a), Q2 = b)) | `git ls-files --eol` filtrado | Ver "EOL (AC1.4)" abajo. `.gitattributes` sin cambios. |
 | 1 | 01 | REVIEWER | Build `--no-incremental`; `-getProperty:TreatWarningsAsErrors`; filtro 27/27; suite 274/274; red reproducido en copia `git archive HEAD` (4/27 fallan con `Open`); mutación AC1.3 en copia aislada | Ver `REVIEW.md`: APPROVED |
+| 2 | 02 | Prerrequisitos | `docker ps`; `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | `Gaffer.Database mariadb Up 6 hours`; 0 advertencias / 0 errores; 274/274, exit 0 |
+| 2 | 02 | Extracción sin cambio de comportamiento | `Main` → `CreateGafferHostBuilder(args).Build().Run()`; `GetProductContext` (privado) → `CreateProductContext()` (público), con el mismo `Environment = "Development"` fijo | Compila, 0 advertencias |
+| 2 | 02 | Aceptación red (AC2.1-AC2.3) | `HostingEnvironmentShould` (6 casos); `dotnet test --filter "FullyQualifiedName~HostingEnvironmentShould"` | exit 1; 3 con error / 3 superados / 6. `("Staging")` y `("Production")`: `Expected Program.CreateProductContext().Environment ... differ at index 0` (el host ya daba `Staging`, ver nota AC2.1). `("   ")`: `Expected ...IHostEnvironment>().EnvironmentName ... differ at index 0` (el host tomaba `"   "`). `null` y `""` en verde (`Development`). |
+| 2 | 02 | Unitario red (AC2.4) | `ResolveEnvironmentName` stub que devuelve `Development`; `EnvironmentNameResolutionShould` (7 casos); filtro `~EnvironmentNameResolutionShould` | 3 con error (`UseThePresentValue` Staging/Production/Test), 4 superados (null, `""`, `" "`, `"\t  "`) |
+| 2 | 02 | Green | `ResolveEnvironmentName` con `string.IsNullOrWhiteSpace` → `Development`; `CurrentEnvironmentName()` lee `ASPNETCORE_ENVIRONMENT`; `UseEnvironment(CurrentEnvironmentName())` movido **después** de `ConfigureWebHostDefaults`; `ProductContext.Environment = CurrentEnvironmentName()`; filtro `~EnvironmentNameResolutionShould\|~HostingEnvironmentShould\|~ApiDatabaseConfigurationShould` | exit 0; 15/15 (7 + 6 + 2) |
+| 2 | 02 | Refactor / AC2.6 | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` | 0 advertencias / 0 errores; 287/287, exit 0 (274 + 13 nuevos) |
+| 2 | 02 | AC2.5 (Q4 = c)) | `grep -rn "SetConfigurationProviders\|AddDevelopmentSettings" Gaffer.Api --include=*.cs` | 4 coincidencias (sin cambios, esperado con Q4 = c)) |
+| 2 | 02 | Alcance | `git diff --stat -- Gaffer.Api/Program.cs Gaffer.Api/ProductContext.cs`; `git status --short` | `Program.cs` 29+/7-; `ProductContext.cs` sin cambios; nuevos `Integration/HostingEnvironmentShould.cs` y `Unit/Startups/EnvironmentNameResolutionShould.cs` (`w/lf`, `eol=lf`) |
+| 2 | 02 | REVIEWER | Build `--no-incremental`; filtro 15/15; suite 287/287 (también con `ASPNETCORE_ENVIRONMENT=Staging` preestablecida); red reproducido en copia aislada (6/13 fallan, como BUILDER) | Ver `REVIEW.md`: APPROVED |
 
 ## Paso 01 - evidencia por criterio
 
@@ -78,6 +98,23 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | AC1.8 | `LeaveTheConnectionToTheTransactionWhenAnOperationInsideItFails`: estado `Open` justo tras el fallo dentro de la transacción, rollback (fila no escrita) y `Closed` al final; verde antes y después. `RollBackAndPropagateTheFailureOfATransaction`, `RunANestedTransactionInsideTheOuterOne`, `RollBackATransactionWhoseOperationIsCancelled` sin cambios y en verde. |
 | AC1.9 | Helper `AssertPropagatesTheDriverFailure`: `ThrowAsync<DbException>`, tipo exacto `MySqlException` (por nombre, agnóstico del driver para el paso 03) y mensaje del driver ("syntax" / "Duplicate entry"); verde antes y después. |
 | AC1.10 | Filtro 27/27; suite 274/274; `grep Q1` sin coincidencias. |
+
+## Paso 02 - evidencia por criterio
+
+| AC | Evidencia |
+| --- | --- |
+| AC2.1 | `HostingEnvironmentShould.TakeTheHostEnvironmentFromTheEnvironmentVariable("Staging"/"Production")`: el host se construye con `Program.CreateGafferHostBuilder([])` (lo mismo que `Main`, sin `Run`) y da `IHostEnvironment.EnvironmentName` = el valor. **Nota**: antes del cambio el host ya daba `Staging`, porque `ConfigureWebHostDefaults` añade las variables `ASPNETCORE_*` a la configuración del host *después* de `UseEnvironment("Development")` y las pisa. El red previsto por el plan ("hoy `Development`") no se da en el host; sí en `ProductContext` y con valor en blanco. `UseEnvironment` se movió detrás de `ConfigureWebHostDefaults` para que el valor resuelto sea el definitivo. |
+| AC2.2 | Casos `null`, `""` y `"   "` → `Development`. Red real: `"   "` (el host tomaba `"   "`). En .NET, `Environment.SetEnvironmentVariable(name, "")` borra la variable, así que el caso `""` equivale a ausente en el proceso; el vacío literal se cubre en el unitario. |
+| AC2.3 | El mismo test comprueba `Program.CreateProductContext().Environment` == valor esperado (red: `Development` fijo con Staging/Production). El campo estático `Program.ProductContext` se inicializa una vez por proceso con `CreateProductContext()`; se prueba la función de creación (y la de resolución), que usan tanto el host como el campo, no el campo. |
+| AC2.4 | `EnvironmentNameResolutionShould`: presente (`Staging`, `Production`, `Test`) → el mismo valor; `null`, `""`, `" "`, `"\t  "` → `Development`. Red 3/7 → green 7/7. |
+| AC2.5 | Q4 sin respuesta → c): no se elimina nada (grep = 4 coincidencias). La carga de `appsettings*.json` no cambia (`ApiDatabaseConfigurationShould` en verde). |
+| AC2.6 | `TestFixture.cs` L79 y `StartupTestServer.cs` L30 siguen con `UseEnvironment("Test")` (sin cambios); `ApiDatabaseConfigurationShould` 2/2; suite 287/287; build `--no-incremental` 0/0. |
+| AC2.7 | `EnvironmentVariableScope` restaura `ASPNETCORE_ENVIRONMENT` y `DatabaseConfig__Enabled` (`false`, para no hacer la comprobación de BD al construir el host); `RestoreTheEnvironmentVariableAfterEachTest` lo demuestra. La clase lleva `[NonParallelizable]` (el ensamblado no declara `Parallelizable`; NUnit no paraleliza por defecto). |
+
+| Riesgo | Detalle |
+| --- | --- |
+| NSwag (paso 05 / regeneración del operador) | El método extraído se llama `CreateGafferHostBuilder` y no `CreateHostBuilder`, a propósito: así `HostFactoryResolver` no lo detecta y NSwag sigue resolviendo el host a través de `Main`, como hasta ahora. No verificado por BUILDER (no genera el cliente). |
+| Entorno distinto de `Development` | Consecuencia estándar ya descrita en `02-hosting-environment.md` (sin User Secrets, sin `appsettings.Development.json`, sin `UseDeveloperExceptionPage`). No verificado con `dotnet run` (opcional en el plan). |
 
 ## EOL (AC1.4, listado; Q2 = b): no se convierte nada)
 

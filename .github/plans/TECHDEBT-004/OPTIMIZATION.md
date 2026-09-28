@@ -50,4 +50,63 @@ No se repiten propuestas ya registradas en `MEMORIES.md`. S1 es un hallazgo nuev
 
 ### Estado de aprobación
 
-Pendiente de decisión del operador (checkpoint de fin de ciclo 1).
+P1-1: **Aprobada**. Operador, instrucción verbatim "opción b y luego a" (interpretada por el ORCHESTRATOR como aprobación de P1-1), 2026-09-27. Registrada como `OPT-023` en `.github/agent-harness/MEMORIES.md` (`Estado: pendiente`, `Efecto observado: sin datos`); la aplicación a `CLAUDE.md` queda pendiente de que el operador la lleve a cabo (OPTIMIZER no edita `CLAUDE.md`).
+
+S3 (refuerzo de `OPT-006`/`OPT-007`, no es una propuesta nueva) no se registra como fila propia en `MEMORIES.md`; ya está reflejado como evidencia cruzada de dato adicional para esas dos entradas existentes (ver arriba).
+
+## Ciclo 2 - Paso 02 (Entorno desde variable de entorno)
+
+### Uso medido (`usage-slice`)
+
+Ventanas literales de `STATUS.md` (`Inicio`/`Fin` del ciclo 2), sin necesidad de bisección (a diferencia de `OPT-009`/`OPT-011`):
+
+```
+node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=2026-09-27T17:54:07Z/2026-09-27T17:57:48Z --window REVIEWER=2026-09-27T18:00:01Z/2026-09-27T18:02:40Z
+```
+
+| Ventana | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| BUILDER | 16 | 32 | 547 048 | 33 796 | 3 353 | 1,71 | medido:token-consumer |
+| REVIEWER | 7 | 14 | 179 222 | 20 584 | 96 | 0,66 | medido:token-consumer |
+
+Totales: BUILDER 584 229 tokens; REVIEWER 199 916 tokens. Caché (lectura+escritura) sigue siendo casi todo el tráfico: BUILDER 99,42 % (580 844/584 229), REVIEWER 99,95 % (199 806/199 916); entrada fresca prácticamente nula en ambos (32 y 14 tokens).
+
+### Comparación con ciclo 1 y con las otras fuentes
+
+| Métrica | Ciclo 1 | Ciclo 2 | Variación |
+| --- | ---: | ---: | --- |
+| BUILDER total (`medido:token-consumer`) | 826 130 | 584 229 | −29,3 % |
+| REVIEWER total (`medido:token-consumer`) | 231 340 | 199 916 | −13,6 % |
+| BUILDER caché/evento | 821 790/20 ≈ 41 090 | 580 844/16 ≈ 36 303 | −11,7 % |
+| REVIEWER caché/evento | 231 191/8 ≈ 28 899 | 199 806/7 ≈ 28 544 | −1,2 % |
+| BUILDER `medido:agent-result` (ORCHESTRATOR) | 61 231 | 63 572 | +3,8 % |
+| REVIEWER `medido:agent-result` (ORCHESTRATOR) | 41 898 | 43 454 | +3,7 % |
+| Brecha BUILDER `token-consumer`/`agent-result` | 13,49x | 584 229/63 572 ≈ 9,19x | brecha se estrecha |
+| Brecha REVIEWER `token-consumer`/`agent-result` | 5,52x | 199 916/43 454 ≈ 4,60x | brecha se estrecha |
+
+### Spikes / hallazgos detectados
+
+| Hallazgo | Valor / origen | Causa probable |
+| --- | --- | --- |
+| H1 (positivo, refuerzo de `OPT-006`/`OPT-007`) | Tokens medidos totales bajan ciclo 1→2 en ambos roles (−29,3 % BUILDER, −13,6 % REVIEWER) pese a que el paso 02 tiene más criterios de aceptación nuevos (7 AC) que el paso 01 medido en aislamiento comparable, y BUILDER siguió sin `sed -i` (`usage/BUILDER.md`: "Sin `sed -i`") | Tercera confirmación consecutiva (tras TECHDEBT-001 ciclo 2 y TECHDEBT-003 ciclos 3-5) de que la práctica informal de referenciar `STATUS.md` en vez de reabrir salidas completas (`OPT-006`/`OPT-007`) se sostiene también en este plan, ahora con dos ciclos propios comparables (mismo plan, mismo patrón de un paso por ciclo) |
+| H2 (refuerzo de `OPT-023`, no nueva) | La brecha `medido:token-consumer` vs. `medido:agent-result` persiste (BUILDER 9,19x, REVIEWER 4,60x) pero se estrecha frente al ciclo 1 (13,49x, 5,52x) | No hay suficiente dato para atribuir el estrechamiento a una causa concreta (¿menor volumen absoluto de caché relativiza el "peso" no capturado por `agent-result`? ¿variación normal entre pasos?); se registra como dato de refuerzo de `OPT-023`, no como propuesta nueva — ver "Brechas de datos" |
+| H3 (menor, dato nuevo) | `usage/BUILDER.md` ciclo 2: "Un script de actualización falló (sin Python en PATH) y se rehizo con Edit" — un intento de edición mecánica vía script (previsiblemente Python) falló por falta de ese intérprete en el `PATH` de este entorno Windows/Git Bash, obligando a repetir el cambio con la herramienta `Edit` | El entorno de este repositorio (Git Bash sobre Windows, ver notas de entorno) no garantiza Python en el `PATH`; un intento de automatizar una edición mecánica sin comprobar antes la disponibilidad del intérprete cuesta como mínimo una llamada a herramienta fallida más el diagnóstico y la repetición con `Edit` |
+| H4 (refuerzo de `OPT-021`, no nueva) | `STATUS.md` de este plan ya alcanza 131 líneas tras solo 2 de los 6 ciclos posibles; el detalle íntegro del paso 01 (ya `APPROVED`, sin correcciones previstas) sigue sin compactarse | Mismo patrón que `OPT-021` (TECHDEBT-003 ciclo 4-5): sin compactación, `STATUS.md` seguirá creciendo linealmente con cada ciclo aprobado, y BUILDER/REVIEWER de ciclos futuros (03-06) leerán cada vez más detalle histórico irrelevante para el paso en curso |
+
+No se repiten como filas nuevas en `MEMORIES.md` los hallazgos que ya son refuerzo de propuestas existentes (H1→`OPT-006`/`OPT-007`; H2→`OPT-023`; H4→`OPT-021`). Solo H3 es un hallazgo nuevo sin entrada previa.
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P2-1 | Añadir una nota breve en `CLAUDE.md` (sección "Minimal Reading" o una nueva nota de entorno) o en la skill `incremental-implementation`/`source-driven-development` de BUILDER: en este repositorio, el shell disponible es Git Bash sobre Windows y no garantiza Python (ni otros intérpretes) en el `PATH`; antes de generar un script de automatización para una edición mecánica (renombrados, inserciones repetidas, etc.), comprobar la disponibilidad del intérprete (p. ej. `command -v python`) o usar directamente la herramienta `Edit`/`sed` de Git Bash, evitando un intento fallido y su repetición | `CLAUDE.md` (nota de entorno) o skill de BUILDER (`incremental-implementation` / `source-driven-development`) | Evita al menos 1 llamada a herramienta fallida + el diagnóstico y la repetición por ciclo en el que se intente este patrón; magnitud exacta no cuantificable con los datos de este ciclo (un solo incidente, sin desglose por llamada en `usage-slice`) | `usage/BUILDER.md` ciclo 2 ("Un script de actualización falló (sin Python en PATH) y se rehizo con Edit") |
+
+### Brechas de datos
+
+- No es posible aislar, dentro de los tokens medidos de BUILDER/REVIEWER de este ciclo, qué fracción corresponde al intento fallido de script (H3) frente al resto del paso 02; `usage-slice` no desglosa por comando/turno.
+- H2 (estrechamiento de la brecha `token-consumer`/`agent-result` de 13,49x/5,52x a 9,19x/4,60x) no tiene causa confirmada; se necesitaría un tercer ciclo con volumen de caché similar al ciclo 1 para saber si el estrechamiento depende del volumen absoluto de caché o es ruido entre pasos.
+- Sin una tercera medición de `usage-slice` en este plan con alcance más comparable al paso 01 (mutaciones de prueba adicionales), no se puede separar limpiamente el efecto de "menos alcance" del efecto de la práctica `OPT-006`/`OPT-007` en la caída de caché/evento (H1).
+
+### Estado de aprobación
+
+Pendiente de checkpoint humano de este ciclo. P2-1 es la única propuesta nueva de este ciclo (`OPT-NNN` provisional).
