@@ -312,3 +312,10 @@ Notas: no hay propuesta nueva para H3 (limitación externa; el operador puede pe
 - P6-1: **Aprobada**. Operador: "Apruebo todas", 2026-10-11. Registrada como OPT-030.
 - P6-2: **Aprobada**. Mismo mensaje. Registrada como OPT-031.
 - Ambas en estado `pendiente`; OPTIMIZER no las aplica.
+
+### Aplicación de OPT-028 y OPT-029
+
+Operador: "Aplica las OPT-28 y OPT-29".
+- OPT-028: `*.json text eol=lf` añadido a `.gitattributes`. Pendiente del operador: renormalizar `OpenApiSpecs.json` al regenerar el cliente (fuera de alcance de agentes).
+- OPT-029: detalle de ciclos 1-3 (decisiones, pasos 01-03, EOL) movido a `STATUS-archive.md`; instrucciones de `.claude/agents/builder.md` y `.github/agents/builder.agent.md` actualizadas.
+- Estado en `MEMORIES.md`: `aplicada`; efecto `sin datos`.
