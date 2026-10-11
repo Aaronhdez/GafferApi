@@ -2,11 +2,11 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | READY_FOR_REVIEW |
+| Estado | APPROVED |
 | Ciclo | 4 |
-| Pasos completados | 01 (APPROVED, ciclo 1); 02 (APPROVED, ciclo 2); 03 (APPROVED, ciclo 3); 04 (READY_FOR_REVIEW, ciclo 4) |
+| Pasos completados | 01 (APPROVED, ciclo 1); 02 (APPROVED, ciclo 2); 03 (APPROVED, ciclo 3); 04 (APPROVED, ciclo 4) |
 | Pasos bloqueados | 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
-| Siguiente | REVIEWER ciclo 4 |
+| Siguiente | OPTIMIZER ciclo 4 y checkpoint humano |
 | Bloqueos | Ninguno |
 
 ## Índice resumido de ciclos APPROVED
@@ -84,6 +84,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 2 | 2026-09-27T18:00:01Z | 2026-09-27T18:02:40Z |
 | BUILDER | 3 | 2026-09-28T15:46:28Z | 2026-09-28T15:52:56Z |
 | REVIEWER | 3 | 2026-09-28T15:54:28Z | 2026-09-28T15:58:13Z |
+| REVIEWER | 4 | 2026-10-11T16:20:29Z | 2026-10-11T16:22:30Z |
 | BUILDER | 4 | 2026-10-11T16:07:20Z | 2026-10-11T16:19:30Z |
 
 ## Prerrequisitos
@@ -128,6 +129,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 3 | 03 | AC3.1 | `grep -rn "MySql.Data" --include=*.cs --include=*.csproj .` (sin `bin/`/`obj/`); `dotnet list gaffer-api.sln package --include-transitive \| grep -iE "Project\|MySql"` | grep: 0 coincidencias (exit 1). `list package`: `MySqlConnector 2.6.1` directo en `Gaffer.Api` y `Gaffer.Api.Migrations`, transitivo `2.6.1` en `Gaffer.Api.Tests`; `FluentMigrator.*.MySql 8.0.1` (Migrations); sin `MySql.Data` |
 | 3 | 03 | Alcance | `git status --short`; `git diff --stat`; `git ls-files --eol` de los 3 ficheros | Solo `Gaffer.Api.csproj` (1 línea), `SqlConnectionProvider.cs` (+8/-4), `SqlConnectionProviderShould.cs` (+55) y ficheros del plan. Los 3 en `i/lf w/lf`. `appsettings*`, `scripts/*.ps1`, `TestFixture.cs` y cliente generado sin cambios |
 | 3 | 03 | REVIEWER | Build `--no-incremental`; filtro 35/35; suite 289/289; 2 tests nuevos 7 × 2/2 (134-209 ms); red reproducido en copia `git archive HEAD` (2/2 fallan, 5 s); sonda: `InnerException` "interrupted" en ambos tests | Ver `REVIEW.md`: APPROVED |
+| 4 | 04 | REVIEWER | Build `--no-incremental`; suite completa; grep `CancellationToken.None`; red independiente en copia temporal (sin `FOR UPDATE`) | 0/0; 322/322 exit 0; 0 coincidencias; red 3 con error / 17 (2 repositorio + 1 HTTP). Ver `REVIEW.md`: APPROVED |
 | 4 | 04 | Prerrequisitos | `docker ps`; build; suite (hechos antes de empezar, tras `./scripts/run-migrations.ps1` solo sobre `GafferDB_Test`) | `Quionis_DB mariadb:latest Up` (13.0.2, puerto 3306); 0 advertencias / 0 errores; 289/289, exit 0 |
 | 4 | 04 | Línea base OpenAPI | Test temporal `TmpSwaggerDump` (borrado después) guarda `/swagger/v1/swagger.json` servido | 16 578 bytes (antes del cambio) |
 | 4 | 04 | Unitario/repositorio red (AC4.6, AC4.7) | 7 tests en `SqlFacilityRepositoryShould.WhenManagingTheStandsOfAFacility`; `LockFacility` temporalmente sin `FOR UPDATE`; filtro `~WhenManagingTheStandsOfAFacility` | exit 1; 2 con error / 5 superados / 7 (los 2 de concurrencia AC4.6 y AC4.7) |

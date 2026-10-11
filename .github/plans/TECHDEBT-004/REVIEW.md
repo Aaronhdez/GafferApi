@@ -142,3 +142,48 @@ Veredicto: **APPROVED** (paso 03). Estado del plan: `APPROVED` para el paso 03; 
 | R3-2 | Observación (determinismo) | Los tests dependen del reloj (Q6 = a)): 100 ms / límite 2 s / consulta de 5 s. Observado 134-224 ms en 11 ejecuciones (BUILDER + REVIEWER): margen ~10× frente al límite y el red (5 s) nunca puede pasar. Riesgo de flake solo bajo carga extrema (p. ej. CI compartida, paso 05); aceptable. |
 | R3-3 | Observación | R1-2 (excepción del `CloseAsync` del `finally` ocultando la original) no reproducido en ninguno de los caminos de fallo/cancelación con `MySqlConnector`; se acepta como riesgo residual sin código defensivo, coherente con el alcance mínimo. |
 | R3-4 | Observación | `Dispose()` síncrono sigue con `Close()` + `Dispose()`; redundante con `MySqlConnector` pero inocuo y fuera del objetivo. `dev-stack.md`/`dev-stack-documentation.md` quedan para DOCUMENTER (Q7), según el plan. |
+
+## Ciclo 4 - Paso 04 (CRUD de gradas y bloqueo de fila)
+
+Revisor: REVIEWER, 2026-10-11T16:20:29Z - 2026-10-11T16:22:30Z. **Veredicto: APPROVED**.
+
+### Prerrequisitos y alcance
+
+| Comprobación | Resultado |
+| --- | --- |
+| Docker | `Quionis_DB mariadb:latest` Up (línea base MariaDB aceptada por el operador, ver `STATUS.md`); BD de pruebas `GafferDB_Test` |
+| `git status` | 13 ficheros de producción/test modificados + 7 nuevos, todos del paso 04; más lo ya staged del arnés. Sin cambios en `Gaffer.Api.Client` ni en `appsettings*`/scripts. Sin `TmpSwaggerDump` residual |
+| Build `--no-incremental` | 0 advertencias, 0 errores (exit 0) |
+| Suite completa | 322/322, exit 0 |
+| `CancellationToken.None` en `Gaffer.Api` | 0 coincidencias |
+
+### Red independiente (copia del árbol en `%TEMP%`, ya borrada)
+
+`FOR UPDATE` quitado de `LockFacility` en la copia: filtro `FacilityStandsFeaturesShould` + `WhenManagingTheStandsOfAFacility` → exit 1, 3 con error / 14 superados / 17. Coincide con lo registrado por BUILDER (2 de repositorio + 1 HTTP). Con el código real: verde.
+
+### Criterios
+
+| AC | Estado | Evidencia |
+| --- | --- | --- |
+| AC4.1 | Demostrado | Acceptance `FacilityStandsFeaturesShould` (listado, vacío, lectura); suite verde. |
+| AC4.2 | Demostrado | 201 + Guid + `Location`; id del cuerpo ignorado; quinta grada → 400 `MaxStandsExceeded` sin cambios. |
+| AC4.3 | Demostrado | PUT 204 conserva `Id`; otras gradas intactas. |
+| AC4.4 | Demostrado | DELETE 204, incluida la última; fila de `Stands` eliminada (test de repositorio). Orden de borrado correcto con FK `ON DELETE CASCADE`. |
+| AC4.5 | Demostrado | 404 con claves `Facilities.Stands.FacilityNotFound`/`StandNotFound` para las 5 operaciones y grada ajena. |
+| AC4.6 | Demostrado | Test de bloqueo del repositorio; red reproducido por el revisor. |
+| AC4.7 | Demostrado | Idem para el PUT de la facility (fusión dentro de la transacción bloqueada, `Update(Guid, Func)`); red reproducido. |
+| AC4.8 | Demostrado | 4 POST simultáneos × 10: un 201 y tres 400; red reproducido (falla sin `FOR UPDATE`). |
+| AC4.9 | Demostrado | Test OpenAPI del `swagger.json` servido (5 operaciones, 201/204, `FacilityStandRequest` sin `id`); BUILDER comparó antes/después: solo añadidos. Revisión de código del controlador coincide. |
+| AC4.10 | Demostrado | Unitarios de handlers/queries/conversores; handler de la facility conserva aserciones (doble `GivenExisting` aplica la función real de fusión). |
+| AC4.11 | Demostrado con limitación | `LeaveNoRowsWhenTheStandInsertFails`: sin filas huérfanas. Solo ejercita el fallo del primer `INSERT` (ver R4-2). |
+| AC4.12 | Demostrado | Suite 322/322 (289 + 33), build 0/0, `TestServerDependenciesShould` 8 → 13 en el mismo incremento (regla permanente de `TestFixture`/registros). |
+
+### Hallazgos
+
+| ID | Severidad | Detalle |
+| --- | --- | --- |
+| R4-1 | Menor / no bloqueante | `SqlFacilityRepository.Delete(Guid)` (borrado de facility) no toma `LockFacility`: un `AddStand` concurrente con un borrado de la facility queda sin serializar. Fuera de los AC del paso (solo POST de grada y PUT de facility); candidato a backlog. |
+| R4-2 | Observación | AC4.11 no demuestra el rollback del segundo `INSERT` (`Facilities_Stands`); la transacción es la misma del proveedor ya probada en el paso 01/03. |
+| R4-3 | Observación | `GetStands`/`GetStand` y `EnsureFacilityExists` leen sin transacción: lecturas consistentes por sentencia; aceptable. |
+| R4-4 | Observación | La edición de `CLAUDE.md` (OPT-025) y el cambio de línea base a MariaDB 13.0.2 se hicieron por instrucción del operador; `MEMORIES.md` sigue `pendiente`. |
+| R4-5 | Observación (herencia) | Q11 y Q13-Q16 siguen con valor por defecto sin respuesta del operador; la regeneración del cliente y el bump MINOR (Q16) corresponden al operador y no se verificaron (fuera de alcance). |
