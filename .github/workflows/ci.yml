@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:latest
+        env:
+          MARIADB_ROOT_PASSWORD: ci-ephemeral-password
+          MARIADB_DATABASE: GafferDB_Test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      ConnectionStrings__GafferDB_Test: Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=ci-ephemeral-password;
+      ConnectionStrings__Database: Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=ci-ephemeral-password;
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore gaffer-api.sln
+      - run: dotnet build gaffer-api.sln --no-restore -warnaserror
+      - run: pwsh ./scripts/run-migrations.ps1
+      - run: dotnet test gaffer-api.sln --no-build
+
+  client-and-package:
+    runs-on: windows-latest
+    needs: build-and-test
+    env:
+      # The NSwag target starts the host only to read its OpenAPI document; no database is available on this runner.
+      DatabaseConfig__Enabled: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet build gaffer-api.sln -c Release
+      - name: Fail if the generated client differs from the versioned one
+        run: git diff --exit-code -- Gaffer.Api.Client/GafferApiClient.cs Gaffer.Api.Client/OpenApiSpecs.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gaffer-api-client-package
+          path: |
+            Gaffer.Api.Client/bin/Release/*.nupkg
+          if-no-files-found: error
