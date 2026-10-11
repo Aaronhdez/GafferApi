@@ -31,33 +31,14 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
 {
     public async Task Handle(UpdateFacilityCommand command, CancellationToken cancellationToken)
     {
-        Facility facility;
         try
         {
-            facility = await GetFacility(command, cancellationToken);
+            await facilityRepository.Update(command.Id, existing => BuildUpdatedFacility(existing, command), cancellationToken);
         }
         catch (FacilityNotFoundException ex)
         {
             throw new CannotUpdateFacilityNotFoundException(ex.Message, command.Id);
         }
-
-        var updatedFacility = BuildUpdatedFacility(facility, command);
-
-        await facilityRepository.Update(updatedFacility, cancellationToken);
-    }
-
-    private async Task<Facility> GetFacility(UpdateFacilityCommand command, CancellationToken cancellationToken)
-    {
-        var searchCriteria = new FacilitySearchCriteria();
-        searchCriteria.criteriaList.Add(new SearchCriteria
-        {
-            Name = "Id",
-            Value = $"{command.Id}",
-            CriteriaType = CriteriaType.NONE
-        });
-        var queryResult = await facilityRepository.Get(searchCriteria, cancellationToken);
-        var facility = queryResult.FirstOrDefault();
-        return facility ?? throw new FacilityNotFoundException($"Facility with id {command.Id} not found", command.Id);
     }
 
     private static Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command)

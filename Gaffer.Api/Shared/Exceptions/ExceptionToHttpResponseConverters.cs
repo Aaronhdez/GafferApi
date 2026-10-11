@@ -102,6 +102,27 @@ public static class ExceptionToHttpResponseConverters
                     ex.Message,
                     "Error.Facilities.Update.DuplicatedStand")
             },
+            {
+                typeof(FacilityStandsFacilityNotFoundException),
+                ex => BuildNotFoundProblemDetailsWithExtension(
+                    "Facility not found",
+                    ex.Message,
+                    "Error.Facilities.Stands.FacilityNotFound")
+            },
+            {
+                typeof(FacilityStandNotFoundException),
+                ex => BuildNotFoundProblemDetailsWithExtension(
+                    "Stand not found",
+                    ex.Message,
+                    "Error.Facilities.Stands.StandNotFound")
+            },
+            {
+                typeof(FacilityMaxStandsExceededException),
+                ex => BuildBadRequestProblemDetailsWithExtension(
+                    "Cannot create stand",
+                    ex.Message,
+                    "Error.Facilities.Stands.Create.MaxStandsExceeded")
+            },
         };
     
     // Helper methods to build ProblemDetails

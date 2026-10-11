@@ -106,6 +106,12 @@ public class ExceptionToHttpResponseConvertersShould
             400, "Cannot update facility", id => $"Facility {id} cannot be updated", "Error.Facilities.Update.Internal Server Error"),
         [typeof(CannotUpdateFacilityDuplicatedStandException)] = new(id => new CannotUpdateFacilityDuplicatedStandException(id, RepeatedStandId),
             400, "Cannot update facility", id => $"Stand {RepeatedStandId} is repeated in the update of facility {id}", "Error.Facilities.Update.DuplicatedStand"),
+        [typeof(FacilityStandsFacilityNotFoundException)] = new(id => new FacilityStandsFacilityNotFoundException("Facility not found", id),
+            404, "Facility not found", _ => "Facility not found", "Error.Facilities.Stands.FacilityNotFound"),
+        [typeof(FacilityStandNotFoundException)] = new(id => new FacilityStandNotFoundException(id, RepeatedStandId),
+            404, "Stand not found", id => $"Stand {RepeatedStandId} not found in facility {id}", "Error.Facilities.Stands.StandNotFound"),
+        [typeof(FacilityMaxStandsExceededException)] = new(id => new FacilityMaxStandsExceededException(id),
+            400, "Cannot create stand", id => $"Facility {id} already has the maximum number of stands", "Error.Facilities.Stands.Create.MaxStandsExceeded"),
     };
 
     private static readonly Guid RepeatedStandId = Guid.Parse("7d1f5c0e-3b2a-4c7e-9f1d-2a6b8c4e0f13");

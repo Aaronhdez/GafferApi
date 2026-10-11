@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared.ConnectionProviders;
@@ -501,6 +502,186 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 "SELECT COUNT(*) FROM `Facilities_Stands`;");
             remainingStandLinks.Should().Be(0);
         }
+    }
+
+    [TestFixture]
+    public class WhenManagingTheStandsOfAFacility : SqlFacilityRepositoryShould
+    {
+        private const string LockFacilityQuery = "SELECT Id FROM `Facilities` WHERE Id = @Id FOR UPDATE;";
+        private SqlConnectionProvider _holderProvider;
+        private SqlConnectionProvider _competitorProvider;
+
+        [SetUp]
+        public void SetUpProviders()
+        {
+            _holderProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+            _competitorProvider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        }
+
+        [TearDown]
+        public async Task DisposeProviders()
+        {
+            await _holderProvider.DisposeAsync();
+            await _competitorProvider.DisposeAsync();
+        }
+
+        [Test]
+        public async Task AddReadUpdateAndDeleteAStand()
+        {
+            var facility = await SaveAFacilityWithStands(1);
+            var stand = new Stand(Guid.NewGuid(), "East", 3000);
+
+            await _repository.AddStand(facility.Id, stand, CancellationToken.None);
+            (await _repository.GetStands(facility.Id, CancellationToken.None)).Should().HaveCount(2);
+
+            await _repository.UpdateStand(facility.Id, new Stand(stand.Id, "East Renovated", 3500), CancellationToken.None);
+            var updated = await _repository.GetStand(facility.Id, stand.Id, CancellationToken.None);
+            updated.StandName.Should().Be("East Renovated");
+            updated.StandCapacity.Should().Be(3500);
+
+            await _repository.DeleteStand(facility.Id, stand.Id, CancellationToken.None);
+            (await _repository.GetStands(facility.Id, CancellationToken.None)).Should().ContainSingle()
+                .Which.Id.Should().Be(facility.Stands[0].Id);
+            (await _databaseConnectionProvider.QueryScalarAsync<int>("SELECT COUNT(*) FROM `Stands`;")).Should().Be(1);
+        }
+
+        [Test]
+        public async Task RejectAStandWhenTheFacilityAlreadyHasFour()
+        {
+            var facility = await SaveAFacilityWithStands(4);
+
+            var act = async () => await _repository.AddStand(facility.Id, new Stand(Guid.NewGuid(), "Fifth", 1000), CancellationToken.None);
+
+            await act.Should().ThrowAsync<FacilityMaxStandsExceededException>();
+            await AssertStandCount(facility.Id, 4);
+        }
+
+        [Test]
+        public async Task ReportAMissingFacilityOnEveryStandOperation()
+        {
+            var missing = Guid.NewGuid();
+            var stand = new Stand(Guid.NewGuid(), "East", 3000);
+
+            await ((Func<Task>)(() => _repository.GetStands(missing, CancellationToken.None))).Should().ThrowAsync<FacilityNotFoundException>();
+            await ((Func<Task>)(() => _repository.GetStand(missing, stand.Id, CancellationToken.None))).Should().ThrowAsync<FacilityNotFoundException>();
+            await ((Func<Task>)(() => _repository.AddStand(missing, stand, CancellationToken.None))).Should().ThrowAsync<FacilityNotFoundException>();
+            await ((Func<Task>)(() => _repository.UpdateStand(missing, stand, CancellationToken.None))).Should().ThrowAsync<FacilityNotFoundException>();
+            await ((Func<Task>)(() => _repository.DeleteStand(missing, stand.Id, CancellationToken.None))).Should().ThrowAsync<FacilityNotFoundException>();
+        }
+
+        [Test]
+        public async Task ReportAMissingOrForeignStandWithoutTouchingIt()
+        {
+            var facility = await SaveAFacilityWithStands(1);
+            var other = await SaveAFacilityWithStands(1);
+            var foreign = other.Stands[0];
+
+            await ((Func<Task>)(() => _repository.GetStand(facility.Id, foreign.Id, CancellationToken.None))).Should().ThrowAsync<FacilityStandNotFoundException>();
+            await ((Func<Task>)(() => _repository.UpdateStand(facility.Id, new Stand(foreign.Id, "Hijacked", 1), CancellationToken.None))).Should().ThrowAsync<FacilityStandNotFoundException>();
+            await ((Func<Task>)(() => _repository.DeleteStand(facility.Id, foreign.Id, CancellationToken.None))).Should().ThrowAsync<FacilityStandNotFoundException>();
+            await ((Func<Task>)(() => _repository.DeleteStand(facility.Id, Guid.NewGuid(), CancellationToken.None))).Should().ThrowAsync<FacilityStandNotFoundException>();
+
+            var untouched = await _repository.GetStand(other.Id, foreign.Id, CancellationToken.None);
+            untouched.StandName.Should().Be(foreign.StandName);
+        }
+
+        [Test]
+        public async Task LeaveNoRowsWhenTheStandInsertFails()
+        {
+            var facility = await SaveAFacilityWithStands(2);
+            var tooLong = new Stand(Guid.NewGuid(), new string('x', 300), 1000);
+
+            var act = async () => await _repository.AddStand(facility.Id, tooLong, CancellationToken.None);
+
+            await act.Should().ThrowAsync<Exception>();
+            await AssertStandCount(facility.Id, 2);
+            (await _databaseConnectionProvider.QueryScalarAsync<int>("SELECT COUNT(*) FROM `Stands`;")).Should().Be(2);
+            (await _databaseConnectionProvider.QueryScalarAsync<int>(
+                "SELECT COUNT(*) FROM `Facilities_Stands` WHERE StandId = @Id;", new { tooLong.Id })).Should().Be(0);
+        }
+
+        [Test]
+        public async Task MakeAConcurrentStandCreationWaitForTheLockHolderAndThenRespectTheLimit()
+        {
+            var facility = await SaveAFacilityWithStands(3);
+            var (holder, release) = await HoldTheFacilityLock(facility.Id, async () =>
+                await new SqlFacilityRepository(_holderProvider).AddStand(facility.Id, new Stand(Guid.NewGuid(), "Fourth", 1000), CancellationToken.None));
+            var competitor = new SqlFacilityRepository(_competitorProvider);
+
+            var competing = competitor.AddStand(facility.Id, new Stand(Guid.NewGuid(), "Fifth", 1000), CancellationToken.None);
+
+            (await Task.WhenAny(competing, Task.Delay(500))).Should().NotBeSameAs(competing, "the facility is locked by an open transaction");
+            release.SetResult();
+            await holder;
+            await ((Func<Task>)(() => competing)).Should().ThrowAsync<FacilityMaxStandsExceededException>();
+            await AssertStandCount(facility.Id, 4);
+        }
+
+        [Test]
+        public async Task MakeAConcurrentFacilityUpdateWaitForTheLockHolderAndThenRespectTheLimit()
+        {
+            var facility = await SaveAFacilityWithStands(3);
+            var (holder, release) = await HoldTheFacilityLock(facility.Id, async () =>
+                await new SqlFacilityRepository(_holderProvider).AddStand(facility.Id, new Stand(Guid.NewGuid(), "Fourth", 1000), CancellationToken.None));
+            var handler = new UpdateFacilityCommandHandler(new SqlFacilityRepository(_competitorProvider));
+
+            var competing = handler.Handle(new UpdateFacilityCommand
+            {
+                Id = facility.Id,
+                Name = "Renamed",
+                BuildDate = facility.BuildDate,
+                Type = facility.Type,
+                Capacity = facility.Capacity,
+                Address = new UpdateFacilityAddressCommand("Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
+                Stands = [new UpdateFacilityStandCommand("Fifth", 1000)],
+            }, CancellationToken.None);
+
+            (await Task.WhenAny(competing, Task.Delay(500))).Should().NotBeSameAs(competing, "the facility is locked by an open transaction");
+            release.SetResult();
+            await holder;
+            await competing;
+            await AssertStandCount(facility.Id, 4);
+            (await _repository.Get(new FacilitySearchCriteria
+            {
+                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{facility.Id}" }]
+            }, CancellationToken.None)).Single().Name.Should().Be("Renamed");
+        }
+
+        /// <summary>Opens a transaction that locks the facility, runs <paramref name="whileLocked"/> after the release signal and commits.</summary>
+        private async Task<(Task Holder, TaskCompletionSource Release)> HoldTheFacilityLock(Guid facilityId, Func<Task> whileLocked)
+        {
+            var locked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var holder = _holderProvider.ExecuteInTransactionAsync(async () =>
+            {
+                await _holderProvider.QueryAsync<Guid>(LockFacilityQuery, new { Id = facilityId });
+                locked.SetResult();
+                await release.Task;
+                await whileLocked();
+            });
+            await Task.WhenAny(locked.Task, holder);
+            locked.Task.IsCompletedSuccessfully.Should().BeTrue("the holder must own the lock before the competitor starts");
+            return (holder, release);
+        }
+
+        private async Task<Facility> SaveAFacilityWithStands(int count)
+        {
+            var facility = new Facility(
+                Guid.NewGuid(),
+                "City Arena",
+                true,
+                new DateTime(2020, 7, 20),
+                FacilityType.Arena,
+                18000,
+                new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
+                Enumerable.Range(0, count).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList());
+            await _repository.Save(facility, CancellationToken.None);
+            return facility;
+        }
+
+        private async Task AssertStandCount(Guid facilityId, int expected)
+            => (await _databaseConnectionProvider.QueryScalarAsync<int>(
+                "SELECT COUNT(*) FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;", new { FacilityId = facilityId })).Should().Be(expected);
     }
 
     private sealed class FacilityRow

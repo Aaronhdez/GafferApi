@@ -22,7 +22,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         foreach (var row in rows)
         {
             var address = await GetAddress(row.Id, cancellationToken);
-            var stands = await GetStands(row.Id, cancellationToken);
+            var stands = await ReadStands(row.Id, cancellationToken);
             facilities.Add(new Facility(
                 row.Id,
                 row.Name,
@@ -73,7 +73,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         return new Address(row.Id, row.Street, row.StreetNumber, row.PostalCode, row.City, row.Region, row.Country);
     }
 
-    private async Task<List<Stand>> GetStands(Guid facilityId, CancellationToken cancellationToken)
+    private async Task<List<Stand>> ReadStands(Guid facilityId, CancellationToken cancellationToken)
     {
         const string query =
             "SELECT s.* FROM `Stands` s " +
@@ -197,6 +197,106 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         {
             await InsertStand(facility.Id, stand, cancellationToken);
         }
+    }
+
+    private const int MaxStands = 4;
+
+    public async Task Update(Guid id, Func<Facility, Facility> buildUpdated, CancellationToken cancellationToken)
+    {
+        await dbConnectionProvider.ExecuteInTransactionAsync(async () =>
+        {
+            await LockFacility(id, cancellationToken);
+            var criteria = new FacilitySearchCriteria();
+            criteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{id}", CriteriaType = CriteriaType.NONE });
+            var facility = (await Get(criteria, cancellationToken)).First();
+            await Update(buildUpdated(facility), cancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task<List<Stand>> GetStands(Guid facilityId, CancellationToken cancellationToken)
+    {
+        await EnsureFacilityExists(facilityId, cancellationToken);
+        return await ReadStands(facilityId, cancellationToken);
+    }
+
+    public async Task<Stand> GetStand(Guid facilityId, Guid standId, CancellationToken cancellationToken)
+    {
+        var stands = await GetStands(facilityId, cancellationToken);
+        return stands.FirstOrDefault(stand => stand.Id == standId)
+               ?? throw new FacilityStandNotFoundException(facilityId, standId);
+    }
+
+    public async Task AddStand(Guid facilityId, Stand stand, CancellationToken cancellationToken)
+    {
+        await dbConnectionProvider.ExecuteInTransactionAsync(async () =>
+        {
+            await LockFacility(facilityId, cancellationToken);
+            var currentStands = await CountStands(facilityId, cancellationToken);
+            if (currentStands >= MaxStands)
+            {
+                throw new FacilityMaxStandsExceededException(facilityId);
+            }
+
+            await InsertStand(facilityId, stand, cancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task UpdateStand(Guid facilityId, Stand stand, CancellationToken cancellationToken)
+    {
+        const string updateStandQuery =
+            "UPDATE `Stands` SET StandName = @StandName, StandCapacity = @StandCapacity WHERE Id = @Id;";
+        await dbConnectionProvider.ExecuteInTransactionAsync(async () =>
+        {
+            await LockFacility(facilityId, cancellationToken);
+            await EnsureStandBelongsToFacility(facilityId, stand.Id, cancellationToken);
+            await dbConnectionProvider.ExecuteAsync(updateStandQuery, new
+            {
+                stand.Id,
+                stand.StandName,
+                stand.StandCapacity
+            }, cancellationToken);
+        }, cancellationToken);
+    }
+
+    public async Task DeleteStand(Guid facilityId, Guid standId, CancellationToken cancellationToken)
+    {
+        const string deleteStandQuery = "DELETE FROM `Stands` WHERE Id = @StandId;";
+        const string deleteRelationQuery = "DELETE FROM `Facilities_Stands` WHERE FacilityId = @FacilityId AND StandId = @StandId;";
+        await dbConnectionProvider.ExecuteInTransactionAsync(async () =>
+        {
+            await LockFacility(facilityId, cancellationToken);
+            await EnsureStandBelongsToFacility(facilityId, standId, cancellationToken);
+            await dbConnectionProvider.ExecuteAsync(deleteStandQuery, new { StandId = standId }, cancellationToken);
+            await dbConnectionProvider.ExecuteAsync(deleteRelationQuery, new { FacilityId = facilityId, StandId = standId }, cancellationToken);
+        }, cancellationToken);
+    }
+
+    /// <summary>Takes the row lock of the facility until the ambient transaction ends, serializing writers of its stands.</summary>
+    private async Task LockFacility(Guid facilityId, CancellationToken cancellationToken)
+    {
+        const string lockQuery = "SELECT Id FROM `Facilities` WHERE Id = @Id FOR UPDATE;";
+        var rows = await dbConnectionProvider.QueryAsync<Guid>(lockQuery, new { Id = facilityId }, cancellationToken);
+        if (rows.Count == 0) throw new FacilityNotFoundException($"Facility with id {facilityId} not found", facilityId);
+    }
+
+    private async Task EnsureFacilityExists(Guid facilityId, CancellationToken cancellationToken)
+    {
+        const string query = "SELECT Id FROM `Facilities` WHERE Id = @Id;";
+        var rows = await dbConnectionProvider.QueryAsync<Guid>(query, new { Id = facilityId }, cancellationToken);
+        if (rows.Count == 0) throw new FacilityNotFoundException($"Facility with id {facilityId} not found", facilityId);
+    }
+
+    private async Task EnsureStandBelongsToFacility(Guid facilityId, Guid standId, CancellationToken cancellationToken)
+    {
+        const string query = "SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId AND StandId = @StandId;";
+        var rows = await dbConnectionProvider.QueryAsync<Guid>(query, new { FacilityId = facilityId, StandId = standId }, cancellationToken);
+        if (rows.Count == 0) throw new FacilityStandNotFoundException(facilityId, standId);
+    }
+
+    private async Task<int> CountStands(Guid facilityId, CancellationToken cancellationToken)
+    {
+        const string query = "SELECT COUNT(*) FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
+        return await dbConnectionProvider.QueryScalarAsync<int>(query, new { FacilityId = facilityId }, cancellationToken);
     }
 
     public async Task Delete(Guid id, CancellationToken cancellationToken)

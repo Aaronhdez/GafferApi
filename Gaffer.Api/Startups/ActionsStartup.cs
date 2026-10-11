@@ -21,11 +21,16 @@ public static class ActionsStartup
         services.AddScoped<ICommandHandler<UpdatePlayerCommand>, UpdatePlayerCommandHandler>();
         services.AddScoped<ICommandHandler<DeleteFacilityCommand>, DeleteFacilityCommandHandler>();
         services.AddScoped<ICommandHandler<UpdateFacilityCommand>, UpdateFacilityCommandHandler>();
+        services.AddScoped<ICommandHandler<AddFacilityStandCommand, AddFacilityStandResponse>, AddFacilityStandCommandHandler>();
+        services.AddScoped<ICommandHandler<ReplaceFacilityStandCommand>, ReplaceFacilityStandCommandHandler>();
+        services.AddScoped<ICommandHandler<RemoveFacilityStandCommand>, RemoveFacilityStandCommandHandler>();
     }
 
     private static void ConfigureQueries(IServiceCollection services)
     {
         services.AddScoped<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>, SearchPlayersQueryHandler>();
         services.AddScoped<IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>>, SearchFacilitiesQueryHandler>();
+        services.AddScoped<IQueryHandler<SearchFacilityStandsQuery, List<SearchFacilityStandResult>>, SearchFacilityStandsQueryHandler>();
+        services.AddScoped<IQueryHandler<GetFacilityStandQuery, SearchFacilityStandResult>, GetFacilityStandQueryHandler>();
     }
 }
