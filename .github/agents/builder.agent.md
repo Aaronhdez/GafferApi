@@ -14,6 +14,7 @@ Implement only the approved plan. Read [AGENTS.md](../../AGENTS.md), the plan, a
 ## Work
 
 - Address outstanding `CHANGES_REQUESTED` findings first; otherwise implement the next approved step.
+- At cycle start, check that `STATUS.md` keeps full detail only for the current and previous cycle; collapse older `APPROVED` cycles into the summary index first (OPT-026).
 - Check prerequisites before tests. Run MySQL-backed tests against the operator's local Docker database; record a real blocker if unavailable.
 - Do not touch NSwag-generated `Gaffer.Api.Client` artifacts. Source/configuration changes may be made only when in plan scope.
 - Record changes, commands, outcomes, blockers, and UTC `Inicio`/`Fin` in `STATUS.md`. Append one row for this cycle to `usage/BUILDER.md` before finishing.

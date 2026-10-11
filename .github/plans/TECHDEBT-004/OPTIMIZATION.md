@@ -227,4 +227,4 @@ No se propone nada sobre H1 (alcance) ni H3 (ya cubierto por OPT-011).
 
 ### Estado de aprobación
 
-P4-1: pendiente de decisión del operador. Nada se registra en `MEMORIES.md` hasta su aprobación explícita.
+P4-1: **Aprobada**. Operador: "Aprueba P4-1", 2026-10-11. Registrada como `OPT-026` en `.github/agent-harness/MEMORIES.md` (`Estado: pendiente`, `Efecto observado: sin datos`); la aplicación a BUILDER/AGENTS.md queda en manos del operador.

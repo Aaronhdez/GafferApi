@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
-| Ciclo | 4 |
-| Pasos completados | 01 (APPROVED, ciclo 1); 02 (APPROVED, ciclo 2); 03 (APPROVED, ciclo 3); 04 (APPROVED, ciclo 4) |
-| Pasos bloqueados | 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
-| Siguiente | OPTIMIZER ciclo 4 y checkpoint humano |
-| Bloqueos | Ninguno |
+| Estado | READY_FOR_REVIEW |
+| Ciclo | 5 |
+| Pasos completados | 01-04 (APPROVED, ciclos 1-4); 05 (READY_FOR_REVIEW, ciclo 5; AC5.4 y AC5.5 pendientes del operador) |
+| Pasos bloqueados | Ninguno |
+| Siguiente | Operador: regenerar/versionar el cliente (Q16, Q19), subir rama/PR y anotar el run (Q18 = a); después REVIEWER ciclo 5 |
+| Bloqueos | AC5.4 (run real en GitHub) sin evidencia hasta que el operador lo anote; sin ella el paso no puede quedar `APPROVED` |
 
 ## Índice resumido de ciclos APPROVED
 
@@ -16,8 +16,19 @@
 | 1 | 01 | APPROVED | AC1.1-AC1.10 | n/d (ver `git log`) |
 | 2 | 02 | APPROVED | AC2.1-AC2.7 | c8eac83 |
 | 3 | 03 | APPROVED | AC3.1-AC3.6 | 5550133 |
+| 4 | 04 | APPROVED | AC4.1-AC4.12 | sin commit (operador) |
 
-Nota: el detalle de los ciclos 1 y 2 sigue más abajo sin colapsar (el colapso exacto queda pendiente; git conserva el histórico).
+Nota (OPT-026): el índice está al día, pero el detalle de los ciclos 1-3 (decisiones, comandos y evidencia por criterio) sigue sin retirar de este fichero; su evidencia verificada permanece en `REVIEW.md` y en git. Retirarlo requiere borrar ~100 líneas con `edit` y queda para el operador o el siguiente ciclo.
+
+## Decisiones aplicadas en el ciclo 5
+
+Operador: "aplica las optimizaciones, luego sigue con el paso 05".
+
+| Pregunta / cambio | Valor aplicado | Efecto |
+| --- | --- | --- |
+| OPT-026 | aplicada en `.claude/agents/builder.md` y `.github/agents/builder.agent.md` | Comprobación de colapso al inicio del ciclo. Estado en `MEMORIES.md` sigue `pendiente` (lo cambia OPTIMIZER/operador). |
+| Q17, Q18, Q19 | Sin respuesta explícita; "sigue con el paso 05" interpretado como aceptar las recomendaciones a) | Dos jobs (ubuntu + windows con `needs`); run real anotado por el operador antes de REVIEWER; cliente regenerado por el operador antes del run. Si se prefiere otra opción, hay que avisar. |
+| Q20-Q22 | Valores por defecto | `-warnaserror` en el build Debug; credenciales efímeras de contenedor; `ConnectionStrings__GafferDB_Test` para migraciones y `ConnectionStrings__Database` para tests. |
 
 ## Decisiones aplicadas en el ciclo 1
 
@@ -69,8 +80,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 1 | 01 - TreatWarningsAsErrors (`Gaffer.Api`) + `.gitattributes` + cierre de conexión con `try/finally` | APPROVED |
 | 2 | 02 - Entorno desde variable de entorno (`Development` por defecto) | APPROVED |
 | 3 | 03 - Migración a `MySqlConnector` + cancelación en curso | APPROVED |
-| 4 | 04 - CRUD de gradas + lock en transacción | - |
-| 5 | 05 - CI con GitHub Actions | - |
+| 4 | 04 - CRUD de gradas + lock en transacción | APPROVED |
+| 5 | 05 - CI con GitHub Actions | READY_FOR_REVIEW (AC5.4 pendiente) |
 | 6 | Reserva | - |
 
 ## Tiempos por agente
@@ -86,6 +97,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 3 | 2026-09-28T15:54:28Z | 2026-09-28T15:58:13Z |
 | REVIEWER | 4 | 2026-10-11T16:20:29Z | 2026-10-11T16:22:30Z |
 | BUILDER | 4 | 2026-10-11T16:07:20Z | 2026-10-11T16:19:30Z |
+| BUILDER | 5 | 2026-10-11T16:28:30Z | 2026-10-11T16:33:00Z |
 
 ## Prerrequisitos
 
@@ -138,6 +150,9 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 4 | 04 | Aceptación green (AC4.1-AC4.5, AC4.8) | `FOR UPDATE` restaurado; filtro `~FacilityStandsFeaturesShould` | exit 0; 10/10 |
 | 4 | 04 | Contrato (AC4.9) | `FacilitiesControllerContractShould.DeclareTheFiveStandOperations...`; comparación del `swagger.json` antes/después | Rutas nuevas: `/api/v1/facilities/{facilityId}/stands` (get, post) y `.../stands/{standId}` (get, put, delete); definición nueva `FacilityStandRequest`; rutas y definiciones existentes sin cambios (comparación JSON por ruta y por definición) |
 | 4 | 04 | Regresión (AC4.12) | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 advertencias / 0 errores; 322/322, exit 0 (289 + 33 nuevos); grep: 0 coincidencias. Un fallo intermedio: `TestServerDependenciesShould.ProductionHandlers` 8 → 13 (la constante cuenta los handlers registrados; actualizada en el mismo incremento) |
+| 5 | 05 | AC5.1 | `docker run --rm -v .github/workflows:/w rhysd/actionlint:latest /w/ci.yml` | exit 0, sin mensajes |
+| 5 | 05 | AC5.2 | `dotnet restore gaffer-api.sln`; `dotnet build gaffer-api.sln --no-restore -warnaserror`; `./scripts/run-migrations.ps1`; `dotnet test gaffer-api.sln --no-build` | exit 0 / 0 advertencias y 0 errores / exit 0 ("Migrations for GafferDB_Test finished") / 322/322 exit 0 |
+| 5 | 05 | AC5.6 | `Select-String 'nuget push\|dotnet nuget' .github/workflows/*.yml`; `git status --short \| Select-String Client` | 0 coincidencias; sin cambios en el cliente |
 
 ## Paso 01 - evidencia por criterio
 
@@ -213,6 +228,22 @@ Diseño (decisión de BUILDER, Q14 = a): `IFacilityRepository` gana `Update(Guid
 | Cliente generado | Sin tocar. El operador regenera y sube versión MINOR (Q16). |
 | Entorno | Pruebas contra `Quionis_DB` (MariaDB 13.0.2), no `Gaffer.Database` 12.3.2 del plan (ver "Decisiones aplicadas en el ciclo 4"). |
 | Pendiente | Colapso exacto de los ciclos 1 y 2 en el índice (solo se añadió el índice). Sin documentación modificada (la hace DOCUMENTER). |
+
+## Paso 05 - evidencia por criterio
+
+Fichero nuevo: `.github/workflows/ci.yml` (único cambio de producto del paso). `scripts/run-migrations.ps1` y `TestConfiguration.cs` no necesitaron cambios (variables `ConnectionStrings__*` bastan). Salida generada de `Gaffer.Api.Client` sin tocar.
+
+| AC | Estado | Evidencia |
+| --- | --- | --- |
+| AC5.1 | Demostrado | `actionlint` (imagen `rhysd/actionlint:latest` en Docker sobre `.github/workflows/ci.yml`): exit 0, sin mensajes. Triggers push/PR a `main`; jobs `build-and-test` (ubuntu, servicio `mariadb:latest` con health check) y `client-and-package` (windows, `needs`); `permissions: contents: read`. `act` no instalado (no disponible). |
+| AC5.2 | Demostrado (local) | `dotnet restore` exit 0; `build --no-restore -warnaserror` 0 advertencias/0 errores; `./scripts/run-migrations.ps1` exit 0 sobre `GafferDB_Test`; `dotnet test --no-build` 322/322 exit 0 (ver tabla de comandos). Contra `Quionis_DB` local, no contra el servicio del YAML. |
+| AC5.3 | Cumplido | El job `client-and-package` no se ejecutó en local; `git status` sin cambios en `Gaffer.Api.Client`. |
+| AC5.4 | **No demostrado** | Requiere run real en GitHub: el operador debe anotar aquí URL, commit y resultado de cada job y la presencia del `.nupkg` (Q18 = a). |
+| AC5.5 | No demostrado (no bloquea AC5.4) | Requiere un run en rojo por `git diff --exit-code` (p. ej. antes de que el operador regenere el cliente, Q19 = b). |
+| AC5.6 | Demostrado | Solo credencial efímera del contenedor del servicio (`ci-ephemeral-password`); `Select-String 'nuget push\|dotnet nuget' .github/workflows/*.yml` → 0 coincidencias. |
+| AC5.7 | Demostrado | Suite 322/322 y build 0 advertencias, igual que en el ciclo 4. |
+
+Riesgos/supuestos no verificables en local: (1) `DatabaseConfig__Enabled=false` en el job Windows para que el target NSwag no necesite BD (mismo mecanismo que el paso 02; si el host la exige, el run lo mostrará). (2) `healthcheck.sh` existe en la imagen `mariadb:latest` (dato de la imagen, no verificado aquí). (3) El diff del cliente depende del `.gitattributes` del paso 01. (4) `mariadb:latest` cambia de versión (decisión del operador). (5) `Gaffer.Api.Client/bin/Release/*.nupkg` como ruta del paquete, supuesto por el `.csproj` del cliente (`GeneratePackageOnBuild` en Release).
 
 ## EOL (AC1.4, listado; Q2 = b): no se convierte nada)
 
