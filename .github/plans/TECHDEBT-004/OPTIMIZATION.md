@@ -276,3 +276,39 @@ Ambos bajan respecto al ciclo 4 (120k/60k), coherente con un paso de un solo fic
 - P5-2: **Aprobada**. Mismo mensaje. Registrada como OPT-028 (acción del operador).
 - P5-3: **Aprobada**. Mismo mensaje. Registrada como OPT-029.
 - Las tres en estado `pendiente`; OPTIMIZER no las aplica.
+
+
+## Ciclo 6 (paso 05, re-revisión) - veredicto APPROVED
+
+### Uso medido (`usage-slice`)
+
+| Ventana | Agente | Resultado |
+| --- | --- | --- |
+| builder6 2026-10-11T16:59:31Z/17:03:00Z | claude-code / copilot | sin datos (`--repo gaffer-api` y `--repo TECHDEBT-004`) |
+| reviewer6 2026-10-11T17:01:41Z/17:03:30Z | claude-code / copilot | sin datos (ídem) |
+
+Origen: `usage-slice` sobre `events-*.jsonl` del dashboard. Es el tercer ciclo seguido sin datos; el efecto de OPT-025 a OPT-029 sigue `sin datos`. Uso estimado (de `usage/*.md`): BUILDER ~25k entrada / ~3k salida; REVIEWER ~30k / ~3k. Es el ciclo más barato del plan: solo registró evidencia, sin cambios de producto.
+
+### Hallazgos
+
+| ID | Hallazgo | Causa | Evidencia |
+| --- | --- | --- | --- |
+| H1 | El ciclo 5 acabó NEEDS_CHANGES solo por falta de una acción del operador; el ciclo 6 lo resolvió sin código. Se consumieron 2 de 6 ciclos en el paso 05. | REVIEWER se invocó antes de que existiera el run real. | STATUS.md, REVIEW.md ciclos 5-6 (cubierto por OPT-027, aún `pendiente`). |
+| H2 | El fallo del run rojo fue un cliente desactualizado, no EOL. La puerta de CI funcionó como estaba diseñada. | El cliente se versionó antes de los cambios de contrato del paso 04. | Run 38156628192 frente a 38157387185. |
+| H3 | El REVIEWER no pudo leer logs de GitHub (autenticados); la causa de AC5.5 depende de lo pegado por el operador. | La API pública solo da estado de jobs y pasos. | R6-1. |
+| H4 | El colapso del detalle de los ciclos 1-3 en `STATUS.md` sigue sin hacerse tras 3 ciclos. | Requiere un borrado grande; BUILDER lo difiere (cubierto por OPT-029, aún `pendiente`). | Nota en STATUS.md. |
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P6-1 | Añadir al paso de cliente generado en futuros planes una regla del PLANNER: si un plan cambia el contrato HTTP (controladores o DTO) y existe un job que compara el cliente, planificar la regeneración del cliente por el operador como prerrequisito explícito del paso de CI. | PLANNER / plantilla de plan | Evita un ciclo rojo previsible (como el run 38156628192). | H2 |
+| P6-2 | Documentar en `CLAUDE.md` que `usage-slice` no devuelve datos para estas fechas y que, tras 2 ciclos seguidos sin datos, OPTIMIZER cita `usage/*.md` como estimado sin repetir las 4 ejecuciones de la escalera de reintento. | AGENTS.md / CLAUDE.md | ~4 llamadas por ciclo de OPTIMIZER; sin impacto en tokens de BUILDER. | H1, OPT-011 |
+
+Notas: no hay propuesta nueva para H3 (limitación externa; el operador puede pegar logs). H1 y H4 ya están cubiertos por OPT-027 y OPT-029; el efecto de ambas se medirá cuando se apliquen en un plan futuro. Con el máximo de 6 ciclos alcanzado, el siguiente trabajo es DOCUMENTER.
+
+### Estado de aprobación
+
+- P6-1: **Aprobada**. Operador: "Apruebo todas", 2026-10-11. Registrada como OPT-030.
+- P6-2: **Aprobada**. Mismo mensaje. Registrada como OPT-031.
+- Ambas en estado `pendiente`; OPTIMIZER no las aplica.

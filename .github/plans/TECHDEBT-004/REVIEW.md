@@ -222,3 +222,45 @@ Revisor: REVIEWER, 2026-10-11T16:35:48Z - 2026-10-11T16:37:00Z. **Veredicto: NEE
 | R5-2 | Riesgo (para el run real) | `.gitattributes` solo fija `*.cs text eol=lf`; `OpenApiSpecs.json` no tiene regla. En el runner Windows (`core.autocrlf` por defecto) el JSON regenerado podría diferir solo por fin de línea y hacer fallar `git diff --exit-code` sin cambio real. El plan suponía que `.gitattributes` lo cubría. Si ocurre en el run, ampliar la regla (p. ej. `*.json text eol=lf`) y el JSON versionado. |
 | R5-3 | Riesgo (no verificable en local) | `DatabaseConfig__Enabled=false` en el job Windows: `DatabaseStartup` solo registra BD si `Enabled: true`, coherente; `healthcheck.sh` en `mariadb:latest` y la ruta `bin/Release/*.nupkg` (`if-no-files-found: error` lo detectará) dependen del run. |
 | R5-4 | Observación | OPT-026 aplicada por BUILDER en 2 ficheros, bajo instrucción del operador; el detalle de los ciclos 1-3 sigue en `STATUS.md` (colapso diferido). Las Q17-Q19 se asumieron con las recomendaciones a). |
+
+
+## Ciclo 6 - Paso 05 (CI con GitHub Actions, re-revisión)
+
+**Veredicto: APPROVED**
+
+### Comprobaciones del revisor
+
+| Comprobación | Resultado |
+| --- | --- |
+| `git status` | Solo `STATUS.md` y `usage/BUILDER.md` del plan modificados; sin cambios de producto ni de `Gaffer.Api.Client` (el cliente regenerado ya está en `9ebf767`, aportado por el operador; no auditado, fuera de alcance). |
+| HEAD | `9ebf767` = `head_sha` del run verde. |
+| API pública de GitHub (consulta independiente) | Run 38157387185: success, `pull_request`, commit `9ebf767`; `build-and-test` success; `client-and-package` success. Run 38156628192: failure, commit `e56d6d2`; `build-and-test` success; `client-and-package` failure. |
+| `git diff --stat e56d6d2 9ebf767 -- .github/workflows` | Vacío: el workflow es idéntico en ambos runs, así que el rojo se debe al cliente y no al YAML. |
+| `dotnet build --no-incremental -v q` | 0 advertencias / 0 errores. |
+| `dotnet test --no-build --verbosity quiet` | 322/322, exit 0. |
+| `CancellationToken.None` en `Gaffer.Api` | 0 coincidencias. |
+
+### Criterios
+
+| AC | Veredicto | Evidencia |
+| --- | --- | --- |
+| AC5.1 | Aprobado | `actionlint` exit 0 (ciclo 5) y el workflow se ejecuta en GitHub sin errores de sintaxis. |
+| AC5.2 | Aprobado | Local (ciclo 5, repetido ahora) y en CI: pasos restore, build `-warnaserror`, migraciones y tests success en ambos runs. |
+| AC5.3 | Aprobado | Sin cambios de BUILDER en `Gaffer.Api.Client`. |
+| AC5.4 | Aprobado | Run verde 38157387185, ambos jobs y todos los pasos success, incluido `upload-artifact`. |
+| AC5.5 | Aprobado | Run rojo 38156628192 con fallo solo en "Fail if the generated client differs…" y `upload-artifact` omitido; el log aportado por el operador muestra diff de contenido en `OpenApiSpecs.json`. Limitación: no pude leer los logs (la API los exige autenticados); la causa se apoya en lo que pegó el operador. |
+| AC5.6 | Aprobado | Sin `nuget push`; credencial efímera del servicio (ciclo 5). |
+| AC5.7 | Aprobado | Build 0/0 y 322/322. |
+
+### Hallazgos
+
+| ID | Severidad | Hallazgo |
+| --- | --- | --- |
+| R5-1 | Resuelto | Evidencia del run real aportada y verificada de forma independiente. |
+| R5-2 | Cerrado (opcional) | No fue la causa del rojo. `.gitattributes` solo cubre `*.cs`; `*.json text eol=lf` sigue siendo mejora preventiva (OPT-028, acción del operador). |
+| R5-3 | Resuelto | `DatabaseConfig__Enabled=false`, `healthcheck.sh` y la ruta del `.nupkg` quedaron confirmados por el run verde. |
+| R6-1 | Observación | Evidencia de runs consultada por API pública sin logs; si se quiere auditoría completa, el operador puede conservar los enlaces. |
+| R6-2 | Observación | El colapso del detalle de los ciclos 1-3 en `STATUS.md` (OPT-029) sigue pendiente; no afecta a criterios. |
+| R4-1 | Backlog | `Delete(Guid)` de facility sin lock (ciclo 4), no bloqueante. |
+
+Plan completo: pasos 01-05 APPROVED.

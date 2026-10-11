@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | NEEDS_CHANGES |
-| Ciclo | 5 |
-| Pasos completados | 01-04 (APPROVED, ciclos 1-4); 05 (NEEDS_CHANGES, ciclo 5: AC5.4 sin evidencia del operador) |
+| Estado | DONE |
+| Ciclo | 6 |
+| Pasos completados | 01-05 (APPROVED; paso 05 en el ciclo 6 tras R5-1 resuelta) |
 | Pasos bloqueados | Ninguno |
-| Siguiente | Operador: regenerar/versionar el cliente (Q16, Q19), subir rama/PR y anotar el run (Q18 = a); después ciclo 6 (BUILDER/REVIEWER) |
-| Bloqueos | R5-1: AC5.4 sin URL/commit/resultado de run |
+| Siguiente | Ninguno: plan DONE. Pendiente del operador: aplicar OPT-027 a OPT-031, opcional OPT-028 (`.gitattributes`) |
+| Bloqueos | Ninguno (R5-1 resuelta; ciclo 6 es el último permitido) |
 
 ## Índice resumido de ciclos APPROVED
 
@@ -99,6 +99,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | BUILDER | 4 | 2026-10-11T16:07:20Z | 2026-10-11T16:19:30Z |
 | BUILDER | 5 | 2026-10-11T16:28:30Z | 2026-10-11T16:33:00Z |
 | REVIEWER | 5 | 2026-10-11T16:35:48Z | 2026-10-11T16:37:00Z |
+| BUILDER | 6 | 2026-10-11T16:59:31Z | 2026-10-11T17:03:00Z |
+| REVIEWER | 6 | 2026-10-11T17:01:41Z | 2026-10-11T17:03:30Z |
 
 ## Prerrequisitos
 
@@ -153,6 +155,8 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 4 | 04 | Regresión (AC4.12) | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 advertencias / 0 errores; 322/322, exit 0 (289 + 33 nuevos); grep: 0 coincidencias. Un fallo intermedio: `TestServerDependenciesShould.ProductionHandlers` 8 → 13 (la constante cuenta los handlers registrados; actualizada en el mismo incremento) |
 | 5 | 05 | AC5.1 | `docker run --rm -v .github/workflows:/w rhysd/actionlint:latest /w/ci.yml` | exit 0, sin mensajes |
 | 5 | 05 | AC5.2 | `dotnet restore gaffer-api.sln`; `dotnet build gaffer-api.sln --no-restore -warnaserror`; `./scripts/run-migrations.ps1`; `dotnet test gaffer-api.sln --no-build` | exit 0 / 0 advertencias y 0 errores / exit 0 ("Migrations for GafferDB_Test finished") / 322/322 exit 0 |
+| 6 | 05 | AC5.4/AC5.5 | `curl` a `api.github.com/repos/Aaronhdez/GafferApi/actions/runs/{38157387185,38156628192}` y `/jobs` | 38157387185: success, ambos jobs y todos los pasos success; 38156628192: failure solo en el diff del cliente |
+| 6 | 05 | AC5.7 | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet` (con el cliente regenerado por el operador) | 0 advertencias / 0 errores; 322/322, exit 0 |
 | 5 | 05 | AC5.6 | `Select-String 'nuget push\|dotnet nuget' .github/workflows/*.yml`; `git status --short \| Select-String Client` | 0 coincidencias; sin cambios en el cliente |
 
 ## Paso 01 - evidencia por criterio
@@ -239,10 +243,12 @@ Fichero nuevo: `.github/workflows/ci.yml` (único cambio de producto del paso). 
 | AC5.1 | Demostrado | `actionlint` (imagen `rhysd/actionlint:latest` en Docker sobre `.github/workflows/ci.yml`): exit 0, sin mensajes. Triggers push/PR a `main`; jobs `build-and-test` (ubuntu, servicio `mariadb:latest` con health check) y `client-and-package` (windows, `needs`); `permissions: contents: read`. `act` no instalado (no disponible). |
 | AC5.2 | Demostrado (local) | `dotnet restore` exit 0; `build --no-restore -warnaserror` 0 advertencias/0 errores; `./scripts/run-migrations.ps1` exit 0 sobre `GafferDB_Test`; `dotnet test --no-build` 322/322 exit 0 (ver tabla de comandos). Contra `Quionis_DB` local, no contra el servicio del YAML. |
 | AC5.3 | Cumplido | El job `client-and-package` no se ejecutó en local; `git status` sin cambios en `Gaffer.Api.Client`. |
-| AC5.4 | **No demostrado** | Requiere run real en GitHub: el operador debe anotar aquí URL, commit y resultado de cada job y la presencia del `.nupkg` (Q18 = a). |
-| AC5.5 | No demostrado (no bloquea AC5.4) | Requiere un run en rojo por `git diff --exit-code` (p. ej. antes de que el operador regenere el cliente, Q19 = b). |
+| AC5.4 | Demostrado (ciclo 6) | Run verde [38157387185](https://github.com/Aaronhdez/GafferApi/actions/runs/38157387185), evento `pull_request` (PR #1), commit `9ebf7673dd2eb4b52ea52aefea0f020cf9046e4c`, 16:54:15Z-16:57:21Z. `build-and-test`: success (restore, build `-warnaserror`, migraciones, tests, con servicio MariaDB). `client-and-package`: success (build Release, diff del cliente limpio, `upload-artifact` success, es decir `.nupkg` encontrado). Consultado por la API pública de GitHub. |
+| AC5.5 | Demostrado (ciclo 6) | Run en rojo [38156628192](https://github.com/Aaronhdez/GafferApi/actions/runs/38156628192), commit `e56d6d203272c639a03706bc14bf2ca9788f10a9`: `build-and-test` success; `client-and-package` failure solo en "Fail if the generated client differs from the versioned one" (`upload-artifact` omitido). Log aportado por el operador: diff de contenido en `OpenApiSpecs.json` (`nullable`, `oneOf` en `birthDate`/`gender`), no de EOL. Resuelto por el operador al regenerar y versionar el cliente (commit `9ebf767`). |
 | AC5.6 | Demostrado | Solo credencial efímera del contenedor del servicio (`ci-ephemeral-password`); `Select-String 'nuget push\|dotnet nuget' .github/workflows/*.yml` → 0 coincidencias. |
 | AC5.7 | Demostrado | Suite 322/322 y build 0 advertencias, igual que en el ciclo 4. |
+
+Supuestos (1), (2) y (5) quedaron confirmados por el run 38157387185 (ambos jobs verdes, `upload-artifact` success). R5-2 (EOL de JSON) no fue la causa del rojo; se mantiene como mejora opcional (OPT-028). El detalle de supuestos original sigue:
 
 Riesgos/supuestos no verificables en local: (1) `DatabaseConfig__Enabled=false` en el job Windows para que el target NSwag no necesite BD (mismo mecanismo que el paso 02; si el host la exige, el run lo mostrará). (2) `healthcheck.sh` existe en la imagen `mariadb:latest` (dato de la imagen, no verificado aquí). (3) El diff del cliente depende del `.gitattributes` del paso 01. (4) `mariadb:latest` cambia de versión (decisión del operador). (5) `Gaffer.Api.Client/bin/Release/*.nupkg` como ruta del paquete, supuesto por el `.csproj` del cliente (`GeneratePackageOnBuild` en Release).
 
@@ -258,4 +264,18 @@ Riesgos/supuestos no verificables en local: (1) `DatabaseConfig__Enabled=false` 
 
 ## Documentación modificada
 
-Pendiente (DOCUMENTER, tras `APPROVED` y aprobación del operador). Incluye `dev-stack.md`/`dev-stack-documentation.md` por el cambio de driver (Q7).
+Documentación completada por DOCUMENTER (2026-10-11, tras `APPROVED` y aprobación del operador).
+
+| Tipo | Documento |
+| --- | --- |
+| Creado | `doc/features/facility-stands.md` |
+| Creado | `doc/features/technical/facility-stands.md` |
+| Creado | `doc/features/technical/ci-github-actions.md` |
+| Creado | `doc/features/technical/hosting-environment.md` |
+| Actualizado (directo) | `doc/features/facility-update.md` y `doc/features/technical/facility-update.md` (bloqueo `FOR UPDATE`, `Update(id, buildUpdated)`, limitaciones) |
+| Actualizado (directo) | `doc/features/technical/database-connection-lifecycle.md`, `doc/features/database-connection-reliability.md` (MySqlConnector, `try/finally`, cancelación a mitad de consulta) |
+| Actualizado (directo) | `doc/features/technical/error-handling.md`, `doc/features/error-handling.md` (claves de errores de stands; cancelación) |
+| Actualizado (indirecto) | `doc/features/technical/api-client-versioning.md` (puerta de CI, versión 2.1.0) |
+| Actualizado (stack) | `.github/doc/common/dev-stack.md`, `dev-stack-documentation.md`, `test-stack.md` (MySqlConnector, MariaDB, `TreatWarningsAsErrors`, entorno, CI) |
+
+Notas: no se documenta el workflow como función de producto. R4-1 (`Delete(Guid)` de facility sin bloqueo) figura como limitación en `facility-stands.md`. El colapso del detalle de los ciclos 1-3 de este fichero (OPT-029) sigue pendiente.
