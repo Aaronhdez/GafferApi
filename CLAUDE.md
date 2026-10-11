@@ -34,6 +34,8 @@ Subagents cannot see their own token usage, so `usage/*.md` rows are `estimado` 
 
 `medido:agent-result` may exclude most turn-by-turn cache; when both sources exist for a cycle, label `agent-result` figures as a lower bound, not an equivalent of `token-consumer` (OPT-023).
 
+After 2 consecutive cycles with no `usage-slice` data, skip the ladder: cite `usage/*.md` as `estimado` and state the gap (OPT-031).
+
 Analyze fresh input separately from cache read/write; in Claude Code cache is most of the context.
 
 ## Minimal Reading

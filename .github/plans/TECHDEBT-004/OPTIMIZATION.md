@@ -319,3 +319,11 @@ Operador: "Aplica las OPT-28 y OPT-29".
 - OPT-028: `*.json text eol=lf` añadido a `.gitattributes`. Pendiente del operador: renormalizar `OpenApiSpecs.json` al regenerar el cliente (fuera de alcance de agentes).
 - OPT-029: detalle de ciclos 1-3 (decisiones, pasos 01-03, EOL) movido a `STATUS-archive.md`; instrucciones de `.claude/agents/builder.md` y `.github/agents/builder.agent.md` actualizadas.
 - Estado en `MEMORIES.md`: `aplicada`; efecto `sin datos`.
+
+### Aplicación de OPT-027, OPT-030 y OPT-031
+
+Operador: "aplica OPT-027, OPT-030 y OPT-031".
+- OPT-027: checkpoint previo a REVIEWER si un AC depende de una acción del operador, en `.claude/commands/harness-run.md` y `.github/agents/orchestrator.agent.md`.
+- OPT-030: regla de prerrequisito de regeneración del cliente en `.claude/agents/planner.md` y `.github/agents/planner.agent.md`.
+- OPT-031: omitir la escalera de reintentos tras 2 ciclos sin datos en `CLAUDE.md`, `.claude/agents/optimizer.md` y `.github/agents/optimizer.agent.md`.
+- Estado en `MEMORIES.md`: `aplicada`; efecto `sin datos`.

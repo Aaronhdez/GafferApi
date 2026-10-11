@@ -18,6 +18,7 @@ Plan folder `.github/plans/<ID>/`, cycle number, per-subagent token totals from 
 1. Read `usage/*.md` (full history), `STATUS.md`, `REVIEW.md`, `.github/agent-harness/MEMORIES.md` (including `legacy:*`).
 2. Get measured usage per role with `Bash`, using the `Inicio`/`Fin` windows from `STATUS.md`:
    `node .github/agent-harness/tools/usage-slice.mjs --file "%APPDATA%/Code/User/globalStorage/joynulabedinshokal.token-eater-dashboard/events-*.jsonl" --repo gaffer-api --window BUILDER=<inicio>/<fin> --window REVIEWER=<inicio>/<fin>`
+   If the previous 2 cycles already returned no data, skip the retry ladder: cite `usage/*.md` as `estimado` and state the gap (OPT-031).
    Never read the JSONL or transcripts directly. Fallbacks: ORCHESTRATOR totals (`medido:agent-result`), then filtered transcripts.
 3. Detect spikes: role/cycle outliers, growth between cycles, oversized reads or outputs, retries, estimated vs measured gap. Analyze fresh input separately from cache.
 4. Append a section for this cycle to `OPTIMIZATION.md`: `usage-slice` table, spikes (value + origin), probable cause, concrete proposal (which subagent/command/plan/`CLAUDE.md` and how), expected savings, supporting source, provisional ID (`P<cycle>-<n>`).

@@ -20,6 +20,7 @@ Input: `$ARGUMENTS`. First argument = plan folder `.github/plans/<ID>/` or new s
 1. **No plan yet:** invoke `planner` with a plan ID and the specs. End your turn at the plan checkpoint: plan path, number of steps, open questions, "¿Apruebas el plan?".
 2. **Before a cycle:** if `STATUS.md` or `00-*.md` shows a criterion of the next step blocked by an unanswered question, raise it in the checkpoint instead of starting the cycle (OPT-020). If an operator decision forces revising an approved step, gather every pending ambiguity from `00-*.md` into one consolidated question before invoking `planner`, not one invocation per message (OPT-017).
 3. **Cycle N** (only after explicit approval): `builder` → `reviewer` → `optimizer`, always all three. Pass `optimizer` the cycle number and the token totals returned by `builder` and `reviewer`.
+   If an acceptance criterion of the step depends on an operator action (e.g. a real GitHub run), end the turn with a checkpoint asking the operator to perform it and report the evidence before invoking `reviewer` (OPT-027).
 4. **Checkpoint (mandatory):** end your turn with at most six bullets:
    - Cycle N / max.
    - REVIEWER verdict.
