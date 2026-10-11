@@ -150,6 +150,204 @@
         }
       }
     },
+    "/api/v1/facilities/{facilityId}/stands": {
+      "get": {
+        "tags": [
+          "FacilityStands"
+        ],
+        "operationId": "FacilityStands_GetAll",
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SearchFacilityStandResult"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "FacilityStands"
+        ],
+        "operationId": "FacilityStands_Create",
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          }
+        ],
+        "requestBody": {
+          "x-name": "request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacilityStandRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 2
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "format": "guid"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/facilities/{facilityId}/stands/{standId}": {
+      "get": {
+        "tags": [
+          "FacilityStands"
+        ],
+        "operationId": "FacilityStands_GetBy",
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "standId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchFacilityStandResult"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "FacilityStands"
+        ],
+        "operationId": "FacilityStands_Update",
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "standId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 2
+          }
+        ],
+        "requestBody": {
+          "x-name": "request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacilityStandRequest"
+              }
+            }
+          },
+          "required": true,
+          "x-position": 3
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "FacilityStands"
+        ],
+        "operationId": "FacilityStands_Delete",
+        "parameters": [
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 1
+          },
+          {
+            "name": "standId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "guid"
+            },
+            "x-position": 2
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        }
+      }
+    },
     "/api/v1/players/{id}": {
       "get": {
         "tags": [
@@ -547,6 +745,24 @@
         "type": "object",
         "additionalProperties": false,
         "properties": {
+          "id": {
+            "type": "string",
+            "format": "guid",
+            "nullable": true
+          },
+          "standName": {
+            "type": "string"
+          },
+          "standCapacity": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "FacilityStandRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
           "standName": {
             "type": "string"
           },
@@ -649,10 +865,12 @@
         "additionalProperties": false,
         "properties": {
           "firstName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "lastName": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "secondLastName": {
             "type": "string",
@@ -660,10 +878,16 @@
           },
           "birthDate": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "nullable": true
           },
           "gender": {
-            "$ref": "#/components/schemas/Gender"
+            "nullable": true,
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              }
+            ]
           }
         }
       }

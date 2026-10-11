@@ -14,4 +14,6 @@ public static class Uris
     public static Uri GetAllFacilities() => new(BaseUri, $"facilities/");
     public static Uri DeleteFacility(string facilityId) => new(BaseUri, $"facilities/{facilityId}");
     public static Uri UpdateFacility(string facilityId) => new(BaseUri, $"facilities/{facilityId}");
+    public static Uri FacilityStands(string facilityId) => new(BaseUri, $"facilities/{facilityId}/stands");
+    public static Uri FacilityStand(string facilityId, string standId) => new(BaseUri, $"facilities/{facilityId}/stands/{standId}");
 }

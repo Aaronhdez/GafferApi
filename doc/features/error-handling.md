@@ -31,7 +31,8 @@ This document covers how `Gaffer.Api` classifies and reports failures that are n
 - Logging every mapped `400` at `Error` level (not `Warning`) can be noisy for expected client mistakes; this was a deliberate choice for this iteration, not an oversight.
 - This document does not cover validation errors produced by ASP.NET Core model binding (e.g. `[MaxLength]` on a request DTO), which use a different, framework-generated body shape and are out of scope here.
 - The `499` status is only ever seen by the operator in logs/monitoring — the client that aborted the request has already disconnected and never receives it.
-- Cancelling a long-running database query mid-execution does not currently stop the query on the MySQL server itself (a driver limitation); cancellation is only guaranteed to take effect before a query starts or between two sequential operations of the same request. See [`database-connection-reliability.md`](./database-connection-reliability.md) for the full behaviour and limitation.
+- Cancelling a database query mid-execution aborts it on the server (`MySqlConnector` sends `KILL QUERY`), so cancellation takes effect before a query starts, between operations and during a running query. See [`database-connection-reliability.md`](./database-connection-reliability.md).
+- Facility stand operations add three mapped errors: `404` `Error.Facilities.Stands.FacilityNotFound`, `404` `Error.Facilities.Stands.StandNotFound` and `400` `Error.Facilities.Stands.Create.MaxStandsExceeded`. See [`facility-stands.md`](./facility-stands.md).
 
 ## See also
 

@@ -15,7 +15,7 @@ Plan folder `.github/plans/<ID>/`.
 
 ## Work
 
-1. Record `Inicio` (ISO 8601 UTC) for this cycle in `STATUS.md`.
+1. Record `Inicio` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) for this cycle in `STATUS.md`. Read `STATUS.md` from its summary index and current-cycle section with `offset`/`limit`, not whole.
 2. Review `git status` and the full diff: functional defects, regressions, broken contracts, missing tests, missing `TestFixture.cs` DI registrations.
 3. Re-run the relevant tests with the same preflight as BUILDER (MySQL in local Docker; record exact blocker if unavailable).
 4. Check each acceptance criterion and red→green evidence.

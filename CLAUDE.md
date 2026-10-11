@@ -27,8 +27,25 @@ Subagents cannot see their own token usage, so `usage/*.md` rows are `estimado` 
 2. `medido:agent-result`: per-subagent totals the ORCHESTRATOR passes along.
 3. `medido:transcript`: `~/.claude/projects/<project>/*.jsonl`, filtered, never read whole.
 
+`usage-slice` fallback ladder, before dropping to `medido:agent-result`:
+- `--repo gaffer-api` returns "sin datos" for every window → retry once with `--repo <plan ID>` (the dashboard tags events by process `cwd`) (OPT-008).
+- Still empty with the right `--repo` → retry once shifting the window by the known local UTC offset (e.g. -2h for CEST) (OPT-009).
+- A wider bisection shows no events within ±30 min of the literal window (a gap, not a shifted cluster) → stop bisecting and use `medido:agent-result` (OPT-011).
+
+`medido:agent-result` may exclude most turn-by-turn cache; when both sources exist for a cycle, label `agent-result` figures as a lower bound, not an equivalent of `token-consumer` (OPT-023).
+
+After 2 consecutive cycles with no `usage-slice` data, skip the ladder: cite `usage/*.md` as `estimado` and state the gap (OPT-031).
+
 Analyze fresh input separately from cache read/write; in Claude Code cache is most of the context.
 
 ## Minimal Reading
 
 `Grep`/`Glob` before `Read`; use `offset`/`limit` on large files; filter `Bash` output (e.g. `dotnet test --verbosity quiet`, failures only).
+
+- Red/green: the process exit code (`$?` / `$LASTEXITCODE`) is the primary criterion; `grep` only extracts failure detail. Console output is localized (`Correctas`/`Con error`, not `Passed`/`Failed`) (OPT-005).
+- Warning counts: capture only the MSBuild summary (`dotnet build gaffer-api.sln --no-incremental -v q 2>&1 | grep -E "Warning\(s\)|Error\(s\)"`); keep the full list only when a criterion compares which warnings are new (OPT-006).
+- Once a command result is summarized in `STATUS.md`, reference that row; do not reopen or requote the full output later (OPT-007).
+- Adding several methods to an existing file: `Edit` against a stable anchor (e.g. before the class's closing brace), not `head`/`tail` splicing (OPT-018).
+- Environment: Git Bash on Windows with no guaranteed Python or other interpreter in `PATH`. Check (`command -v python`) before scripting a mechanical edit, or use `Edit`/`sed` directly (OPT-024).
+- Ad-hoc probes (`dotnet run`, `dotnet fsi`): filter the output from the first run (`2>&1 | grep <expected result>` or `| tail -n 40`) and apply OPT-006 to them (OPT-025).
+- Timestamps: record `Inicio`/`Fin` with a real UTC clock (`date -u +%Y-%m-%dT%H:%M:%SZ` or `Get-Date -AsUTC -Format o`), never local time with a `Z` suffix (OPT-009).

@@ -5,7 +5,7 @@
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
         <RootNamespace>Gaffer.Api</RootNamespace>
         <UserSecretsId>gaffer-api-3c01a179-00b4-4838-9f7c-d95ec4b117fb</UserSecretsId>
     </PropertyGroup>
@@ -19,7 +19,7 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="MySql.Data" Version="26.7.0" />
+        <PackageReference Include="MySqlConnector" Version="2.6.1" />
         <PackageReference Include="NSwag.AspNetCore" Version="14.6.1" />
         <PackageReference Include="NSwag.MSBuild" Version="14.6.1">
             <PrivateAssets>all</PrivateAssets>

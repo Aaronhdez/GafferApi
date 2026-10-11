@@ -2,7 +2,7 @@
 
 ## Overview
 
-`FacilitiesController.Update` (`PUT /api/v{version}/facilities/{id}`) maps `UpdateFacilityRequest` field-for-field onto `UpdateFacilityCommand`, including `List<UpdateFacilityStandRequest>? Stands` → `List<UpdateFacilityStandCommand>?` (each carrying an optional `Guid? Id`). `UpdateFacilityCommandHandler.Handle` loads the existing `Facility` via `IFacilityRepository.Get`, rebuilds its `Address` from the request (keeping the existing `Address.Id`), and merges the requested stands with `MergeStands` — a pure function with no I/O. The merged `Facility` (which re-validates the 4-stand invariant in its constructor) is then persisted with `IFacilityRepository.Update`, which updates the facility row, the address row, and each stand in place (updating matched stands, inserting new ones) inside a single transaction; it never deletes a stand or address row. An unknown facility id makes `GetFacility` throw `FacilityNotFoundException`, caught and rethrown as `CannotUpdateFacilityNotFoundException` (mapped to `404`); a repeated existing-stand `Id` makes `MergeStands` throw `CannotUpdateFacilityDuplicatedStandException` (mapped to `400`); exceeding 4 stands makes the `Facility` constructor throw `FacilityValidationException` (mapped to `400`, the same key used at creation).
+`FacilitiesController.Update` (`PUT /api/v{version}/facilities/{id}`) maps `UpdateFacilityRequest` field-for-field onto `UpdateFacilityCommand`, including `List<UpdateFacilityStandRequest>? Stands` → `List<UpdateFacilityStandCommand>?` (each carrying an optional `Guid? Id`). `UpdateFacilityCommandHandler.Handle` calls `IFacilityRepository.Update(id, buildUpdated, ct)`; the repository opens one transaction, locks the facility row with `SELECT Id FROM Facilities WHERE Id = @Id FOR UPDATE`, loads the existing `Facility` inside that transaction and passes it to the handler's `buildUpdated` callback, which rebuilds its `Address` from the request (keeping the existing `Address.Id`) and merges the requested stands with `MergeStands` — a pure function with no I/O. The merged `Facility` (which re-validates the 4-stand invariant in its constructor) is then written by the same transaction: the facility row, the address row, and each stand in place (updating matched stands, inserting new ones); it never deletes a stand or address row. Because the lock is taken before the read, two concurrent updates of one facility are serialized and the "fewer than 4 stands" decision never rests on a stale read. An unknown facility id makes the lock step throw `FacilityNotFoundException`, caught and rethrown as `CannotUpdateFacilityNotFoundException` (mapped to `404`); a repeated existing-stand `Id` makes `MergeStands` throw `CannotUpdateFacilityDuplicatedStandException` (mapped to `400`); exceeding 4 stands makes the `Facility` constructor throw `FacilityValidationException` (mapped to `400`, the same key used at creation). Both callback failures roll the transaction back. Per-stand operations live in [`facility-stands.md`](./facility-stands.md).
 
 ## Sequence Diagram
 
@@ -19,25 +19,26 @@ sequenceDiagram
 
     Client->>FacilitiesController: PUT /facilities/{id} { address, stands: [{ id?, standName, standCapacity }] }
     FacilitiesController->>UpdateFacilityCommandHandler: Handle(UpdateFacilityCommand)
-    UpdateFacilityCommandHandler->>IFacilityRepository: Get(FacilitySearchCriteria: Id)
-    alt no match
-        IFacilityRepository-->>UpdateFacilityCommandHandler: []
+    UpdateFacilityCommandHandler->>IFacilityRepository: Update(id, buildUpdated)
+    IFacilityRepository->>SqlFacilityRepository: Update(id, buildUpdated)
+    SqlFacilityRepository->>Database: BEGIN; SELECT Id FROM Facilities WHERE Id = @Id FOR UPDATE
+    alt no row
+        SqlFacilityRepository-->>UpdateFacilityCommandHandler: throw FacilityNotFoundException (rollback)
         UpdateFacilityCommandHandler-->>ExceptionHandlingMiddleware: throw CannotUpdateFacilityNotFoundException
         ExceptionHandlingMiddleware-->>Client: 404 (Error.Facilities.Update.FacilityNotFound)
-    else match found
-        IFacilityRepository-->>UpdateFacilityCommandHandler: [Facility]
+    else row locked
+        SqlFacilityRepository->>Database: read facility, address, stands (same transaction)
+        SqlFacilityRepository->>UpdateFacilityCommandHandler: buildUpdated(existing)
         UpdateFacilityCommandHandler->>UpdateFacilityCommandHandler: MergeStands(existing, requested)
         Note over UpdateFacilityCommandHandler: matched by Id -> updated in place<br/>no/unknown Id, <4 stands -> created (new Id)<br/>no/unknown Id, 4 stands -> discarded<br/>repeated existing Id -> throw DuplicatedStand
         UpdateFacilityCommandHandler->>Facility: new Facility(..., address, mergedStands)
         alt more than 4 stands
             Facility-->>UpdateFacilityCommandHandler: throw FacilityValidationException
-            UpdateFacilityCommandHandler-->>ExceptionHandlingMiddleware: propagated
+            SqlFacilityRepository->>Database: ROLLBACK
             ExceptionHandlingMiddleware-->>Client: 400 (Error.Facilities.Create.Validation)
         else 4 or fewer stands
-            Facility-->>UpdateFacilityCommandHandler: ok
-            UpdateFacilityCommandHandler->>IFacilityRepository: Update(facility)
-            IFacilityRepository->>SqlFacilityRepository: Update implementation
-            SqlFacilityRepository->>Database: ExecuteInTransactionAsync: UPDATE Facilities; UPDATE Addresses; UPDATE/INSERT Stands (no DELETE)
+            Facility-->>SqlFacilityRepository: updated facility
+            SqlFacilityRepository->>Database: UPDATE Facilities; UPDATE Addresses; UPDATE/INSERT Stands (no DELETE); COMMIT
             SqlFacilityRepository-->>UpdateFacilityCommandHandler: ok
             UpdateFacilityCommandHandler-->>FacilitiesController: ok
             FacilitiesController-->>Client: 200 (no body)
@@ -52,12 +53,12 @@ sequenceDiagram
 | `FacilitiesController` | `Update` | `Task Update(Guid id, [FromBody] UpdateFacilityRequest request, CancellationToken cancellationToken = default)` | `Task` | `PUT /{id}`. Maps `request.Stands` to `UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)`, forwarding the optional `Id`. |
 | `UpdateFacilityStandRequest` | `Id` | `Guid? Id { get; set; }` | — | Optional/nullable in the request schema; omit or send `null` to add a new stand. |
 | `UpdateFacilityStandCommand` | record | `UpdateFacilityStandCommand(string StandName, int StandCapacity, Guid? Id = null)` | — | Carries the optional `Id` through to the handler. |
-| `UpdateFacilityCommandHandler` | `Handle` | `Task Handle(UpdateFacilityCommand, CancellationToken)` | `Task` | Loads the facility, builds the updated aggregate (`BuildUpdatedFacility`), persists via `IFacilityRepository.Update`. Converts `FacilityNotFoundException` into `CannotUpdateFacilityNotFoundException`; any other exception (repository/infrastructure failure, `FacilityValidationException`, `CannotUpdateFacilityDuplicatedStandException`) propagates unchanged — see [`error-handling.md`](../error-handling.md). |
+| `UpdateFacilityCommandHandler` | `Handle` | `Task Handle(UpdateFacilityCommand, CancellationToken)` | `Task` | Calls `IFacilityRepository.Update(command.Id, existing => BuildUpdatedFacility(existing, command), ct)`. Converts `FacilityNotFoundException` into `CannotUpdateFacilityNotFoundException`; any other exception (repository/infrastructure failure, `FacilityValidationException`, `CannotUpdateFacilityDuplicatedStandException`) propagates unchanged — see [`error-handling.md`](../error-handling.md). |
 | `UpdateFacilityCommandHandler` | `BuildUpdatedFacility` (private, static) | `Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command)` | `Facility` | Rebuilds `Address` with `existing.Address.Id` (the address is updated in place, never replaced), and calls `MergeStands` for the stand list. Constructing the returned `Facility` re-validates the 4-stand invariant. |
 | `UpdateFacilityCommandHandler` | `MergeStands` (private, static) | `List<Stand> MergeStands(Facility existing, List<UpdateFacilityStandCommand> requested)` | `List<Stand>` | Pure function, no I/O. A requested stand is "matched" when its `Id` is one of `existing.Stands`' ids. Matched stands with a repeated `Id` throw `CannotUpdateFacilityDuplicatedStandException` before anything else runs. Existing stands are kept (updated in place if matched, unchanged otherwise); unmatched requested stands become new `Stand(Guid.NewGuid(), ...)` entries only while `existing.Stands.Count < 4`, otherwise they are dropped. |
 | `Stand` | constructor | `Stand(Guid Id, string StandName, int StandCapacity)` | — | Immutable value; `MergeStands` always creates a new `Stand` with the surviving `Id` (existing or freshly generated) rather than mutating one. |
 | `CannotUpdateFacilityDuplicatedStandException` | constructor | `CannotUpdateFacilityDuplicatedStandException(Guid id, Guid standId)` | — | Mapped to `400`, `Error.Facilities.Update.DuplicatedStand` (see [`error-handling.md`](../error-handling.md) for the converter table). |
-| `SqlFacilityRepository` | `Update` | `Task Update(Facility, CancellationToken)` | `Task` | One `ExecuteInTransactionAsync`: `UPDATE Facilities`, then `UpdateAddress`, then `UpdateStands`. Never calls `DeleteStands`/`DeleteAddress` (those are only reachable from `Delete`). |
+| `SqlFacilityRepository` | `Update` (by id) | `Task Update(Guid id, Func<Facility, Facility> buildUpdated, CancellationToken)` | `Task` | One `ExecuteInTransactionAsync`: `LockFacility` (`SELECT ... FOR UPDATE`, throws `FacilityNotFoundException` when no row), reads the facility, calls `buildUpdated`, then the `Update(Facility, ...)` overload (`UPDATE Facilities`, `UpdateAddress`, `UpdateStands`). Never calls `DeleteStands`/`DeleteAddress` (those are only reachable from `Delete`). |
 | `SqlFacilityRepository` | `UpdateAddress` (private) | `Task UpdateAddress(Facility, CancellationToken)` | `Task` | `UPDATE Addresses ... WHERE Id IN (SELECT AddressId FROM Facilities_Addresses WHERE FacilityId = @FacilityId)`. The address row's `Id` and its `Facilities_Addresses` link are untouched. |
 | `SqlFacilityRepository` | `UpdateStands` (private) | `Task UpdateStands(Facility, CancellationToken)` | `Task` | Reads the stand ids already linked to the facility (`Facilities_Stands`) inside the transaction, `UPDATE`s the ones present in `facility.Stands`, and calls `InsertStand` (shared with `Create`) for every stand in `facility.Stands` whose id is not yet linked. A linked stand absent from `facility.Stands` is left untouched — never deleted. |
 

@@ -18,6 +18,7 @@ Plan ID and specifications (text or path). Plan folder: `.github/plans/<ID>/`.
 1. Read `.github/doc/common/dev-stack.md`, `test-stack.md` and `.github/doc/work-guidelines.md` (relevant fragments only).
 2. Split the specs into `00-*.md`, `01-*.md`… Each step: objective, file/folder scope, verifiable acceptance criteria, how to demonstrate them. Order steps as acceptance → unit → refactor.
 3. Put ambiguities and missing requirements as open questions in `00-*.md`; never resolve them by invention.
+   If the plan changes the HTTP contract and a CI job compares the generated client, plan the operator's client regeneration/versioning as an explicit prerequisite of the CI step (OPT-030).
 4. Initialize `STATUS.md` (`PLANNED`, cycle 0), empty `REVIEW.md` and empty `usage/`.
 
 ## Skills (read only when the trigger applies)

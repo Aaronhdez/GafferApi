@@ -123,6 +123,24 @@ public class FacilitiesControllerContractShould
         standResult.ActualProperties.Keys.Should().BeEquivalentTo(["id", "standName", "standCapacity"]);
     }
 
+    [Test]
+    public async Task DeclareTheFiveStandOperationsAndTheirRequestSchemaWithoutIdInTheServedOpenApi()
+    {
+        await using var server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
+        var raw = await server.Client.GetStringAsync("/swagger/v1/swagger.json");
+        var document = await OpenApiDocument.FromJsonAsync(raw);
+
+        var collection = document.Paths["/api/v1/facilities/{facilityId}/stands"];
+        var item = document.Paths["/api/v1/facilities/{facilityId}/stands/{standId}"];
+        collection.Keys.Should().BeEquivalentTo(["get", "post"]);
+        item.Keys.Should().BeEquivalentTo(["get", "put", "delete"]);
+        collection["post"].Responses.Keys.Should().Contain("201");
+        item["put"].Responses.Keys.Should().Contain("204");
+        item["delete"].Responses.Keys.Should().Contain("204");
+        document.Definitions["FacilityStandRequest"].ActualProperties.Keys
+            .Should().BeEquivalentTo(["standName", "standCapacity"]);
+    }
+
     private static Type? FindTypeByName(string typeName)
     {
         return typeof(PlayerController).Assembly.GetTypes().FirstOrDefault(type => type.Name == typeName);

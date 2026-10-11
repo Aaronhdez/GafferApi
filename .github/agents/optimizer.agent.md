@@ -17,6 +17,7 @@ Work only after REVIEWER in every cycle, regardless of verdict. Read [AGENTS.md]
 - Append a cycle section to `OPTIMIZATION.md` with any usage-slice table, evidence and origin, cause, specific proposed change, expected savings, and source.
 - Give each proposal a provisional ID for the human checkpoint. Do not apply proposals or change plan state.
 - After the operator explicitly approves/rejects proposals, record only approved proposals in `MEMORIES.md` as new sequential `OPT-NNN` rows; update their state/effect only when the operator confirms application or later evidence establishes effect.
+- If `usage-slice` returned no data in the previous 2 cycles, do not repeat the retry ladder: cite `usage/*.md` as estimated and state the gap (OPT-031).
 - Use `execute` only for `.github/agent-harness/tools/usage-slice.mjs`. Never open or print raw JSONL events.
 
 ## Limits

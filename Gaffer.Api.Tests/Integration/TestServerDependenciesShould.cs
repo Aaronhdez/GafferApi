@@ -8,7 +8,7 @@ namespace Gaffer.Api.Tests.Integration;
 public class TestServerDependenciesShould
 {
     private const int ProductionRepositories = 2;
-    private const int ProductionHandlers = 8;
+    private const int ProductionHandlers = 13;
 
     // The expected services come from the production startups, so a handler registered only in
     // ActionsStartup is covered here without touching TestFixture.

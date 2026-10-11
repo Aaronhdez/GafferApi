@@ -40,6 +40,7 @@ The permission matrix is normative. Frontmatter tool availability does not expan
 - Steps follow the repository's double test loop in `.github/doc/work-guidelines.md`: acceptance, unit, then refactor with revalidation.
 - PLANNER initializes `STATUS.md` at `PLANNED` / cycle 0, an empty `REVIEW.md`, and an empty `usage/` directory.
 - `STATUS.md` records state, cycle, per-agent `Inicio` and `Fin` in ISO 8601 UTC, completed steps, commands/results, and blockers. It also records changed documentation at completion.
+- Hierarchical summary: at cycle start, BUILDER collapses each `APPROVED` cycle with no pending corrections to a row in a summary index at the top of `STATUS.md` (`Ciclo | Paso | Veredicto | AC(s) relevantes | commit/hash`); full detail stays only for the current and previous cycle. Git history keeps the rest.
 - `REVIEW.md` records evidence and the reviewer verdict. A criterion without evidence is not approved.
 - Allowed plan states are `PLANNED`, `READY_FOR_REVIEW`, `NEEDS_CHANGES`, `APPROVED`, `BLOCKED`, and `DONE`.
 - BUILDER checks prerequisites before tests and records commands and outcomes. REVIEWER checks the full diff and Git status, verifies acceptance criteria and red-to-green evidence, and never fixes product code.
@@ -58,6 +59,7 @@ PLANNER -> human approves plan
 - ORCHESTRATOR is mandatory for the normal workflow. Standalone prompts remain available for explicitly requested, manual one-agent tasks.
 - If specifications arrive without a plan, ORCHESTRATOR invokes PLANNER and stops for plan approval.
 - Every cycle runs BUILDER, REVIEWER, then OPTIMIZER, regardless of the review verdict.
+- Consolidate pending decisions: before starting a cycle, ORCHESTRATOR raises at the checkpoint any criterion of the next step blocked by an unanswered question; before re-invoking PLANNER on an approved step, it gathers every pending ambiguity from `00-*.md` into one question.
 - At the end of every cycle, ORCHESTRATOR reports the cycle, verdict, blockers, BUILDER/REVIEWER usage, main optimization proposal, and asks what to do next. It waits for an explicit human decision.
 - No next cycle and no DOCUMENTER invocation may begin without explicit human approval at the checkpoint. If the human approves optimization proposals, OPTIMIZER records those proposals before the flow continues.
 - Stop on `BLOCKED`, a human stop, or six completed development cycles. At the limit, report the outcome and do not silently begin another cycle.

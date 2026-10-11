@@ -19,10 +19,14 @@
 - ASP.NET Core hosting and middleware pipeline
 - API versioning via Asp.Versioning
 - OpenAPI/Swagger via NSwag
+  - Nullability note (OPT-010): the served spec is Swagger 2.0 without `x-nullable`, so NJsonSchema/NSwag treats any property not listed in `required` as nullable (`OpenApiDocument.FromJsonAsync` + `JsonSchemaProperty.IsNullable(document.SchemaType)`). Cite this instead of dumping the schema with `--verbosity detailed`.
 - JSON handling with Newtonsoft.Json only (`AddNewtonsoftJson` MVC formatter, `StringEnumConverter`); `System.Text.Json` is no longer configured for MVC input/output (tests still use it only to read HTTP responses)
 - Data access with Dapper
-- MySQL connectivity: `Gaffer.Api` uses `MySql.Data` (`MySqlConnector` was removed as an unused reference); `Gaffer.Api.Migrations` uses `MySqlConnector`
-  - Driver note (OPT-016): with `MySql.Data` 26.7.0, `MySqlConnection.DisposeAsync()` does not raise `Component.Disposed` nor release the `Component` of an already closed connection (it can be reopened); only the synchronous `Dispose()` performs that release. Tests about releasing the connection when its scope ends rely on `Dispose()`. Source: `.github/plans/TECHDEBT-003/STATUS.md`, cycle 1, row "AC1.2: hallazgo del driver".
+- MySQL/MariaDB connectivity: `Gaffer.Api` and `Gaffer.Api.Migrations` use `MySqlConnector` 2.6.1 (`Gaffer.Api` migrated from `MySql.Data` in TECHDEBT-004 step 03). The local and CI database is MariaDB (`mariadb:latest`).
+  - Driver note: `MySqlConnection.DisposeAsync()` closes the connection and raises `Component.Disposed`, so `SqlConnectionProvider` disposes asynchronously. Cancelling a token aborts a query already running on the server (`KILL QUERY`). The earlier `MySql.Data` 26.7.0 limitations (OPT-016, TECHDEBT-003 AC3.4) no longer apply.
+- Build: `TreatWarningsAsErrors` is `true` for `Gaffer.Api` (TECHDEBT-004 step 01); `.gitattributes` fixes `*.cs` to LF.
+- Hosting environment: read from `ASPNETCORE_ENVIRONMENT`, `Development` when absent or blank (step 02).
+- CI: `.github/workflows/ci.yml` (step 05); see [`doc/features/technical/ci-github-actions.md`](../../../doc/features/technical/ci-github-actions.md).
 - Database migrations with FluentMigrator
 
 ## Architecture Patterns Observed

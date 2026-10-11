@@ -2,7 +2,7 @@ using System.Data;
 using System.Data.Common;
 using System.Net.Sockets;
 using Dapper;
-using MySql.Data.MySqlClient;
+using MySqlConnector;
 
 namespace Gaffer.Api.Shared.ConnectionProviders;
 
@@ -124,9 +124,8 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         {
             await _currentTransaction.DisposeAsync();
         }
-        await _sqlConnection.CloseAsync();
-        // MySql.Data's DisposeAsync does not run Component disposal; after CloseAsync the synchronous Dispose does no I/O.
-        _sqlConnection.Dispose();
+        // MySqlConnector's DisposeAsync closes the connection asynchronously and raises Component.Disposed.
+        await _sqlConnection.DisposeAsync();
     }
 
     public void Dispose()
@@ -140,19 +139,23 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
 
     /// <summary>
     /// Runs <paramref name="operation"/> on the connection, opening it if needed and closing it (back to the pool,
-    /// without releasing it) when this call opened it. Inside an ambient transaction the transaction owns the connection.
-    /// A failing operation is not closed here (TECHDEBT-003 Q1 debt): the connection stays open until the next
-    /// transaction ends or the provider is disposed with its scope.
+    /// without releasing it) when this call opened it, also when the operation fails or is cancelled; the original
+    /// exception propagates unwrapped. Inside an ambient transaction the transaction owns the connection and closes it.
     /// </summary>
     private async Task<T> RunOnConnectionAsync<T>(Func<Task<T>> operation, CancellationToken cancellationToken = default)
     {
         var ownsConnection = await OpenIfNeededAsync(cancellationToken);
-        var result = await operation();
-        if (ownsConnection)
+        try
         {
-            await _sqlConnection.CloseAsync();
+            return await operation();
         }
-        return result;
+        finally
+        {
+            if (ownsConnection)
+            {
+                await _sqlConnection.CloseAsync();
+            }
+        }
     }
 
     /// <summary>
@@ -171,7 +174,10 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
         return true;
     }
 
-    /// <summary>Single way to build a Dapper command: bound to the ambient transaction (if any) and to the caller's token.</summary>
+    /// <summary>
+    /// Single way to build a Dapper command: bound to the ambient transaction (if any) and to the caller's token.
+    /// Cancelling the token aborts a query already running on the server (MySqlConnector sends <c>KILL QUERY</c>).
+    /// </summary>
     private CommandDefinition Command(string query, object? parameters, CancellationToken cancellationToken)
         => new(query, parameters, _currentTransaction, cancellationToken: cancellationToken);
 }

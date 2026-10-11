@@ -19,6 +19,7 @@ public static class VersioningStartup {
             .AddMvc(options => {
                 options.Conventions.Controller<PlayerController>().HasApiVersions(apiVersionsDefinition.Versions);
                 options.Conventions.Controller<FacilitiesController>().HasApiVersions(apiVersionsDefinition.Versions);
+        options.Conventions.Controller<FacilityStandsController>().HasApiVersions(apiVersionsDefinition.Versions);
             })
             .AddApiExplorer(options => {
                 options.GroupNameFormat = "'v'VVV";

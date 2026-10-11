@@ -33,8 +33,9 @@
 
 ### Limitations
 
-- No stand can ever be removed through this endpoint, even if that was the caller's intent — the only ways to change the stand count are adding one (below 4) or leaving it as-is. Reducing the number of stands needs a separate, out-of-scope operation.
-- Two concurrent `PUT` calls on the same facility while it has fewer than 4 stands can each independently pass the "fewer than 4" check before either writes, so together they could push the total above 4; the invariant is not enforced with a lock across concurrent requests.
+- No stand can be removed through this endpoint, even if that was the caller's intent; use `DELETE /api/v{version}/facilities/{facilityId}/stands/{standId}` ([`facility-stands.md`](./facility-stands.md)).
+- Concurrent changes to the stands of one facility are serialized: the update locks the facility row (`SELECT ... FOR UPDATE`) and reads it inside the same transaction, so two concurrent `PUT` calls cannot together push the facility above 4 stands. The second request waits and decides on the committed state.
+- Individual stands can be added, replaced and removed through the dedicated stands endpoints: [`facility-stands.md`](./facility-stands.md).
 - The response body for a successful update is empty; the caller must `GET` the facility to see the applied result (matching the [player update](./player-update.md) endpoint).
 - This document only covers the happy path and the domain `400`/`404` cases above. For what happens when the database itself is unreachable during this call, or when the client cancels the request mid-flight, see [`error-handling.md`](./error-handling.md).
 
