@@ -2,12 +2,22 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
-| Ciclo | 3 |
-| Pasos completados | 01 (APPROVED por REVIEWER, ciclo 1); 02 (APPROVED por REVIEWER, ciclo 2); 03 (APPROVED por REVIEWER, ciclo 3) |
-| Pasos bloqueados | 04 hasta Q9, Q10, Q12; 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
-| Siguiente | OPTIMIZER ciclo 3 y checkpoint humano |
+| Estado | READY_FOR_REVIEW |
+| Ciclo | 4 |
+| Pasos completados | 01 (APPROVED, ciclo 1); 02 (APPROVED, ciclo 2); 03 (APPROVED, ciclo 3); 04 (READY_FOR_REVIEW, ciclo 4) |
+| Pasos bloqueados | 05 hasta Q17, Q18, Q19 (ver `00-overview-and-open-questions.md`) |
+| Siguiente | REVIEWER ciclo 4 |
 | Bloqueos | Ninguno |
+
+## Índice resumido de ciclos APPROVED
+
+| Ciclo | Paso | Veredicto | AC(s) relevantes | commit/hash |
+| --- | --- | --- | --- | --- |
+| 1 | 01 | APPROVED | AC1.1-AC1.10 | n/d (ver `git log`) |
+| 2 | 02 | APPROVED | AC2.1-AC2.7 | c8eac83 |
+| 3 | 03 | APPROVED | AC3.1-AC3.6 | 5550133 |
+
+Nota: el detalle de los ciclos 1 y 2 sigue más abajo sin colapsar (el colapso exacto queda pendiente; git conserva el histórico).
 
 ## Decisiones aplicadas en el ciclo 1
 
@@ -37,6 +47,19 @@ Operador en el checkpoint del ciclo 2: "aprueba P2-1 y luego ejecuta el ciclo 3"
 | Q5 | a) (sin respuesta) | `MySqlConnector` 2.6.1, la misma versión que `Gaffer.Api.Migrations`. |
 | Q6 | a) (sin respuesta) | `SELECT SLEEP(5)` cancelado a los 100 ms → `OperationCanceledException` en < 2 s, fuera de `PROCESSLIST`, conexión usable. |
 
+## Decisiones aplicadas en el ciclo 4
+
+Operador: "q9 = a, q10 = a, q12 = a"; "Apruebo P3-1 (OPT-025) y el cambio a MariaDB"; "aplica OPT-25 y aplica el cambio de mariadb".
+
+| Pregunta / cambio | Valor aplicado | Efecto |
+| --- | --- | --- |
+| Q9 | a) | PUT de un stand reemplaza nombre y capacidad; 204. |
+| Q10 | a) | POST con 4 stands → 400 `Error.Facilities.Stands.Create.MaxStandsExceeded`, sin cambios. |
+| Q12 | a) | GET lista y detalle; POST 201 + `Location` + Guid; 404 `...Stands.FacilityNotFound` / `...Stands.StandNotFound`. |
+| Q8, Q11, Q13-Q16 | valores por defecto | Sin respuesta del operador. |
+| OPT-025 | aplicada en `CLAUDE.md` (Minimal Reading) | Filtrar desde la primera ejecución la salida de sondas ad hoc. |
+| Cambio a MariaDB | El operador provee `Quionis_DB` (`mariadb:latest`, 13.0.2, puerto 3306); sustituye a `Gaffer.Database` 12.3.2 | Línea base de pruebas del ciclo 4: 289/289 tras migrar solo `GafferDB_Test`. Cambiar el contenedor/versión es tarea exclusiva del operador. |
+
 ## Secuenciación (un paso = un ciclo)
 
 En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIEWER del ciclo anterior, si las hay) y REVIEWER solo aprueba el paso de ese ciclo. El ciclo 6 es la única reserva para `NEEDS_CHANGES`; cómo se combina una corrección con el paso siguiente es Q0.
@@ -61,6 +84,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 2 | 2026-09-27T18:00:01Z | 2026-09-27T18:02:40Z |
 | BUILDER | 3 | 2026-09-28T15:46:28Z | 2026-09-28T15:52:56Z |
 | REVIEWER | 3 | 2026-09-28T15:54:28Z | 2026-09-28T15:58:13Z |
+| BUILDER | 4 | 2026-10-11T16:07:20Z | 2026-10-11T16:19:30Z |
 
 ## Prerrequisitos
 
@@ -104,6 +128,14 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 3 | 03 | AC3.1 | `grep -rn "MySql.Data" --include=*.cs --include=*.csproj .` (sin `bin/`/`obj/`); `dotnet list gaffer-api.sln package --include-transitive \| grep -iE "Project\|MySql"` | grep: 0 coincidencias (exit 1). `list package`: `MySqlConnector 2.6.1` directo en `Gaffer.Api` y `Gaffer.Api.Migrations`, transitivo `2.6.1` en `Gaffer.Api.Tests`; `FluentMigrator.*.MySql 8.0.1` (Migrations); sin `MySql.Data` |
 | 3 | 03 | Alcance | `git status --short`; `git diff --stat`; `git ls-files --eol` de los 3 ficheros | Solo `Gaffer.Api.csproj` (1 línea), `SqlConnectionProvider.cs` (+8/-4), `SqlConnectionProviderShould.cs` (+55) y ficheros del plan. Los 3 en `i/lf w/lf`. `appsettings*`, `scripts/*.ps1`, `TestFixture.cs` y cliente generado sin cambios |
 | 3 | 03 | REVIEWER | Build `--no-incremental`; filtro 35/35; suite 289/289; 2 tests nuevos 7 × 2/2 (134-209 ms); red reproducido en copia `git archive HEAD` (2/2 fallan, 5 s); sonda: `InnerException` "interrupted" en ambos tests | Ver `REVIEW.md`: APPROVED |
+| 4 | 04 | Prerrequisitos | `docker ps`; build; suite (hechos antes de empezar, tras `./scripts/run-migrations.ps1` solo sobre `GafferDB_Test`) | `Quionis_DB mariadb:latest Up` (13.0.2, puerto 3306); 0 advertencias / 0 errores; 289/289, exit 0 |
+| 4 | 04 | Línea base OpenAPI | Test temporal `TmpSwaggerDump` (borrado después) guarda `/swagger/v1/swagger.json` servido | 16 578 bytes (antes del cambio) |
+| 4 | 04 | Unitario/repositorio red (AC4.6, AC4.7) | 7 tests en `SqlFacilityRepositoryShould.WhenManagingTheStandsOfAFacility`; `LockFacility` temporalmente sin `FOR UPDATE`; filtro `~WhenManagingTheStandsOfAFacility` | exit 1; 2 con error / 5 superados / 7 (los 2 de concurrencia AC4.6 y AC4.7) |
+| 4 | 04 | Unitario/repositorio green | `FOR UPDATE` restaurado; filtro `~SqlFacilityRepositoryShould\|~UpdateFacilityCommandHandlerShould` | exit 0; 34/34 |
+| 4 | 04 | Aceptación red HTTP (AC4.8) | `FacilityStandsFeaturesShould.NeverExceedFourStandsWhenCreatingThemConcurrently` con `FOR UPDATE` quitado | exit 1; 1 con error |
+| 4 | 04 | Aceptación green (AC4.1-AC4.5, AC4.8) | `FOR UPDATE` restaurado; filtro `~FacilityStandsFeaturesShould` | exit 0; 10/10 |
+| 4 | 04 | Contrato (AC4.9) | `FacilitiesControllerContractShould.DeclareTheFiveStandOperations...`; comparación del `swagger.json` antes/después | Rutas nuevas: `/api/v1/facilities/{facilityId}/stands` (get, post) y `.../stands/{standId}` (get, put, delete); definición nueva `FacilityStandRequest`; rutas y definiciones existentes sin cambios (comparación JSON por ruta y por definición) |
+| 4 | 04 | Regresión (AC4.12) | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build --verbosity quiet`; `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | 0 advertencias / 0 errores; 322/322, exit 0 (289 + 33 nuevos); grep: 0 coincidencias. Un fallo intermedio: `TestServerDependenciesShould.ProductionHandlers` 8 → 13 (la constante cuenta los handlers registrados; actualizada en el mismo incremento) |
 
 ## Paso 01 - evidencia por criterio
 
@@ -154,6 +186,31 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | R1-2 (revisado en el paso 03) | Un `CloseAsync` que lanzase en el `finally` de `RunOnConnectionAsync` ocultaría la excepción original. Observado con `MySqlConnector`: en todos los casos de fallo y cancelación (incluida la cancelación en curso, AC3.2/AC3.3) se propaga la excepción original y el estado final es `Closed`. `CloseAsync` devuelve la sesión al pool (el reset se difiere a la siguiente apertura), por lo que no se añadió código defensivo; queda como riesgo residual no reproducido. |
 | Red sin stash | El red de AC3.2/AC3.3 se ejecutó en el árbol de trabajo con los tests ya añadidos y el driver aún en `MySql.Data`, antes de cambiarlo; no hizo falta copia ni `git stash`. |
 | Duración | AC3.2/AC3.3 dependen de un temporizador de 100 ms y un límite de 2 s (Q6 = a)); observados 139-224 ms en 4 ejecuciones. |
+
+## Paso 04 - evidencia por criterio
+
+Diseño (decisión de BUILDER, Q14 = a): `IFacilityRepository` gana `Update(Guid, Func<Facility, Facility>)` (bloquea con `SELECT ... FOR UPDATE`, lee y aplica la fusión del handler en la misma transacción) y `GetStands/GetStand/AddStand/UpdateStand/DeleteStand`. `UpdateFacilityCommandHandler` usa el nuevo `Update`; las reglas de `MergeStands` no cambian. `Update(Facility)` se conserva (lo usa el nuevo método y sus tests). Nuevo `FacilityStandsController` (`api/v{version}/facilities/{facilityId}/stands`), registrado en `VersioningStartup` y `TestFixture`. Errores: `FacilityStandsFacilityNotFoundException` (handlers) + `FacilityStandNotFoundException` y `FacilityMaxStandsExceededException` (repositorio), con claves `Error.Facilities.Stands.*`.
+
+| AC | Evidencia |
+| --- | --- |
+| AC4.1 | `ListTheStandsOfAFacilityAndAnEmptyListWhenThereAreNone`, `ReadAStandOfAFacility`: 200 con `SearchFacilityStandResult`; lista vacía. |
+| AC4.2 | `CreateAStandReturningItsServerGeneratedIdAndLocation` (201, Guid, `Location` termina en `/facilities/{id}/stands/{standId}` y responde 200); `IgnoreAnIdSentInTheCreationBody`; `RejectAFifthStandWithoutChangingTheFacility` (400 `Error.Facilities.Stands.Create.MaxStandsExceeded`, sin cambios). |
+| AC4.3 | `ReplaceTheNameAndCapacityOfAStandKeepingItsId` (204, mismo `Id`, otra grada intacta). |
+| AC4.4 | `DeleteAStandIncludingTheLastOne` (204; borrar la última deja lista vacía y la facility existe). Repositorio: `AddReadUpdateAndDeleteAStand` verifica que `Stands` queda sin la fila. |
+| AC4.5 | `AnswerNotFoundWithTheFacilityKey...` (5 operaciones) y `AnswerNotFoundWithTheStandKey...` (inexistente y ajena en GET/PUT/DELETE; la grada ajena no cambia). |
+| AC4.6 | `MakeAConcurrentStandCreationWaitForTheLockHolderAndThenRespectTheLimit`: A bloquea con 3 gradas, el `AddStand` de otro proveedor no termina en 500 ms, tras commit de A (4ª grada) falla con `FacilityMaxStandsExceededException` y quedan 4. Red sin `FOR UPDATE`: falla. |
+| AC4.7 | `MakeAConcurrentFacilityUpdateWaitForTheLockHolderAndThenRespectTheLimit`: mismo patrón con `UpdateFacilityCommandHandler`; espera, descarta la grada nueva (reglas TECHDEBT-003), renombra y quedan 4. Red sin `FOR UPDATE`: falla. |
+| AC4.8 | `NeverExceedFourStandsWhenCreatingThemConcurrently`: 10 repeticiones × 4 `POST` simultáneos con barrera sobre facility con 3 gradas → exactamente un 201, tres 400, 4 gradas. Red sin `FOR UPDATE`: falla. |
+| AC4.9 | Ver fila "Contrato (AC4.9)" en comandos; `DeclareTheFiveStandOperations...` comprueba las 5 operaciones, los códigos 201/204 y que `FacilityStandRequest` solo tiene `standName` y `standCapacity`. |
+| AC4.10 | `FacilityStandCommandHandlersShould` (5), `FacilityStandQueryHandlersShould` (4), 3 entradas nuevas en la tabla de `ExceptionToHttpResponseConvertersShould` (`CoverEveryConverter` exige entrada por conversor); `UpdateFacilityCommandHandlerShould` 11/11 con el doble preparado por `GivenExisting` (aplica la función de fusión que recibe, mismas aserciones; las de `Get`/`Update(Facility)` pasan a `Update(Guid, Func)` y al resultado de la función). |
+| AC4.11 | `LeaveNoRowsWhenTheStandInsertFails` (nombre de 300 caracteres): excepción, `Facilities_Stands` 2 y `Stands` 2, sin fila para la grada fallida. Limitación: el `INSERT` en `Stands` es el que falla, así que no se demuestra el rollback del segundo `INSERT`. |
+| AC4.12 | `FacilityFeaturesShould` y `JsonContractShould` incluidos en la suite 322/322; `TestServerDependenciesShould` (constante 8 → 13); build 0/0; grep `CancellationToken.None` 0. |
+
+| Nota | Detalle |
+| --- | --- |
+| Cliente generado | Sin tocar. El operador regenera y sube versión MINOR (Q16). |
+| Entorno | Pruebas contra `Quionis_DB` (MariaDB 13.0.2), no `Gaffer.Database` 12.3.2 del plan (ver "Decisiones aplicadas en el ciclo 4"). |
+| Pendiente | Colapso exacto de los ciclos 1 y 2 en el índice (solo se añadió el índice). Sin documentación modificada (la hace DOCUMENTER). |
 
 ## EOL (AC1.4, listado; Q2 = b): no se convierte nada)
 

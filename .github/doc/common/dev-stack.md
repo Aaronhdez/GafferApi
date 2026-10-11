@@ -19,6 +19,7 @@
 - ASP.NET Core hosting and middleware pipeline
 - API versioning via Asp.Versioning
 - OpenAPI/Swagger via NSwag
+  - Nullability note (OPT-010): the served spec is Swagger 2.0 without `x-nullable`, so NJsonSchema/NSwag treats any property not listed in `required` as nullable (`OpenApiDocument.FromJsonAsync` + `JsonSchemaProperty.IsNullable(document.SchemaType)`). Cite this instead of dumping the schema with `--verbosity detailed`.
 - JSON handling with Newtonsoft.Json only (`AddNewtonsoftJson` MVC formatter, `StringEnumConverter`); `System.Text.Json` is no longer configured for MVC input/output (tests still use it only to read HTTP responses)
 - Data access with Dapper
 - MySQL connectivity: `Gaffer.Api` uses `MySql.Data` (`MySqlConnector` was removed as an unused reference); `Gaffer.Api.Migrations` uses `MySqlConnector`

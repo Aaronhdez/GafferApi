@@ -15,7 +15,7 @@ Plan folder `.github/plans/<ID>/`.
 
 ## Work
 
-1. Record `Inicio` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) for this cycle in `STATUS.md`.
+1. Record `Inicio` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) for this cycle in `STATUS.md`. Compact closed cycles first (see `AGENTS.md`, "Plans and Evidence") and read `STATUS.md` by range, not whole.
 2. Address open `CHANGES_REQUESTED` in `REVIEW.md` first; otherwise implement the next pending step.
 3. Read `.github/doc/common/dev-stack.md` / `test-stack.md` fragments; `*-documentation.md` only when touching a dependency; start from `.github/doc/resources/templates-*/` when a template matches.
 4. Follow the double test loop (acceptance → unit → refactor) with red→green evidence.

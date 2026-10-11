@@ -169,4 +169,17 @@ No se repiten como propuesta nueva H1 (→ refuerzo de `OPT-021`), H2 (→ refue
 
 ### Estado de aprobación
 
-Pendiente de checkpoint humano (este es el resultado del ciclo 3, aún no presentado al operador en este análisis).
+P3-1: **Aprobada**. Operador: "Apruebo P3-1", 2026-10-11. Registrada como `OPT-025` en `.github/agent-harness/MEMORIES.md` (`Estado: pendiente`, `Efecto observado: sin datos`); la aplicación a las instrucciones de BUILDER queda pendiente de que el operador la lleve a cabo (OPTIMIZER no edita agentes, prompts ni skills).
+
+### Reconciliación de medición (reconsulta 2026-10-11)
+
+Se volvió a ejecutar `usage-slice` para las mismas ventanas literales y `--repo gaffer-api`, sin inspeccionar eventos JSONL:
+
+| Ventana | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| BUILDER | 22 | 44 | 1 001 565 | 48 483 | 4 670 | 0,536302 | medido:token-consumer |
+| REVIEWER | 14 | 28 | 514 047 | 38 236 | 329 | 0,300683 | medido:token-consumer |
+
+La ventana de BUILDER coincide con la tabla anterior. La consulta actual de REVIEWER difiere de la medición registrada inicialmente (12 eventos, 24 entrada nueva, 418 794 caché lectura, 33 976 caché escritura, 277 salida, coste 1,29 USD). Con los datos actuales, el total de REVIEWER es 552 640 tokens, la caché es 99,94 % y la brecha frente al `medido:agent-result` registrado (55 025) es 10,04x. No se puede determinar la causa de la diferencia sin inspeccionar eventos sin procesar, lo cual está prohibido; se conserva la medición inicial y esta reconsulta por separado, y no se usa la discrepancia para atribuir un ahorro o una tendencia.
+
+La aprobación de P3-1 se registra arriba; la discrepancia entre las mediciones de REVIEWER permanece sin explicación.

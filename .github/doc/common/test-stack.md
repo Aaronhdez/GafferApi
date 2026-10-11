@@ -22,6 +22,7 @@
 - Acceptance tests
 - Integration tests
 - Shared fixture-based setup patterns
+  - Full test server (OPT-022): to dump or compare routes actually served (e.g. `/swagger/*/swagger.json`), use `Gaffer.Api.Tests/TestShared/StartupTestServer.cs`; `TestFixture`'s internal `TestServer` does not expose Swagger routes and returns 404.
 
 ## Testing Strategy Notes
 
