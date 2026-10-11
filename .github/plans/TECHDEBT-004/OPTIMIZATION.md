@@ -183,3 +183,48 @@ Se volvió a ejecutar `usage-slice` para las mismas ventanas literales y `--repo
 La ventana de BUILDER coincide con la tabla anterior. La consulta actual de REVIEWER difiere de la medición registrada inicialmente (12 eventos, 24 entrada nueva, 418 794 caché lectura, 33 976 caché escritura, 277 salida, coste 1,29 USD). Con los datos actuales, el total de REVIEWER es 552 640 tokens, la caché es 99,94 % y la brecha frente al `medido:agent-result` registrado (55 025) es 10,04x. No se puede determinar la causa de la diferencia sin inspeccionar eventos sin procesar, lo cual está prohibido; se conserva la medición inicial y esta reconsulta por separado, y no se usa la discrepancia para atribuir un ahorro o una tendencia.
 
 La aprobación de P3-1 se registra arriba; la discrepancia entre las mediciones de REVIEWER permanece sin explicación.
+
+## Ciclo 4 - Paso 04 (CRUD de gradas y bloqueo de fila)
+
+### Uso medido (`usage-slice`)
+
+Ventanas de `STATUS.md`: BUILDER `2026-10-11T16:07:20Z/16:19:30Z`, REVIEWER `16:20:29Z/16:22:30Z`. Escalera de reintentos aplicada: `--repo gaffer-api` → sin datos; `--repo TECHDEBT-004` (OPT-008) → sin datos; ventana desplazada +1 h (OPT-009) → sin datos. No se hizo bisección más ancha (OPT-011).
+
+| Ventana | Agente | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| BUILDER | claude-code / copilot | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos |
+| REVIEWER | claude-code / copilot | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos |
+
+### Datos disponibles (estimados, `usage/*.md`)
+
+| Rol | Tokens entrada | Tokens salida | Llamadas | Origen |
+| --- | --- | --- | --- | --- |
+| BUILDER ciclo 4 | ~120k (mayoría caché) | ~25k | ~60 | estimado |
+| REVIEWER ciclo 4 | ~60k (mayoría caché) | ~7k | ~14 | estimado |
+
+BUILDER ciclo 4 es ~2x el ciclo 3 (~60k/~25 llamadas) y el mayor del plan; REVIEWER ~1,2x. Sin medición no se puede separar entrada fresca de caché; son estimaciones, no mediciones.
+
+### Hallazgos
+
+| ID | Hallazgo | Evidencia / origen | Causa probable |
+| --- | --- | --- | --- |
+| H1 | El ciclo 4 es el paso más grande (3 capas, 33 tests, red repetido) y el consumo estimado de BUILDER se duplica | `usage/BUILDER.md` (estimado) | Alcance del paso, no ineficiencia demostrada; ninguna señal de OPT-006/018/024/025 incumplida (builds/tests filtrados, sin scripts, sin sondas nuevas) |
+| H2 | El colapso jerárquico de `STATUS.md` (regla de AGENTS.md) no se hizo al inicio del ciclo 4: se añadió el índice pero los ciclos 1 y 2 conservan todo su detalle | `STATUS.md` (229 líneas; nota de "colapso pendiente"); `STATUS.md` creció en cada ciclo y se relee cada ciclo | Regla redactada como acción de BUILDER sin comprobación ni responsable de verificarla; BUILDER la difirió por riesgo de perder evidencia |
+| H3 | Telemetría ausente en 3 reintentos | salida de `usage-slice` | Hueco sin desplazamiento (no es un clúster adelantado); coherente con OPT-011 |
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P4-1 | Al cerrar el ciclo APPROVED, que REVIEWER (o BUILDER al inicio del siguiente) deje el detalle por criterio de los ciclos APPROVED ya revisados fuera de `STATUS.md`, y añadir a la lista de comprobación de BUILDER "STATUS.md solo conserva detalle del ciclo actual y el anterior; mover el resto al índice". Alternativa: que el colapso lo ejecute el propio OPTIMIZER solo sobre `STATUS.md` si el operador lo autoriza explícitamente | agente BUILDER / AGENTS.md | Reduce la relectura de `STATUS.md` (~230 líneas y creciendo; ~+30 % por ciclo según ciclo 3) en los ciclos 5-6 | `STATUS.md`, ciclo 3 H1/H2, regla de colapso de AGENTS.md |
+
+No se propone nada sobre H1 (alcance) ni H3 (ya cubierto por OPT-011).
+
+### Brechas de datos
+
+- Sin `usage-slice` en este ciclo: no hay tokens medidos ni coste; todo lo anterior sobre consumo es estimado y no permite medir el efecto de OPT-025 (sigue `sin datos`).
+- No se puede confirmar H2 como causa de coste, solo como crecimiento del fichero.
+
+### Estado de aprobación
+
+P4-1: pendiente de decisión del operador. Nada se registra en `MEMORIES.md` hasta su aprobación explícita.
