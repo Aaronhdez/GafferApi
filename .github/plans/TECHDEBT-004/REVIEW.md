@@ -187,3 +187,38 @@ Revisor: REVIEWER, 2026-10-11T16:20:29Z - 2026-10-11T16:22:30Z. **Veredicto: APP
 | R4-3 | Observación | `GetStands`/`GetStand` y `EnsureFacilityExists` leen sin transacción: lecturas consistentes por sentencia; aceptable. |
 | R4-4 | Observación | La edición de `CLAUDE.md` (OPT-025) y el cambio de línea base a MariaDB 13.0.2 se hicieron por instrucción del operador; `MEMORIES.md` sigue `pendiente`. |
 | R4-5 | Observación (herencia) | Q11 y Q13-Q16 siguen con valor por defecto sin respuesta del operador; la regeneración del cliente y el bump MINOR (Q16) corresponden al operador y no se verificaron (fuera de alcance). |
+
+## Ciclo 5 - Paso 05 (CI con GitHub Actions)
+
+Revisor: REVIEWER, 2026-10-11T16:35:48Z - 2026-10-11T16:37:00Z. **Veredicto: NEEDS_CHANGES** (sin defecto de código; falta evidencia obligatoria AC5.4).
+
+### Comprobaciones del revisor
+
+| Comprobación | Resultado |
+| --- | --- |
+| `git status` | Nuevo: `.github/workflows/ci.yml`; resto, ficheros de arnés/plan. Sin cambios en `Gaffer.Api.Client`, `Gaffer.Api.csproj`, scripts ni tests |
+| `actionlint` (Docker) | exit 0 |
+| Build `--no-incremental -warnaserror` | 0 advertencias, 0 errores |
+| Suite | 322/322, exit 0 |
+| `nuget push`/`dotnet nuget` en workflows | 0 (revisión del YAML: solo `build`, `test`, `git diff`, `upload-artifact`) |
+
+### Criterios
+
+| AC | Estado | Evidencia |
+| --- | --- | --- |
+| AC5.1 | Demostrado | actionlint 0; YAML coincide con el diseño (triggers, `needs`, servicio `mariadb:latest`, `contents: read`). `act` no disponible. |
+| AC5.2 | Demostrado (local) | Reproducción de los comandos del job Linux contra `Quionis_DB`; no ejecuta el servicio del YAML. |
+| AC5.3 | Demostrado | Sin cambios en el cliente generado. |
+| AC5.4 | **No demostrado** | No hay URL de run, commit ni resultado de jobs en `STATUS.md`. Bloquea `APPROVED` según el plan. |
+| AC5.5 | No demostrado (no bloquea) | Sin run en rojo. |
+| AC5.6 | Demostrado | Solo credencial efímera del servicio; 0 pushes de paquete. |
+| AC5.7 | Demostrado | 322/322; 0 advertencias. |
+
+### Hallazgos
+
+| ID | Severidad | Detalle |
+| --- | --- | --- |
+| R5-1 | **Bloqueante (evidencia)** | AC5.4 sin evidencia del operador (Q18 = a). Acción del operador: regenerar/versionar el cliente (Q16/Q19), subir rama/PR, anotar URL, commit y resultado por job y presencia del `.nupkg`. Después, nuevo ciclo REVIEWER. |
+| R5-2 | Riesgo (para el run real) | `.gitattributes` solo fija `*.cs text eol=lf`; `OpenApiSpecs.json` no tiene regla. En el runner Windows (`core.autocrlf` por defecto) el JSON regenerado podría diferir solo por fin de línea y hacer fallar `git diff --exit-code` sin cambio real. El plan suponía que `.gitattributes` lo cubría. Si ocurre en el run, ampliar la regla (p. ej. `*.json text eol=lf`) y el JSON versionado. |
+| R5-3 | Riesgo (no verificable en local) | `DatabaseConfig__Enabled=false` en el job Windows: `DatabaseStartup` solo registra BD si `Enabled: true`, coherente; `healthcheck.sh` en `mariadb:latest` y la ruta `bin/Release/*.nupkg` (`if-no-files-found: error` lo detectará) dependen del run. |
+| R5-4 | Observación | OPT-026 aplicada por BUILDER en 2 ficheros, bajo instrucción del operador; el detalle de los ciclos 1-3 sigue en `STATUS.md` (colapso diferido). Las Q17-Q19 se asumieron con las recomendaciones a). |

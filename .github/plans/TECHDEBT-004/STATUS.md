@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | READY_FOR_REVIEW |
+| Estado | NEEDS_CHANGES |
 | Ciclo | 5 |
-| Pasos completados | 01-04 (APPROVED, ciclos 1-4); 05 (READY_FOR_REVIEW, ciclo 5; AC5.4 y AC5.5 pendientes del operador) |
+| Pasos completados | 01-04 (APPROVED, ciclos 1-4); 05 (NEEDS_CHANGES, ciclo 5: AC5.4 sin evidencia del operador) |
 | Pasos bloqueados | Ninguno |
-| Siguiente | Operador: regenerar/versionar el cliente (Q16, Q19), subir rama/PR y anotar el run (Q18 = a); después REVIEWER ciclo 5 |
-| Bloqueos | AC5.4 (run real en GitHub) sin evidencia hasta que el operador lo anote; sin ella el paso no puede quedar `APPROVED` |
+| Siguiente | Operador: regenerar/versionar el cliente (Q16, Q19), subir rama/PR y anotar el run (Q18 = a); después ciclo 6 (BUILDER/REVIEWER) |
+| Bloqueos | R5-1: AC5.4 sin URL/commit/resultado de run |
 
 ## Índice resumido de ciclos APPROVED
 
@@ -81,7 +81,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | 2 | 02 - Entorno desde variable de entorno (`Development` por defecto) | APPROVED |
 | 3 | 03 - Migración a `MySqlConnector` + cancelación en curso | APPROVED |
 | 4 | 04 - CRUD de gradas + lock en transacción | APPROVED |
-| 5 | 05 - CI con GitHub Actions | READY_FOR_REVIEW (AC5.4 pendiente) |
+| 5 | 05 - CI con GitHub Actions | NEEDS_CHANGES (AC5.4 pendiente del operador) |
 | 6 | Reserva | - |
 
 ## Tiempos por agente
@@ -98,6 +98,7 @@ En el ciclo N, BUILDER implementa solo el paso N (más las correcciones de REVIE
 | REVIEWER | 4 | 2026-10-11T16:20:29Z | 2026-10-11T16:22:30Z |
 | BUILDER | 4 | 2026-10-11T16:07:20Z | 2026-10-11T16:19:30Z |
 | BUILDER | 5 | 2026-10-11T16:28:30Z | 2026-10-11T16:33:00Z |
+| REVIEWER | 5 | 2026-10-11T16:35:48Z | 2026-10-11T16:37:00Z |
 
 ## Prerrequisitos
 

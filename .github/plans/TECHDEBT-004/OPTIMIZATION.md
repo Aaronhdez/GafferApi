@@ -228,3 +228,51 @@ No se propone nada sobre H1 (alcance) ni H3 (ya cubierto por OPT-011).
 ### Estado de aprobación
 
 P4-1: **Aprobada**. Operador: "Aprueba P4-1", 2026-10-11. Registrada como `OPT-026` en `.github/agent-harness/MEMORIES.md` (`Estado: pendiente`, `Efecto observado: sin datos`); la aplicación a BUILDER/AGENTS.md queda en manos del operador.
+
+## Ciclo 5 - Paso 05 (CI con GitHub Actions)
+
+### Uso medido (`usage-slice`)
+
+Ventanas de `STATUS.md`: BUILDER `2026-10-11T16:28:30Z/16:33:00Z`, REVIEWER `16:35:48Z/16:37:00Z`. `--repo gaffer-api` y `--repo TECHDEBT-004` → sin datos. No se repitió el desplazamiento horario ni la bisección (mismo hueco que el ciclo 4; OPT-011).
+
+| Ventana | Eventos | Entrada nueva | Caché lectura | Caché escritura | Salida | Coste USD | Origen |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| BUILDER | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos |
+| REVIEWER | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos | sin datos |
+
+### Datos disponibles (estimados, `usage/*.md`)
+
+| Rol | Entrada | Salida | Llamadas | Origen |
+| --- | --- | --- | --- | --- |
+| BUILDER ciclo 5 | ~45k | ~6k | ~22 | estimado |
+| REVIEWER ciclo 5 | ~35k | ~4k | ~9 | estimado |
+
+Ambos bajan respecto al ciclo 4 (120k/60k), coherente con un paso de un solo fichero. Son estimaciones, no mediciones.
+
+### Hallazgos
+
+| ID | Hallazgo | Evidencia | Causa probable |
+| --- | --- | --- | --- |
+| H1 | El ciclo 5 termina `NEEDS_CHANGES` solo por una acción del operador (AC5.4, run real) que el plan ya anticipaba; consume uno de los 6 ciclos (queda el 6 como reserva) | `REVIEW.md` R5-1; `STATUS.md` | El plan situó el run de GitHub entre BUILDER y REVIEWER, pero el flujo encadenó REVIEWER sin esperar al operador |
+| H2 | Riesgo R5-2: `.gitattributes` no cubre `OpenApiSpecs.json`; el run podría fallar por fin de línea | `REVIEW.md` R5-2 | Suposición del plan no contrastada con `.gitattributes` |
+| H3 | OPT-026 se aplicó pero el colapso del detalle de los ciclos 1-3 de `STATUS.md` sigue sin hacerse (BUILDER lo difirió) | `STATUS.md` nota OPT-026 | Retirar ~100 líneas con `edit` se percibió costoso; la regla no define cómo hacerlo barato |
+
+### Propuestas
+
+| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
+| --- | --- | --- | --- | --- |
+| P5-1 | Cuando un paso tenga un AC que dependa de una acción del operador (run real, regeneración), ORCHESTRATOR debe hacer un checkpoint antes de invocar a REVIEWER y preguntar si la evidencia ya está anotada; si no, no consumir el ciclo de REVIEWER | ORCHESTRATOR / plan (`harness-run`) | Evita gastar un ciclo (el límite es 6) y un REVIEWER cuando el resultado es previsible | H1, `00-overview...` (Entre BUILDER y REVIEWER) |
+| P5-2 | Ampliar `.gitattributes` con `*.json text eol=lf` (y normalizar `OpenApiSpecs.json` al regenerar) antes del run | plan / acción del operador (fuera de BUILDER por tocar el cliente generado) | Evita un run rojo por fin de línea | H2, R5-2 |
+| P5-3 | Para el colapso de `STATUS.md`, mover el detalle por ciclo a un fichero `STATUS-archive.md` del plan (crear + borrar bloques) en lugar de borrar a mano | agente BUILDER | Hace viable cumplir OPT-026 | H3 |
+
+### Brechas de datos
+
+- Sin `usage-slice` en 2 ciclos seguidos: no se mide el efecto de OPT-025/OPT-026 (siguen `sin datos`).
+- H1 se deduce de `STATUS.md`/`REVIEW.md`, no de telemetría.
+
+### Estado de aprobación
+
+- P5-1: **Aprobada**. Operador: "aprueba las propuestas P5-1, 2, y 3", 2026-10-11. Registrada como OPT-027.
+- P5-2: **Aprobada**. Mismo mensaje. Registrada como OPT-028 (acción del operador).
+- P5-3: **Aprobada**. Mismo mensaje. Registrada como OPT-029.
+- Las tres en estado `pendiente`; OPTIMIZER no las aplica.
