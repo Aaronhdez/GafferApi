@@ -7,21 +7,18 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
 
-public class DeleteFacilityCommandHandlerShould
-{
-    private IFacilityRepository _repository;
-    private DeleteFacilityCommandHandler _handler;
+public class DeleteFacilityCommandHandlerShould {
+    private IFacilityRepository repository;
+    private DeleteFacilityCommandHandler handler;
 
     [SetUp]
-    public void Setup()
-    {
-        _repository = Substitute.For<IFacilityRepository>();
-        _handler = new DeleteFacilityCommandHandler(_repository);
+    public void Setup() {
+        repository = Substitute.For<IFacilityRepository>();
+        handler = new DeleteFacilityCommandHandler(repository);
     }
 
     [Test]
-    public async Task DeleteAFacilityWhileBeingExecuted()
-    {
+    public async Task DeleteAFacilityWhileBeingExecuted() {
         var command = new DeleteFacilityCommand(Guid.NewGuid());
         var facility = new Facility(
             command.Id,
@@ -32,40 +29,37 @@ public class DeleteFacilityCommandHandlerShould
             52000,
             new Address(Guid.NewGuid(), "Main Avenue", "100", "28001", "Madrid", "Madrid", "Spain"),
             null);
-        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([facility]);
+        repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([facility]);
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        await _repository.Received(1).Delete(Arg.Is<Guid>(g => g == command.Id), Arg.Any<CancellationToken>());
+        await repository.Received(1).Delete(Arg.Is<Guid>(g => g == command.Id), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ThrowExceptionIfFacilityNotFound()
-    {
+    public async Task ThrowExceptionIfFacilityNotFound() {
         var command = new DeleteFacilityCommand(Guid.NewGuid());
-        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+        repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         await result.Should().ThrowAsync<CannotDeleteFacilityNotFoundException>();
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileFindingFacility()
-    {
+    public async Task PropagateTheRepositoryFailureWhileFindingFacility() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new DeleteFacilityCommand(Guid.NewGuid());
-        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileDeletingFacility()
-    {
+    public async Task PropagateTheRepositoryFailureWhileDeletingFacility() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new DeleteFacilityCommand(Guid.NewGuid());
         var facility = new Facility(
@@ -77,11 +71,11 @@ public class DeleteFacilityCommandHandlerShould
             18000,
             new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
             null);
-        _repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([facility]);
-        _repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<FacilitySearchCriteria>(), Arg.Any<CancellationToken>()).Returns([facility]);
+        repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }

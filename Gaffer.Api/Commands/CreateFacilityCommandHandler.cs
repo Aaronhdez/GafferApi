@@ -27,12 +27,10 @@ public record CreateFacilityCommand(
     : ICommand<CreateFacilityResponse>;
 
 public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository)
-    : ICommandHandler<CreateFacilityCommand, CreateFacilityResponse>
-{
+    : ICommandHandler<CreateFacilityCommand, CreateFacilityResponse> {
     public const string CannotCreateFacilityTitle = "Cannot create facility";
 
-    public async Task<CreateFacilityResponse> Handle(CreateFacilityCommand command, CancellationToken cancellationToken)
-    {
+    public async Task<CreateFacilityResponse> Handle(CreateFacilityCommand command, CancellationToken cancellationToken) {
         var address = command.Address is null
             ? null
             : new Address(
@@ -49,8 +47,7 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
             .ToList();
 
         Facility? facility = null;
-        try
-        {
+        try {
             // Every invalid field is reported at once: the sent stands (by index) and the facility and its address.
             var errors = new DomainValidationErrors();
             Facility.CheckRequestedStands(errors, command.Stands?.Select(ToRequestedStand).ToList() ?? []);
@@ -64,9 +61,7 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
                 address,
                 stands));
             errors.ThrowIfAny();
-        }
-        catch (DomainValidationException ex)
-        {
+        } catch (DomainValidationException ex) {
             throw new ValidationFailedException(CannotCreateFacilityTitle, ValidationErrorKeys.FacilitiesCreate, ex.Errors);
         }
 

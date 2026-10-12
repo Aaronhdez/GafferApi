@@ -7,11 +7,9 @@ using NSwag;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;
 
-public class FacilitiesControllerContractShould
-{
+public class FacilitiesControllerContractShould {
     [Test]
-    public void ExposeAFacilitiesControllerWithApiControllerRoute()
-    {
+    public void ExposeAFacilitiesControllerWithApiControllerRoute() {
         var facilitiesControllerType = FindTypeByName("FacilitiesController");
 
         facilitiesControllerType.Should().NotBeNull();
@@ -26,8 +24,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void ExposeCreateFacilityActionUsingHttpPost()
-    {
+    public void ExposeCreateFacilityActionUsingHttpPost() {
         var facilitiesControllerType = FindTypeByName("FacilitiesController");
 
         facilitiesControllerType.Should().NotBeNull();
@@ -38,8 +35,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void DefineCreateFacilityRequestWithAddressAndStands()
-    {
+    public void DefineCreateFacilityRequestWithAddressAndStands() {
         var createFacilityRequestType = FindTypeByName("CreateFacilityRequest");
 
         createFacilityRequestType.Should().NotBeNull();
@@ -53,8 +49,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void RequireAddressOnCreateFacilityRequest()
-    {
+    public void RequireAddressOnCreateFacilityRequest() {
         var createFacilityRequestType = FindTypeByName("CreateFacilityRequest");
 
         createFacilityRequestType.Should().NotBeNull();
@@ -65,8 +60,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void LimitStandsToMaximumOfFourOnCreateFacilityRequest()
-    {
+    public void LimitStandsToMaximumOfFourOnCreateFacilityRequest() {
         var createFacilityRequestType = FindTypeByName("CreateFacilityRequest");
 
         createFacilityRequestType.Should().NotBeNull();
@@ -82,8 +76,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void DefineFacilityTypeEnumWithExpectedValues()
-    {
+    public void DefineFacilityTypeEnumWithExpectedValues() {
         var facilityTypeEnum = FindTypeByName("FacilityType");
 
         facilityTypeEnum.Should().NotBeNull();
@@ -94,8 +87,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public void DefineAnOptionalNullableIdOnUpdateFacilityStandRequest()
-    {
+    public void DefineAnOptionalNullableIdOnUpdateFacilityStandRequest() {
         var standRequestType = FindTypeByName("UpdateFacilityStandRequest");
 
         standRequestType.Should().NotBeNull();
@@ -106,8 +98,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public async Task DeclareTheStandIdOfTheUpdateRequestAsOptionalAndNullableInTheServedOpenApi()
-    {
+    public async Task DeclareTheStandIdOfTheUpdateRequestAsOptionalAndNullableInTheServedOpenApi() {
         await using var server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
         var raw = await server.Client.GetStringAsync("/swagger/v1/swagger.json");
         var document = await OpenApiDocument.FromJsonAsync(raw);
@@ -124,8 +115,7 @@ public class FacilitiesControllerContractShould
     }
 
     [Test]
-    public async Task DeclareTheFiveStandOperationsAndTheirRequestSchemaWithoutIdInTheServedOpenApi()
-    {
+    public async Task DeclareTheFiveStandOperationsAndTheirRequestSchemaWithoutIdInTheServedOpenApi() {
         await using var server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
         var raw = await server.Client.GetStringAsync("/swagger/v1/swagger.json");
         var document = await OpenApiDocument.FromJsonAsync(raw);
@@ -141,8 +131,5 @@ public class FacilitiesControllerContractShould
             .Should().BeEquivalentTo(["standName", "standCapacity"]);
     }
 
-    private static Type? FindTypeByName(string typeName)
-    {
-        return typeof(PlayerController).Assembly.GetTypes().FirstOrDefault(type => type.Name == typeName);
-    }
+    private static Type? FindTypeByName(string typeName) => typeof(PlayerController).Assembly.GetTypes().FirstOrDefault(type => type.Name == typeName);
 }

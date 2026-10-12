@@ -11,8 +11,7 @@ namespace Gaffer.Api.Tests.Integration;
 /// fixture is not parallelizable and every test restores it.
 /// </summary>
 [NonParallelizable]
-public class HostingEnvironmentShould
-{
+public class HostingEnvironmentShould {
     private const string EnvironmentVariable = "ASPNETCORE_ENVIRONMENT";
 
     [TestCase("Staging", "Staging")]
@@ -20,8 +19,7 @@ public class HostingEnvironmentShould
     [TestCase(null, "Development")]
     [TestCase("", "Development")]
     [TestCase("   ", "Development")]
-    public void TakeTheHostEnvironmentFromTheEnvironmentVariable(string? variableValue, string expectedEnvironment)
-    {
+    public void TakeTheHostEnvironmentFromTheEnvironmentVariable(string? variableValue, string expectedEnvironment) {
         using var _ = new EnvironmentVariableScope(EnvironmentVariable, variableValue);
         using var __ = new EnvironmentVariableScope("DatabaseConfig__Enabled", "false");
 
@@ -36,8 +34,7 @@ public class HostingEnvironmentShould
     /// <c>appsettings.json</c> is empty (<c>{}</c>), so the value read comes from <c>appsettings.Development.json</c>.
     /// </summary>
     [Test]
-    public void ReadTheAppSettingsFilesFromTheContentRoot()
-    {
+    public void ReadTheAppSettingsFilesFromTheContentRoot() {
         using var _ = new EnvironmentVariableScope(EnvironmentVariable, "Development");
         using var __ = new EnvironmentVariableScope("DatabaseConfig__Enabled", "false");
 
@@ -50,12 +47,10 @@ public class HostingEnvironmentShould
     }
 
     [Test]
-    public void RestoreTheEnvironmentVariableAfterEachTest()
-    {
+    public void RestoreTheEnvironmentVariableAfterEachTest() {
         var before = Environment.GetEnvironmentVariable(EnvironmentVariable);
 
-        using (new EnvironmentVariableScope(EnvironmentVariable, "Staging"))
-        {
+        using (new EnvironmentVariableScope(EnvironmentVariable, "Staging")) {
             Environment.GetEnvironmentVariable(EnvironmentVariable).Should().Be("Staging");
         }
 

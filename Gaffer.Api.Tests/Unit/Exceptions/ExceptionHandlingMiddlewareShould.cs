@@ -11,8 +11,7 @@ using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Exceptions;
 
-public class ExceptionHandlingMiddlewareShould
-{
+public class ExceptionHandlingMiddlewareShould {
     private const string FilterNotPermittedKey = "Error.Search.FilterNotPermitted";
     private const string RequestPath = "/facilities";
     private RecordingLoggerProvider logs;
@@ -26,13 +25,11 @@ public class ExceptionHandlingMiddlewareShould
     // No HTTP route sends arbitrary Facility filters, so the chain repository -> middleware is closed here:
     // the request pipeline runs the real SqlFacilityRepository with a filter field that is not permitted.
     [Test]
-    public async Task ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted()
-    {
+    public async Task ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted() {
         var connectionProvider = Substitute.For<IDatabaseConnectionProvider>();
         var repository = new SqlFacilityRepository(connectionProvider);
-        var middleware = new ExceptionHandlingMiddleware(async _ => await repository.Get(new FacilitySearchCriteria
-        {
-            criteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
+        var middleware = new ExceptionHandlingMiddleware(async _ => await repository.Get(new FacilitySearchCriteria {
+            CriteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
         }, CancellationToken.None), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
@@ -49,8 +46,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task KeepReturningAnUnknownErrorForAGenericArgumentException()
-    {
+    public async Task KeepReturningAnUnknownErrorForAGenericArgumentException() {
         var middleware = new ExceptionHandlingMiddleware(_ => throw new ArgumentException("boom"), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
@@ -60,8 +56,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task ReturnAnUnknownErrorForAnUnmappedException()
-    {
+    public async Task ReturnAnUnknownErrorForAnUnmappedException() {
         var middleware = CreateMiddleware(new InvalidOperationException("boom"));
         var context = CreateContext();
 
@@ -79,8 +74,7 @@ public class ExceptionHandlingMiddlewareShould
 
     // TECHDEBT-006 AC2.4: a converted validation failure keeps its values and writes errorTranslationKey and errors at the root.
     [Test]
-    public async Task WriteAConvertedValidationFailureWithItsKeyAndErrorsAtTheRoot()
-    {
+    public async Task WriteAConvertedValidationFailureWithItsKeyAndErrorsAtTheRoot() {
         var middleware = CreateMiddleware(new ValidationFailedException("Cannot create facility", "Error.Facilities.Create.Validation",
             new Dictionary<string, string[]> { ["Address.Street"] = ["Address.Street is required."] }));
         var context = CreateContext();
@@ -96,8 +90,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task LogAnUnmappedExceptionOnceAsAnErrorWithTheException()
-    {
+    public async Task LogAnUnmappedExceptionOnceAsAnErrorWithTheException() {
         var exception = new InvalidOperationException("boom");
         var middleware = CreateMiddleware(exception);
 
@@ -110,8 +103,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task LogAnExceptionMappedToBadRequestOnceAsAnError()
-    {
+    public async Task LogAnExceptionMappedToBadRequestOnceAsAnError() {
         var middleware = CreateMiddleware(new PlayerSearchFilterNotPermittedException("Street"));
         var context = CreateContext();
 
@@ -128,8 +120,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task NotLogAnExceptionMappedToNotFound()
-    {
+    public async Task NotLogAnExceptionMappedToNotFound() {
         var middleware = CreateMiddleware(new PlayerNotFoundException("not found", Guid.NewGuid()));
         var context = CreateContext();
 
@@ -140,8 +131,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient()
-    {
+    public async Task ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient() {
         var middleware = CreateMiddleware(new OperationCanceledException());
         var context = CreateAbortedContext();
 
@@ -152,8 +142,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task LogAnAbortedRequestOnceAsInformationWithoutError()
-    {
+    public async Task LogAnAbortedRequestOnceAsInformationWithoutError() {
         var middleware = CreateMiddleware(new TaskCanceledException());
 
         await middleware.Invoke(CreateAbortedContext());
@@ -164,8 +153,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted()
-    {
+    public async Task KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted() {
         var exception = new OperationCanceledException();
         var middleware = CreateMiddleware(exception);
         var context = CreateContext();
@@ -180,8 +168,7 @@ public class ExceptionHandlingMiddlewareShould
 
     private const int ClientClosedRequest = 499;
 
-    private static DefaultHttpContext CreateAbortedContext()
-    {
+    private static DefaultHttpContext CreateAbortedContext() {
         var context = CreateContext();
         var aborted = new CancellationTokenSource();
         aborted.Cancel();
@@ -192,16 +179,14 @@ public class ExceptionHandlingMiddlewareShould
     private ExceptionHandlingMiddleware CreateMiddleware(Exception exception) =>
         new(_ => throw exception, logs.CreateLogger<ExceptionHandlingMiddleware>());
 
-    private static DefaultHttpContext CreateContext()
-    {
+    private static DefaultHttpContext CreateContext() {
         var context = new DefaultHttpContext();
         context.Request.Path = RequestPath;
         context.Response.Body = new MemoryStream();
         return context;
     }
 
-    private static async Task<JObject> ReadBody(HttpContext context)
-    {
+    private static async Task<JObject> ReadBody(HttpContext context) {
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body);
         return ProblemJson.Parse(await reader.ReadToEndAsync());

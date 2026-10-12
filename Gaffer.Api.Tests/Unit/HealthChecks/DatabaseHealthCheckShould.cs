@@ -8,18 +8,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Gaffer.Api.Tests.Unit.HealthChecks;
 
-public class DatabaseHealthCheckShould
-{
+public class DatabaseHealthCheckShould {
     private const string SensitiveDetail = "Server=db-host;Uid=gaffer-user;Pwd=s3cr3t; MySqlException: Access denied";
     private static readonly TimeSpan ShortTimeout = TimeSpan.FromMilliseconds(200);
     private static readonly string[] SensitiveFragments = ["db-host", "gaffer-user", "s3cr3t", "Pwd", "MySqlException", "Access denied"];
 
     public enum ProbeOutcome { Reachable, Unreachable, Throws, Blocked, CancelledByCaller }
 
-    private static IEnumerable<TestCaseData> Matrix()
-    {
-        foreach (var outcome in Enum.GetValues<ProbeOutcome>())
-        {
+    private static IEnumerable<TestCaseData> Matrix() {
+        foreach (var outcome in Enum.GetValues<ProbeOutcome>()) {
             // The fallback cannot recover without a restart (Q12): the probe is never consulted.
             yield return Case(DatabaseProviderReason.DummyByFallback, outcome, HealthStatus.Unhealthy);
             // Dummy on purpose (disabled or no connection string, Q13 a)).
@@ -35,8 +32,7 @@ public class DatabaseHealthCheckShould
         => new TestCaseData(reason, outcome, expected).SetName($"Report{expected}With{reason}AndA{outcome}Probe");
 
     [TestCaseSource(nameof(Matrix))]
-    public async Task ReportTheStatusOfTheChosenProvider(DatabaseProviderReason reason, ProbeOutcome outcome, HealthStatus expected)
-    {
+    public async Task ReportTheStatusOfTheChosenProvider(DatabaseProviderReason reason, ProbeOutcome outcome, HealthStatus expected) {
         var probe = new FakeProbe(outcome);
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(reason), probe, ShortTimeout);
         using var caller = new CancellationTokenSource();
@@ -50,8 +46,7 @@ public class DatabaseHealthCheckShould
     }
 
     [Test]
-    public async Task ReportUnhealthyWhenTheFallbackDummyIsUsedEvenIfTheDatabaseAnswersAgain()
-    {
+    public async Task ReportUnhealthyWhenTheFallbackDummyIsUsedEvenIfTheDatabaseAnswersAgain() {
         var probe = new FakeProbe(ProbeOutcome.Reachable);
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.DummyByFallback), probe);
 
@@ -62,16 +57,14 @@ public class DatabaseHealthCheckShould
     }
 
     [Test]
-    public async Task ReportUnhealthyWhenTheSqlProviderHasNoProbe()
-    {
+    public async Task ReportUnhealthyWhenTheSqlProviderHasNoProbe() {
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.Sql), probe: null);
 
         (await check.CheckHealthAsync(new HealthCheckContext())).Status.Should().Be(HealthStatus.Unhealthy);
     }
 
     [Test]
-    public async Task StopWithTheRequestWhenItsTokenIsCancelledDuringTheProbe()
-    {
+    public async Task StopWithTheRequestWhenItsTokenIsCancelledDuringTheProbe() {
         var probe = new FakeProbe(ProbeOutcome.CancelledByCaller);
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.Sql), probe);
         using var caller = new CancellationTokenSource();
@@ -88,8 +81,7 @@ public class DatabaseHealthCheckShould
     }
 
     [Test]
-    public async Task GiveUpAsUnhealthyWhenTheProbeDoesNotAnswerWithinTheTimeout()
-    {
+    public async Task GiveUpAsUnhealthyWhenTheProbeDoesNotAnswerWithinTheTimeout() {
         var probe = new FakeProbe(ProbeOutcome.Blocked);
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.Sql), probe, ShortTimeout);
         var stopwatch = Stopwatch.StartNew();
@@ -109,8 +101,7 @@ public class DatabaseHealthCheckShould
         => DatabaseHealthCheck.DefaultTimeout.Should().Be(TimeSpan.FromSeconds(5));
 
     [Test]
-    public async Task LogAWarningWithTheExceptionWhenTheSqlProbeThrows()
-    {
+    public async Task LogAWarningWithTheExceptionWhenTheSqlProbeThrows() {
         var logs = new RecordingLoggerProvider();
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.Sql),
             new FakeProbe(ProbeOutcome.Throws), ShortTimeout, logs.CreateLogger<DatabaseHealthCheck>());
@@ -127,8 +118,7 @@ public class DatabaseHealthCheckShould
 
     [TestCase(ProbeOutcome.Unreachable)]
     [TestCase(ProbeOutcome.Blocked)]
-    public async Task LogAWarningWithoutExceptionWhenTheSqlProbeFailsOrTimesOut(ProbeOutcome outcome)
-    {
+    public async Task LogAWarningWithoutExceptionWhenTheSqlProbeFailsOrTimesOut(ProbeOutcome outcome) {
         var logs = new RecordingLoggerProvider();
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(DatabaseProviderReason.Sql),
             new FakeProbe(outcome), ShortTimeout, logs.CreateLogger<DatabaseHealthCheck>());
@@ -146,8 +136,7 @@ public class DatabaseHealthCheckShould
     [TestCase(DatabaseProviderReason.Sql, HealthStatus.Healthy)]
     [TestCase(DatabaseProviderReason.DummyByConfiguration, HealthStatus.Degraded)]
     [TestCase(DatabaseProviderReason.DummyByFallback, HealthStatus.Unhealthy)]
-    public async Task LogNothingWhenTheDatabaseAnswersOrTheStatusComesFromStartup(DatabaseProviderReason reason, HealthStatus expected)
-    {
+    public async Task LogNothingWhenTheDatabaseAnswersOrTheStatusComesFromStartup(DatabaseProviderReason reason, HealthStatus expected) {
         var logs = new RecordingLoggerProvider();
         var check = new DatabaseHealthCheck(new DatabaseProviderSelection(reason),
             new FakeProbe(ProbeOutcome.Reachable), ShortTimeout, logs.CreateLogger<DatabaseHealthCheck>());
@@ -158,35 +147,28 @@ public class DatabaseHealthCheckShould
         logs.Entries.Should().BeEmpty();
     }
 
-    private static void ShouldNotContainSensitiveDetail(string text)
-    {
-        foreach (var fragment in SensitiveFragments)
-        {
+    private static void ShouldNotContainSensitiveDetail(string text) {
+        foreach (var fragment in SensitiveFragments) {
             text.Should().NotContain(fragment);
         }
     }
 
-    private static void ShouldNotExposeAnything(HealthCheckResult result)
-    {
+    private static void ShouldNotExposeAnything(HealthCheckResult result) {
         result.Exception.Should().BeNull();
         result.Data.Should().BeEmpty();
-        foreach (var fragment in SensitiveFragments)
-        {
+        foreach (var fragment in SensitiveFragments) {
             (result.Description ?? "").Should().NotContain(fragment);
         }
     }
 
-    private sealed class FakeProbe(ProbeOutcome outcome) : IDatabaseProbe
-    {
+    private sealed class FakeProbe(ProbeOutcome outcome) : IDatabaseProbe {
         public int Calls { get; private set; }
         public CancellationToken ReceivedToken { get; private set; }
 
-        public async Task<bool> IsReachableAsync(CancellationToken cancellationToken)
-        {
+        public async Task<bool> IsReachableAsync(CancellationToken cancellationToken) {
             Calls++;
             ReceivedToken = cancellationToken;
-            switch (outcome)
-            {
+            switch (outcome) {
                 case ProbeOutcome.Reachable:
                     return true;
                 case ProbeOutcome.Unreachable:

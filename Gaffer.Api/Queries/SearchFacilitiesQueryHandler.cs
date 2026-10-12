@@ -5,14 +5,11 @@ using Gaffer.Api.Shared.Repositories;
 namespace Gaffer.Api.Queries;
 
 public class SearchFacilitiesQueryHandler(IFacilityRepository facilityRepository)
-    : IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>>
-{
-    public virtual async Task<List<SearchFacilityResult>> Handle(SearchFacilitiesQuery query, CancellationToken cancellationToken)
-    {
+    : IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>> {
+    public virtual async Task<List<SearchFacilityResult>> Handle(SearchFacilitiesQuery query, CancellationToken cancellationToken) {
         var searchCriteria = new FacilitySearchCriteria();
-        foreach (var queryFilter in query.Filters)
-        {
-            searchCriteria.criteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
+        foreach (var queryFilter in query.Filters) {
+            searchCriteria.CriteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
         }
         var facilities = await facilityRepository.Get(searchCriteria, cancellationToken);
         return facilities.Select(facility
@@ -59,7 +56,6 @@ public record SearchFacilityAddressResult(
 
 public record SearchFacilityStandResult(Guid Id, string StandName, int StandCapacity);
 
-public class SearchFacilitiesQuery : IQuery<List<SearchFacilityResult>>
-{
+public class SearchFacilitiesQuery : IQuery<List<SearchFacilityResult>> {
     public List<QueryFilter> Filters { get; } = [];
 }

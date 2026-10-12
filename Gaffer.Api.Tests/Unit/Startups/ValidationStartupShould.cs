@@ -17,11 +17,9 @@ namespace Gaffer.Api.Tests.Unit.Startups;
 /// TECHDEBT-006 AC2.4: the model binding 400 of the production registrations writes the same RFC 7807 body as the
 /// exception middleware (camelCase, <c>errorTranslationKey</c> and <c>errors</c> at the root).
 /// </summary>
-public class ValidationStartupShould
-{
+public class ValidationStartupShould {
     [Test]
-    public void AnswerAModelBindingFailureWithTheCamelCaseValidationProblem()
-    {
+    public void AnswerAModelBindingFailureWithTheCamelCaseValidationProblem() {
         using var provider = StartupServices.Build();
         var factory = provider.GetRequiredService<IOptions<ApiBehaviorOptions>>().Value.InvalidModelStateResponseFactory;
         var modelState = new ModelStateDictionary();
@@ -46,16 +44,13 @@ public class ValidationStartupShould
 
     private const string PlayersPath = "/api/v1.0/players";
 
-    private static ActionContext PlayerCreateContext(ModelStateDictionary modelState)
-    {
+    private static ActionContext PlayerCreateContext(ModelStateDictionary modelState) {
         var method = typeof(PlayerController).GetMethod(nameof(PlayerController.Create))!;
-        var descriptor = new ControllerActionDescriptor
-        {
+        var descriptor = new ControllerActionDescriptor {
             ControllerTypeInfo = typeof(PlayerController).GetTypeInfo(),
             MethodInfo = method,
             Parameters = method.GetParameters()
-                .Select(parameter => (ParameterDescriptor)new ParameterDescriptor
-                {
+                .Select(parameter => (ParameterDescriptor)new ParameterDescriptor {
                     Name = parameter.Name!,
                     ParameterType = parameter.ParameterType,
                     BindingInfo = BindingInfo.GetBindingInfo(parameter.GetCustomAttributes()),

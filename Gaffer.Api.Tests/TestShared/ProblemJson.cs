@@ -8,8 +8,7 @@ namespace Gaffer.Api.Tests.TestShared;
 /// camelCase (kept with <c>null</c>, Q12 a)), <c>errorTranslationKey</c> and <c>errors</c> at the root, no
 /// <c>extensions</c> object, and <c>errors</c> keys in camelCase per segment (Q11 a)).
 /// </summary>
-public static class ProblemJson
-{
+public static class ProblemJson {
     public const string ErrorTranslationKey = "errorTranslationKey";
     public const string Errors = "errors";
 
@@ -19,14 +18,12 @@ public static class ProblemJson
     public static async Task<JObject> Read(HttpResponseMessage response) =>
         Parse(await response.Content.ReadAsStringAsync());
 
-    public static JObject Parse(string raw)
-    {
+    public static JObject Parse(string raw) {
         var body = JObject.Parse(raw);
         var members = body.Properties().Select(property => property.Name).ToList();
         members.Should().Contain(StandardMembers, raw);
         members.Should().BeSubsetOf(AllowedMembers, raw);
-        if (body[Errors] is JObject errors)
-        {
+        if (body[Errors] is JObject errors) {
             errors.Properties().Select(property => property.Name).Should()
                 .OnlyContain(key => key.Split('.').All(segment => segment.Length > 0 && !char.IsUpper(segment[0])), raw);
         }

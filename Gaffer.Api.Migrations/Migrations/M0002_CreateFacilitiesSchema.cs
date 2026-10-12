@@ -4,10 +4,8 @@ using FluentMigrator;
 namespace Gaffer.Api.Migrations.Migrations;
 
 [Migration(202608131010)]
-public class M0002_CreateFacilitiesSchema : Migration
-{
-    public override void Up()
-    {
+public class M0002_CreateFacilitiesSchema : Migration {
+    public override void Up() {
         Create.Table("Facilities")
             .WithColumn("Id").AsGuid().NotNullable().PrimaryKey()
             .WithColumn("Name").AsString().NotNullable()
@@ -79,8 +77,7 @@ public class M0002_CreateFacilitiesSchema : Migration
             END;");
     }
 
-    public override void Down()
-    {
+    public override void Down() {
         Execute.Sql("DROP TRIGGER IF EXISTS TRG_Facilities_BeforeDelete;");
         Delete.Table("Facilities_Stands");
         Delete.Table("Facilities_Addresses");

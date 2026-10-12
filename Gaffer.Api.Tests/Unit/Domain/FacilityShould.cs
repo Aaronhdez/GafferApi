@@ -3,8 +3,7 @@ using Gaffer.Api.Domain;
 
 namespace Gaffer.Api.Tests.Unit.Domain;
 
-public class FacilityShould
-{
+public class FacilityShould {
     private static readonly DateTime Today = new(2026, 10, 12);
     private static readonly string TooLongText = new('a', 101);
     private static readonly string TooLongCode = new('1', 21);
@@ -36,8 +35,7 @@ public class FacilityShould
     private static Address AddressOf(Values values) => new(
         Guid.NewGuid(), values.Street!, values.StreetNumber!, values.PostalCode!, values.City!, values.Region!, values.Country!);
 
-    public static IEnumerable<TestCaseData> InvalidValues()
-    {
+    public static IEnumerable<TestCaseData> InvalidValues() {
         TestCaseData Case(string name, string field, Values values) =>
             new TestCaseData(field, values).SetArgDisplayNames(name);
 
@@ -52,8 +50,7 @@ public class FacilityShould
         yield return Case("Type 99", "Type", valid with { Type = (FacilityType)99 });
         yield return Case("Capacity -1", "Capacity", valid with { Capacity = -1 });
         yield return Case("Address absent", "Address", valid with { WithAddress = false });
-        foreach (var (field, change) in AddressFieldChanges())
-        {
+        foreach (var (field, change) in AddressFieldChanges()) {
             yield return Case($"Address.{field} null", $"Address.{field}", change(valid, null));
             yield return Case($"Address.{field} empty", $"Address.{field}", change(valid, ""));
             yield return Case($"Address.{field} whitespace", $"Address.{field}", change(valid, "   "));
@@ -62,8 +59,7 @@ public class FacilityShould
         }
     }
 
-    private static IEnumerable<(string Field, Func<Values, string?, Values> Change)> AddressFieldChanges()
-    {
+    private static IEnumerable<(string Field, Func<Values, string?, Values> Change)> AddressFieldChanges() {
         yield return ("Street", (values, value) => values with { Street = value });
         yield return ("StreetNumber", (values, value) => values with { StreetNumber = value });
         yield return ("PostalCode", (values, value) => values with { PostalCode = value });
@@ -73,8 +69,7 @@ public class FacilityShould
     }
 
     [TestCaseSource(nameof(InvalidValues))]
-    public void RejectTheCreation(string field, Values values)
-    {
+    public void RejectTheCreation(string field, Values values) {
         var act = () => Create(values);
 
         var exception = act.Should().ThrowExactly<DomainValidationException>().Which;
@@ -83,8 +78,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void CreateAFacilityWithEveryValueAtItsLimits()
-    {
+    public void CreateAFacilityWithEveryValueAtItsLimits() {
         var values = new Values(
             Name: new string('n', 100), BuildDate: new DateTime(1800, 1, 1), Capacity: 0,
             Street: new string('s', 100), StreetNumber: new string('9', 20), PostalCode: new string('8', 20),
@@ -100,8 +94,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void AcceptABuildDateOfTodayAndAnyLargeCapacity()
-    {
+    public void AcceptABuildDateOfTodayAndAnyLargeCapacity() {
         var facility = Create(new Values(BuildDate: Today, Capacity: int.MaxValue));
 
         facility.BuildDate.Should().Be(Today);
@@ -109,8 +102,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void UseTheCurrentUtcDateWhenNoReferenceDateIsGiven()
-    {
+    public void UseTheCurrentUtcDateWhenNoReferenceDateIsGiven() {
         var act = () => Facility.Create(Guid.NewGuid(), "Arena", true, DateTime.UtcNow.Date.AddDays(1), FacilityType.Arena, 1,
             AddressOf(new Values()), null);
 
@@ -118,8 +110,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void ReportEveryInvalidFieldOfTheFacilityAndItsAddressAtOnceWithoutEchoingTheValues()
-    {
+    public void ReportEveryInvalidFieldOfTheFacilityAndItsAddressAtOnceWithoutEchoingTheValues() {
         var values = new Values(Name: TooLongText, BuildDate: Today.AddDays(1), Type: (FacilityType)99, Capacity: -1,
             Street: TooLongText, PostalCode: "");
 
@@ -131,8 +122,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void RejectMoreThanFourStandsOnCreationAsAFieldError()
-    {
+    public void RejectMoreThanFourStandsOnCreationAsAFieldError() {
         var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
 
         var act = () => Create(new Values(), stands);
@@ -142,8 +132,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void ReportTheStandLimitTogetherWithTheFacilityErrors()
-    {
+    public void ReportTheStandLimitTogetherWithTheFacilityErrors() {
         var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
 
         var act = () => Create(new Values(Name: "", Capacity: -1), stands);
@@ -152,8 +141,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void AcceptFourStandsAndNotRevalidateTheStandsItReceives()
-    {
+    public void AcceptFourStandsAndNotRevalidateTheStandsItReceives() {
         var stands = Enumerable.Range(0, 3).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100))
             .Append(new Stand(Guid.NewGuid(), "", -5)).ToList();
 
@@ -163,8 +151,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void KeepTheConstructorGuardForMoreThanFourStands()
-    {
+    public void KeepTheConstructorGuardForMoreThanFourStands() {
         var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
 
         var act = () => new Facility(Guid.NewGuid(), "Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 1,
@@ -174,8 +161,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void CheckEveryRequestedStandNamingItByItsIndexAndTheirNumber()
-    {
+    public void CheckEveryRequestedStandNamingItByItsIndexAndTheirNumber() {
         var errors = new DomainValidationErrors();
         (string?, int)?[] requested = [("Valid", 1), ("", 1), ("Valid", 1), ("Valid", -1), ("Valid", 1)];
 
@@ -189,8 +175,7 @@ public class FacilityShould
     [TestCase(0)]
     [TestCase(1)]
     [TestCase(2)]
-    public void ReportANullRequestedStandByItsIndex(int nullIndex)
-    {
+    public void ReportANullRequestedStandByItsIndex(int nullIndex) {
         var errors = new DomainValidationErrors();
         var requested = new (string?, int)?[] { ("A", 1), ("B", 1), ("C", 1) };
         requested[nullIndex] = null;
@@ -204,8 +189,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void ReportNullRequestedStandsTogetherWithTheOtherStandErrors()
-    {
+    public void ReportNullRequestedStandsTogetherWithTheOtherStandErrors() {
         var errors = new DomainValidationErrors();
         (string?, int)?[] requested = [null, ("", 1), null, ("Valid", 1), ("Valid", -1)];
 
@@ -217,8 +201,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void AcceptUpToFourValidRequestedStands()
-    {
+    public void AcceptUpToFourValidRequestedStands() {
         var errors = new DomainValidationErrors();
 
         Facility.CheckRequestedStands(errors, [("A", 0), ("B", 1), ("C", 1), (new string('d', 100), 1)]);
@@ -228,8 +211,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void RehydrateAStoredFacilityThatBreaksTheRulesWithoutValidatingIt()
-    {
+    public void RehydrateAStoredFacilityThatBreaksTheRulesWithoutValidatingIt() {
         var address = new Address(Guid.NewGuid(), "", "1", new string('7', 30), "City", "Region", "Country");
 
         var facility = new Facility(Guid.NewGuid(), new string('x', 150), true, new DateTime(1700, 1, 1),
@@ -242,8 +224,7 @@ public class FacilityShould
 
     [TestCase("Street")]
     [TestCase("PostalCode")]
-    public void RejectAnInvalidAddressOnItsOwnWithTheAddressFieldName(string field)
-    {
+    public void RejectAnInvalidAddressOnItsOwnWithTheAddressFieldName(string field) {
         var act = () => Address.Create(Guid.NewGuid(),
             field == "Street" ? "" : "Arena Road", "50", field == "PostalCode" ? TooLongCode : "08001",
             "Barcelona", "Catalonia", "Spain");
@@ -252,8 +233,7 @@ public class FacilityShould
     }
 
     [Test]
-    public void CreateAValidAddressOnItsOwn()
-    {
+    public void CreateAValidAddressOnItsOwn() {
         var id = Guid.NewGuid();
 
         var address = Address.Create(id, "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain");

@@ -8,11 +8,9 @@ using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Unit.Exceptions;
 
-public class ExceptionToHttpResponseConvertersShould
-{
+public class ExceptionToHttpResponseConvertersShould {
     [Test]
-    public void ConvertANotPermittedPlayerSearchFilterIntoABadRequest()
-    {
+    public void ConvertANotPermittedPlayerSearchFilterIntoABadRequest() {
         var converter = ExceptionToHttpResponseConverters.PlayerConverters[typeof(PlayerSearchFilterNotPermittedException)];
 
         var problemDetails = converter(new PlayerSearchFilterNotPermittedException("Gender"));
@@ -24,8 +22,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void ConvertAnUnknownPlayerIntoABareNotFound()
-    {
+    public void ConvertAnUnknownPlayerIntoABareNotFound() {
         ExceptionToHttpResponseConverters.PlayerConverters.Should().ContainKey(typeof(PlayerNotFoundException));
         var converter = ExceptionToHttpResponseConverters.PlayerConverters[typeof(PlayerNotFoundException)];
 
@@ -38,8 +35,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void KeepTheTranslationKeysOfTheExistingPlayerNotFoundConversions()
-    {
+    public void KeepTheTranslationKeysOfTheExistingPlayerNotFoundConversions() {
         var onDelete = ExceptionToHttpResponseConverters.PlayerConverters[typeof(CannotDeletePlayerNotFoundException)];
         var onUpdate = ExceptionToHttpResponseConverters.PlayerConverters[typeof(CannotUpdatePlayerNotFoundException)];
 
@@ -50,8 +46,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void ConvertANotPermittedFacilitySearchFilterIntoTheSameBadRequestAsPlayers()
-    {
+    public void ConvertANotPermittedFacilitySearchFilterIntoTheSameBadRequestAsPlayers() {
         var converter = ExceptionToHttpResponseConverters.PlayerConverters[typeof(FacilitySearchFilterNotPermittedException)];
 
         var problemDetails = converter(new FacilitySearchFilterNotPermittedException("Street"));
@@ -63,10 +58,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void NotMapGenericArgumentExceptions()
-    {
-        ExceptionToHttpResponseConverters.PlayerConverters.Should().NotContainKey(typeof(ArgumentException));
-    }
+    public void NotMapGenericArgumentExceptions() => ExceptionToHttpResponseConverters.PlayerConverters.Should().NotContainKey(typeof(ArgumentException));
 
     private const string InternalServerErrorReason = "Internal Server Error";
 
@@ -78,8 +70,7 @@ public class ExceptionToHttpResponseConvertersShould
         string? ErrorTranslationKey);
 
     // One expectation per converter. A converter added without an entry here fails CoverEveryConverter.
-    private static readonly IReadOnlyDictionary<Type, Expectation> Expectations = new Dictionary<Type, Expectation>
-    {
+    private static readonly IReadOnlyDictionary<Type, Expectation> Expectations = new Dictionary<Type, Expectation> {
         [typeof(CannotDeletePlayerNotFoundException)] = new(id => new CannotDeletePlayerNotFoundException("not found", id),
             404, "Cannot delete player", id => $"Player {id} not found", "Error.Players.Delete.PlayerNotFound"),
         [typeof(CannotDeletePlayerException)] = new(id => new CannotDeletePlayerException("boom", id),
@@ -124,14 +115,10 @@ public class ExceptionToHttpResponseConvertersShould
     private static IEnumerable<Type> ConvertedExceptionTypes() => Expectations.Keys;
 
     [Test]
-    public void CoverEveryConverter()
-    {
-        ExceptionToHttpResponseConverters.PlayerConverters.Keys.Should().BeEquivalentTo(Expectations.Keys);
-    }
+    public void CoverEveryConverter() => ExceptionToHttpResponseConverters.PlayerConverters.Keys.Should().BeEquivalentTo(Expectations.Keys);
 
     [TestCaseSource(nameof(ConvertedExceptionTypes))]
-    public void ConvertEachExceptionIntoItsExpectedResponse(Type exceptionType)
-    {
+    public void ConvertEachExceptionIntoItsExpectedResponse(Type exceptionType) {
         var expectation = Expectations[exceptionType];
         var id = Guid.NewGuid();
         var exception = expectation.Create(id);
@@ -142,32 +129,26 @@ public class ExceptionToHttpResponseConvertersShould
         problemDetails.Status.Should().Be(expectation.Status);
         problemDetails.Title.Should().Be(expectation.Title);
         problemDetails.Detail.Should().Be(expectation.Detail(id));
-        if (expectation.ErrorTranslationKey is null)
-        {
+        if (expectation.ErrorTranslationKey is null) {
             problemDetails.Extensions.Should().NotContainKey("ErrorTranslationKey");
-        }
-        else
-        {
+        } else {
             problemDetails.Extensions["ErrorTranslationKey"].Should().Be(expectation.ErrorTranslationKey);
         }
     }
 
     [TestCaseSource(nameof(ConvertedExceptionTypes))]
-    public void NeverProduceATranslationKeyEndingWithADot(Type exceptionType)
-    {
+    public void NeverProduceATranslationKeyEndingWithADot(Type exceptionType) {
         var exception = Expectations[exceptionType].Create(Guid.NewGuid());
 
         var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters[exceptionType](exception);
 
-        if (problemDetails.Extensions.TryGetValue("ErrorTranslationKey", out var key))
-        {
+        if (problemDetails.Extensions.TryGetValue("ErrorTranslationKey", out var key)) {
             key.Should().BeOfType<string>().Which.Should().NotEndWith(".");
         }
     }
 
     [Test]
-    public void AssignTheInternalServerErrorReasonToTheGenericDeleteAndUpdateExceptions()
-    {
+    public void AssignTheInternalServerErrorReasonToTheGenericDeleteAndUpdateExceptions() {
         var id = Guid.NewGuid();
 
         new CannotDeletePlayerException("boom", id).Reason.Should().Be(InternalServerErrorReason);
@@ -182,10 +163,8 @@ public class ExceptionToHttpResponseConvertersShould
     [TestCase("Cannot update facility", "Error.Facilities.Update.Validation")]
     [TestCase("Cannot create stand", "Error.Facilities.Stands.Validation")]
     [TestCase("Cannot update stand", "Error.Facilities.Stands.Validation")]
-    public void ConvertAValidationFailureIntoABadRequestWithTheOperationKeyAndEveryFieldError(string title, string key)
-    {
-        var errors = new Dictionary<string, string[]>
-        {
+    public void ConvertAValidationFailureIntoABadRequestWithTheOperationKeyAndEveryFieldError(string title, string key) {
+        var errors = new Dictionary<string, string[]> {
             ["FirstName"] = ["FirstName must be at most 100 characters."],
             ["Gender"] = ["Gender must be one of the defined values."],
         };
@@ -202,27 +181,27 @@ public class ExceptionToHttpResponseConvertersShould
     // --- TECHDEBT-006 step 02 (AC2.3): the single serialization point of every error body (RFC 7807, camelCase) ---
 
     [Test]
-    public void SerializeEveryStandardMemberInCamelCaseWithItsValue()
-    {
-        var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails
-        {
-            Type = "about:blank", Title = "Cannot create player", Status = 400, Detail = "Detail text", Instance = "/api/v1.0/players",
+    public void SerializeEveryStandardMemberInCamelCaseWithItsValue() {
+        var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails {
+            Type = "about:blank",
+            Title = "Cannot create player",
+            Status = 400,
+            Detail = "Detail text",
+            Instance = "/api/v1.0/players",
         });
 
         json.Should().Be("""{"type":"about:blank","title":"Cannot create player","status":400,"detail":"Detail text","instance":"/api/v1.0/players"}""");
     }
 
     [Test]
-    public void KeepTheStandardMembersWithoutValueAsNull()
-    {
+    public void KeepTheStandardMembersWithoutValueAsNull() {
         var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails());
 
         json.Should().Be("""{"type":null,"title":null,"status":null,"detail":null,"instance":null}""");
     }
 
     [Test]
-    public void WriteNoExtraMemberNorExtensionsObjectWhenThereAreNoExtensions()
-    {
+    public void WriteNoExtraMemberNorExtensionsObjectWhenThereAreNoExtensions() {
         var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails { Title = "Unknown error", Status = 500, Instance = "/x" });
 
         JObject.Parse(json).Properties().Select(property => property.Name).Should()
@@ -230,8 +209,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void WriteTheTranslationKeyAloneAtTheRootWithItsValueUnchanged()
-    {
+    public void WriteTheTranslationKeyAloneAtTheRootWithItsValueUnchanged() {
         var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters[typeof(PlayerSearchFilterNotPermittedException)](
             new PlayerSearchFilterNotPermittedException("Gender"));
 
@@ -243,11 +221,9 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void WriteTheErrorsAtTheRootWithEveryKeyInCamelCasePerSegmentAndTheMessagesUnchanged()
-    {
+    public void WriteTheErrorsAtTheRootWithEveryKeyInCamelCasePerSegmentAndTheMessagesUnchanged() {
         var problemDetails = ExceptionToHttpResponseConverters.BuildValidationProblemDetails("Cannot create facility",
-            "Error.Facilities.Create.Validation", new Dictionary<string, string[]>
-            {
+            "Error.Facilities.Create.Validation", new Dictionary<string, string[]> {
                 ["FirstName"] = ["FirstName is required."],
                 ["Address.Street"] = ["Address.Street must be at most 100 characters."],
                 ["Stands[1].StandName"] = ["Stands[1].StandName is required."],
@@ -267,8 +243,7 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void LeaveTheProblemDetailsInMemoryUnchangedWhenSerializing()
-    {
+    public void LeaveTheProblemDetailsInMemoryUnchangedWhenSerializing() {
         var errors = new Dictionary<string, string[]> { ["Address.Street"] = ["Address.Street is required."] };
         var problemDetails = ExceptionToHttpResponseConverters.BuildValidationProblemDetails("t", "Error.K", errors);
 
@@ -279,15 +254,13 @@ public class ExceptionToHttpResponseConvertersShould
     }
 
     [Test]
-    public void NameThePlayerValidationKeysByOperation()
-    {
+    public void NameThePlayerValidationKeysByOperation() {
         ValidationErrorKeys.PlayersCreate.Should().Be("Error.Players.Create.Validation");
         ValidationErrorKeys.PlayersUpdate.Should().Be("Error.Players.Update.Validation");
     }
 
     [Test]
-    public void NameTheFacilityValidationKeysByOperation()
-    {
+    public void NameTheFacilityValidationKeysByOperation() {
         ValidationErrorKeys.FacilitiesCreate.Should().Be("Error.Facilities.Create.Validation");
         ValidationErrorKeys.FacilitiesUpdate.Should().Be("Error.Facilities.Update.Validation");
         ValidationErrorKeys.FacilitiesStands.Should().Be("Error.Facilities.Stands.Validation");

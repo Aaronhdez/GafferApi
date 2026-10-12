@@ -119,3 +119,71 @@ En los 8 casos solo cambian los nombres y la posición de los miembros. Estados,
 | 2 | `Serialize` solo convierte las claves cuando el valor de la extensión es `IReadOnlyDictionary<string, string[]>`. Cualquier otra extensión pasa por `JToken.FromObject` con los nombres por defecto de Newtonsoft (PascalCase en objetos anidados). Hoy solo existen `string` y ese diccionario (`BuildValidationProblemDetails` tipa así el parámetro), y `ProblemJson` lo detectaría en aceptación. | Menor |
 | 3 | `CamelCase` solo baja la primera letra (`ID` → `iD`). Hoy no hay segmentos en mayúsculas completas, y BUILDER ya lo anota. | Menor |
 | 4 | Impacto externo: `quionis-bff-api` no se puede verificar en este equipo. Queda pendiente del operador, junto con la versión 3.0.0 (Q14). | Info (operador) |
+
+## Ciclo 3 - Paso 03 (REVIEWER)
+
+Veredicto: **APPROVED**
+
+### Alcance revisado
+
+- `git status`: 107 `.cs` modificados (Api, Tests, Migrations), `.github/workflows/ci.yml` modificado y `.editorconfig` nuevo. El resto son ficheros del harness y del plan. `Gaffer.Api.Client/` sin cambios.
+- Leídos completos (OPT-040): `.editorconfig` (diff contra el bloque `ini` del paso), `ci.yml`, el diff `-w` de M0001-M0003, los tres tipos IDE0290 y los cambios manuales. El resto del `.cs` se ha validado de forma mecánica (ver abajo), sin leerlo línea a línea.
+
+### Comandos del REVIEWER (`Quionis_DB`, MariaDB, 3306, BD `GafferDB_Test`)
+
+| Comando | Resultado |
+| --- | --- |
+| `docker ps`; `dotnet --version` | `Quionis_DB` Up, 3306; SDK 10.0.302 |
+| `dotnet build gaffer-api.sln --no-incremental -v q` | exit 0; 0 Advertencia(s) |
+| `dotnet build gaffer-api.sln --no-incremental -warnaserror -v q` + `grep CS9124\|CS9107\|CS1717` | exit 0; 0 Advertencia(s); 0 coincidencias |
+| `dotnet format gaffer-api.sln --verify-no-changes --severity info --exclude Gaffer.Api.Client/` (árbol de trabajo) | **exit 0**; salida vacía |
+| `dotnet test Gaffer.Api.Tests --no-build` | exit 0; 697/697, 0 omitidos |
+| Worktree `HEAD` + solo `.editorconfig`: verify (rojo) | **exit 2**: 1270 × WHITESPACE, 87 × IDE1006, 43 × FINALNEWLINE, 42 × IDE0022, 40 × CHARSET, 3 × IDE0290, 3 × IDE0161, 3 × IMPORTS, 1 × IDE0021, 1 × IDE0011; 0 líneas de `Gaffer.Api.Client`. Sin ENDOFLINE: el worktree recién creado ya sale en LF por `.gitattributes` (`*.cs text eol=lf`). Las 950 de BUILDER vienen de su copia de trabajo en CRLF; no hay ningún CR en el índice. |
+| Mismo worktree: aplicar ×2 y verify | apply exit 0 / 0; verify exit 2 con **solo 87 × IDE1006** (los renombrados manuales) |
+| Comparación por fichero entre el worktree formateado y el árbol de trabajo (`cmp` + `git diff --no-index --word-diff=porcelain`) | 65 de 107 ficheros idénticos byte a byte; 42 difieren. Un script que normaliza cada par `-`/`+` (quita `_` y `this.` y pasa a minúsculas) da **0 diferencias que no sean renombrados**: ni pares sueltos ni tokens nuevos |
+| Diff de tokens `HEAD` → worktree formateado, ignorando espacios, `{}`, `return`, `;` y `=>` | Solo aparecen el orden de 3 `using` (`PlayerShould`, `Program`, `Startup`), BOM y los 3 IDE0290 (`FacilityNotFoundException`, `PlayerNotFoundException`, `GafferApiVersioningDefinition`: el constructor pasa a primary constructor con inicializadores de propiedad, mismo orden y mismos valores) |
+| Comprobación de ocultación (awk sobre `HEAD`: método con local o parámetro del nombre nuevo que usaba `_nombre`) | 1 caso real, `OpenApiContractShould` L56 → `this.document` (correcto). Los constructores de `EnvironmentVariableScope` y `StartupTestServer` usan `this.`. En `DatabaseHealthCheck`, los inicializadores usan el parámetro y los métodos usan el campo: compila sin CS8602/CS9124 con `-warnaserror` y `CancelAfter(timeout)` no admitiría el `TimeSpan?` del parámetro. `DomainValidationErrors.errors` no tiene parámetro homónimo |
+| `GAFFER_SWAGGER_DUMP_PATH=<scratch>/swagger-rev.json dotnet test ... ServedOpenApiDocumentDump` + `sha256sum` + `cmp` | exit 0; `be49f0abd26c4c6fe3bd95a16691c6734012310127dd1521fddb98092a5a6bfe`, el mismo de `HEAD` (ciclos 1-2) y de la línea base de BUILDER; `cmp` exit 0 |
+| `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/run-migrations.ps1` | exit 0, "Migrations for GafferDB_Test finished" (BD al día: transacción vacía) |
+| `grep "\[Migration("` en `HEAD` y en el árbol | 202608071730 / 202608131010 / 202609261200 en ambos |
+| `git diff -U0 -w Gaffer.Api.Migrations` con filtro de líneas que tienen `"` o `Migration(` | Solo `Delete.Table("Players")`, que pasa a `Down() => Delete.Table("Players");` (IDE0022, mismo literal) |
+| `git status --porcelain Gaffer.Api.Client \| wc -l`; `grep -c Gaffer.Api.Client` en la salida del rojo | 0; 0 |
+| Worktree eliminado (`git worktree remove --force`) | `git worktree list`: solo el árbol principal |
+
+### Criterios de aceptación
+
+| AC | Evidencia | Estado |
+| --- | --- | --- |
+| AC3.1 | Línea base de `STATUS.md`, registrada antes de editar: 697, 0/0 warnings, sha256 `be49f0ab…`, 40 BOM, 78 declaraciones `_x`. Coincide con lo que he medido en `HEAD`: 78 declaraciones (grep corregido), 40 CHARSET, 121 `const` / 47 `static readonly` | Demostrado |
+| AC3.2 | `diff` del bloque `ini` del paso contra `.editorconfig`: solo se añaden 11 líneas `= none` (Q19 (i) a), ver punto 3). Ninguna decisión cambia. Sin BOM | Demostrado |
+| AC3.3 | Verify en el árbol de trabajo: exit 0. Rojo reproducido en el worktree: exit 2 | Demostrado (rojo → verde) |
+| AC3.4 | Build 0/0; `-warnaserror` exit 0; 0 × CS9124/CS9107/CS1717 | Demostrado |
+| AC3.5 | 697/697, el mismo recuento. `SqlConnectionProviderShould` (cadena de reflexión `"sqlConnection"`) y `TestServerDependenciesShould` forman parte de la suite en verde | Demostrado |
+| AC3.6 | En el árbol: grep del plan 0, grep corregido 0, identificadores `_x` 0, campos `_x` de cualquier visibilidad 0. `const` 121 = 121 y `static readonly` 47 = 47; en `HEAD` no había ningún `const`/`static readonly` con `_` | Demostrado |
+| AC3.7 | BOM 40 → 0; namespaces de bloque 3 → 0 (grep corregido) | Demostrado |
+| AC3.8 | sha256 idéntico y `cmp` exit 0 | Demostrado |
+| AC3.9 | `DatabaseSchemaShould` en verde (suite); script exit 0 con `powershell.exe`; atributos idénticos; ningún literal SQL ni nombre cambiado | Demostrado |
+| AC3.10 | Cliente sin cambios y ausente de la salida de `dotnet format` | Demostrado |
+| AC3.11 | `git diff ci.yml`: una sola línea añadida, igual a AC3.3, después del build `-warnaserror` y antes de migraciones y tests. El AC deja el run en GitHub Actions como acción del operador | Demostrado (diff) |
+| AC3.12 | Worktree `HEAD` + `.editorconfig` + aplicar ×2: 65 ficheros idénticos; en los 42 restantes la diferencia son solo los renombrados manuales que lista `STATUS.md` (las dos tablas). Con ellos aplicados, el árbol de trabajo da verify exit 0 | Demostrado |
+
+Doble bucle: aceptación = rojo de verify (exit 2) → verde (exit 0). Unitario: no aplica, sin lógica nueva (lo registra `STATUS.md`). Refactor revalidado con suite, build, swagger y migraciones.
+
+### Puntos que planteó BUILDER
+
+| # | Punto | Decisión |
+| --- | --- | --- |
+| 1 | Renombrados fuera de "campos privados `_camelCase`": `criteriaList` → `CriteriaList` (propiedad pública de `FacilitySearchCriteria`/`PlayerSearchCriteria`), `protected _tablesToDelete` → `TablesToDelete`, `public _databaseConnectionProvider` (test) → `DatabaseConnectionProvider` y los campos privados en PascalCase de `PlayerFeaturesShould` → camelCase | **Caben en la decisión del operador.** Q15 dice "resto: Sí, estándar .NET" (tipos y miembros en PascalCase, campos privados en camelCase), y las reglas `types_and_members_pascal` y `private_fields_camel` son literales del paso. Sin estos cambios no se cumplirían AC3.3 (verify exit 0) ni AC3.6 (0 `_x`). Comprobado: son renombrados puros (script de pares), `CriteriaList` no aparece en controladores, en `Gaffer.Api.Client` ni en ningún literal o `nameof`, y el swagger es idéntico. Hay una tensión literal con la línea "Fuera: renombrados distintos de los campos privados" del paso, pero esa línea va contra sus propios AC. No bloquea; conviene dejarlo **visible en el checkpoint** como información (la alternativa, suprimir IDE1006, sí cambiaría una decisión) |
+| 2 | Falsos negativos de los grep de AC3.6/AC3.7 | Confirmado en `HEAD`: el grep de declaraciones del plan da 0 y el corregido 78; el de namespaces del plan da 1 y el corregido 3 (`Program.cs`, `SwaggerStartup.cs {`, `ApiVersioning.cs {`). Los corregidos detectan los casos y en el árbol dan 0. Diferencia menor: el grep de identificadores da 721 líneas en `HEAD` (`git grep`) frente a las 816 de BUILDER (probablemente ocurrencias); ambos terminan en 0 |
+| 3 | 11 líneas `= none` | Encajan con Q19 (i) a): las 10 `CA*` son justo las que BUILDER listó en el rojo con su recuento (fila "Rojo" de `STATUS.md`) y se desactivan una a una. NUnit1028 no es `CA*`, pero es una regla de analizador de nivel info sin decidir, así que aplica el mismo criterio de lista blanca. Ninguna reactiva una regla de estilo ni cambia una decisión |
+| 4 | `pwsh` no está en el `PATH` local | Anotado. Localmente se usó `powershell.exe` (Windows PowerShell 5.1), con exit 0. En el CI (ubuntu) el script se ejecuta con `pwsh`, sin cambios en este paso |
+| 5 | Run real del paso nuevo del CI | **No bloquea.** AC3.11 exige el contenido del diff de `ci.yml` y declara el run en GitHub "acción del operador". OPT-027 / `harness-run` piden un checkpoint previo solo cuando un AC *depende* del run, y este no depende. Queda para el operador después del push |
+
+### Hallazgos (no bloqueantes)
+
+| # | Hallazgo | Severidad |
+| --- | --- | --- |
+| 1 | Los renombrados del punto 1 conviene mencionarlos en el checkpoint: cambian nombres públicos de tipos internos del repositorio (no tocan el contrato HTTP) | Info (operador) |
+| 2 | Las copias de trabajo en Windows hechas antes de `.gitattributes` (como la de BUILDER) pueden tener `.cs` en CRLF, y el verify local daría ENDOFLINE. Con un checkout nuevo, o con `git add --renormalize`, desaparece; el CI (ubuntu, checkout nuevo) no se ve afectado | Info |
+| 3 | El paso del CI depende de que el SDK de `global.json` sea el mismo localmente y en el CI. Si `rollForward` permite otra versión del parche, los analizadores podrían cambiar y el verify fallar sin que haya cambios en el código | Menor |
+| 4 | Recomendación del paso (operador): hacer un commit de reformateo separado y, opcionalmente, añadirlo a `.git-blame-ignore-revs` | Info (operador) |

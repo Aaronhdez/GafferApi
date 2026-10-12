@@ -6,13 +6,11 @@ using Microsoft.Extensions.Configuration.Json;
 namespace Gaffer.Api.Tests.Unit.Configuration;
 
 [NonParallelizable]
-public class TestConfigurationShould
-{
+public class TestConfigurationShould {
     private const string EnvironmentConnectionString = "Server=env-host;Database=GafferDB_Test;Uid=env-user;Pwd=env-secret;";
 
     [Test]
-    public void PreferTheEnvironmentVariableOverTheTestSettingsFile()
-    {
+    public void PreferTheEnvironmentVariableOverTheTestSettingsFile() {
         using var _ = new EnvironmentVariableScope("ConnectionStrings__Database", EnvironmentConnectionString);
 
         var configuration = TestConfiguration.Build();
@@ -21,8 +19,7 @@ public class TestConfigurationShould
     }
 
     [Test]
-    public void ReadTestSettingsThenUserSecretsThenEnvironmentVariables()
-    {
+    public void ReadTestSettingsThenUserSecretsThenEnvironmentVariables() {
         var providers = TestConfiguration.Build().Providers.ToList();
 
         providers.Should().HaveCount(3);
@@ -37,8 +34,7 @@ public class TestConfigurationShould
     [TestCase("")]
     [TestCase("Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;")]
     [TestCase("Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=;")]
-    public void FailWithGuidanceWhenTheConnectionStringHasNoPassword(string? connectionString)
-    {
+    public void FailWithGuidanceWhenTheConnectionStringHasNoPassword(string? connectionString) {
         var configuration = InMemory(connectionString);
 
         var read = () => TestConfiguration.RequireDatabaseConnectionString(configuration);
@@ -52,18 +48,13 @@ public class TestConfigurationShould
 
     [TestCase("Server=127.0.0.1;Database=GafferDB_Test;Uid=root;Pwd=a-secret;")]
     [TestCase("Server=127.0.0.1;Database=GafferDB_Test;User Id=root;Password=a-secret;")]
-    public void ReturnAConnectionStringThatHasAPassword(string connectionString)
-    {
-        TestConfiguration.RequireDatabaseConnectionString(InMemory(connectionString)).Should().Be(connectionString);
-    }
+    public void ReturnAConnectionStringThatHasAPassword(string connectionString) => TestConfiguration.RequireDatabaseConnectionString(InMemory(connectionString)).Should().Be(connectionString);
 
     [Test]
-    public void DeriveAnUnreachableConnectionStringChangingOnlyThePortAndTimeout()
-    {
+    public void DeriveAnUnreachableConnectionStringChangingOnlyThePortAndTimeout() {
         const string reachable = "Server=127.0.0.1;Port=3306;Database=GafferDB_Test;Uid=root;Pwd=a-secret;";
 
-        var unreachable = new System.Data.Common.DbConnectionStringBuilder
-        {
+        var unreachable = new System.Data.Common.DbConnectionStringBuilder {
             ConnectionString = TestConfiguration.ToUnreachable(reachable)
         };
 

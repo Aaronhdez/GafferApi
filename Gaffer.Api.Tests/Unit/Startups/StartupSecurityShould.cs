@@ -3,11 +3,9 @@ using Microsoft.AspNetCore.Authentication;
 
 namespace Gaffer.Api.Tests.Unit.Startups;
 
-public class StartupSecurityShould
-{
+public class StartupSecurityShould {
     [Test]
-    public async Task NotRegisterAnyAuthenticationScheme()
-    {
+    public async Task NotRegisterAnyAuthenticationScheme() {
         using var serviceProvider = StartupServices.Build();
 
         var schemeProvider = serviceProvider.GetService<IAuthenticationSchemeProvider>();

@@ -9,11 +9,9 @@ using Gaffer.Api.Tests.TestShared;
 
 namespace Gaffer.Api.Tests.Unit.ConnectionProviders;
 
-public class SqlConnectionProviderShould
-{
+public class SqlConnectionProviderShould {
     [Test]
-    public async Task BeDisposedWithItsScopeLeavingTheConnectionClosed()
-    {
+    public async Task BeDisposedWithItsScopeLeavingTheConnectionClosed() {
         await using var serviceProvider = BuildScopedServiceProvider();
         var scope = serviceProvider.CreateAsyncScope();
         var provider = (SqlConnectionProvider)scope.ServiceProvider.GetRequiredService<IDatabaseConnectionProvider>();
@@ -26,15 +24,13 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseAnOpenConnectionWhenItsScopeIsDisposed()
-    {
+    public async Task CloseAnOpenConnectionWhenItsScopeIsDisposed() {
         await using var serviceProvider = BuildScopedServiceProvider();
         var scope = serviceProvider.CreateAsyncScope();
         var provider = (SqlConnectionProvider)scope.ServiceProvider.GetRequiredService<IDatabaseConnectionProvider>();
         var connectionOpened = new TaskCompletionSource();
         var releaseTransaction = new TaskCompletionSource();
-        var pendingTransaction = provider.ExecuteInTransactionAsync(async () =>
-        {
+        var pendingTransaction = provider.ExecuteInTransactionAsync(async () => {
             await provider.QueryScalarAsync<int>("SELECT 1;");
             connectionOpened.SetResult();
             await releaseTransaction.Task;
@@ -51,8 +47,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task NotThrowWhenDisposedTwice()
-    {
+    public async Task NotThrowWhenDisposedTwice() {
         var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         await provider.QueryScalarAsync<int>("SELECT 1;");
 
@@ -65,8 +60,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task ReportAReachableDatabaseWithoutDependingOnItsSchema()
-    {
+    public async Task ReportAReachableDatabaseWithoutDependingOnItsSchema() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
 
         var isUp = await provider.TestConnection();
@@ -76,8 +70,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task ReportAnUnreachableDatabaseWithoutThrowing()
-    {
+    public async Task ReportAnUnreachableDatabaseWithoutThrowing() {
         await using var provider = new SqlConnectionProvider(TestConfiguration.UnreachableDatabaseConnectionString);
 
         var testConnection = async () => await provider.TestConnection();
@@ -86,8 +79,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task NotTestTheConnectionWhenItsTokenIsAlreadyCancelled()
-    {
+    public async Task NotTestTheConnectionWhenItsTokenIsAlreadyCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
 
         var testConnection = async () => await provider.TestConnection(CancelledToken());
@@ -97,8 +89,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task ReportAReachableDatabaseWithATokenThatIsNotCancelled()
-    {
+    public async Task ReportAReachableDatabaseWithATokenThatIsNotCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         using var source = new CancellationTokenSource();
 
@@ -107,8 +98,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseButNotReleaseTheConnectionAfterEachOperation()
-    {
+    public async Task CloseButNotReleaseTheConnectionAfterEachOperation() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
 
@@ -125,8 +115,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task ReleaseTheConnectionOnlyWhenItsScopeIsDisposed()
-    {
+    public async Task ReleaseTheConnectionOnlyWhenItsScopeIsDisposed() {
         await using var serviceProvider = BuildScopedServiceProvider();
         var scope = serviceProvider.CreateAsyncScope();
         var provider = (SqlConnectionProvider)scope.ServiceProvider.GetRequiredService<IDatabaseConnectionProvider>();
@@ -145,8 +134,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task MakeTheWorkOfACommittedTransactionVisible()
-    {
+    public async Task MakeTheWorkOfACommittedTransactionVisible() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
 
@@ -157,13 +145,11 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task RollBackAndPropagateTheFailureOfATransaction()
-    {
+    public async Task RollBackAndPropagateTheFailureOfATransaction() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
 
-        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
-        {
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () => {
             await provider.ExecuteAsync(PlayersInsert, new { Id = id });
             throw new InvalidOperationException("force rollback");
         });
@@ -174,13 +160,11 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task RunANestedTransactionInsideTheOuterOne()
-    {
+    public async Task RunANestedTransactionInsideTheOuterOne() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
 
-        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
-        {
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () => {
             await provider.ExecuteInTransactionAsync(() => provider.ExecuteAsync(PlayersInsert, new { Id = id }));
             provider.ConnectionState.Should().Be(ConnectionState.Open);
             throw new InvalidOperationException("force outer rollback");
@@ -191,8 +175,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task NotRunAQueryWhenItsTokenIsAlreadyCancelled()
-    {
+    public async Task NotRunAQueryWhenItsTokenIsAlreadyCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
 
         var query = async () => await provider.QueryAsync<int>("SELECT 1;", cancellationToken: CancelledToken());
@@ -202,8 +185,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task NotWriteAnythingWhenAnExecuteTokenIsAlreadyCancelled()
-    {
+    public async Task NotWriteAnythingWhenAnExecuteTokenIsAlreadyCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
 
@@ -214,8 +196,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task NotWriteAnythingWhenATransactionTokenIsAlreadyCancelled()
-    {
+    public async Task NotWriteAnythingWhenATransactionTokenIsAlreadyCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
         var token = CancelledToken();
@@ -229,15 +210,13 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task RollBackATransactionWhoseOperationIsCancelled()
-    {
+    public async Task RollBackATransactionWhoseOperationIsCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var firstId = Guid.NewGuid();
         var secondId = Guid.NewGuid();
         using var cancellation = new CancellationTokenSource();
 
-        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
-        {
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () => {
             await provider.ExecuteAsync(PlayersInsert, new { Id = firstId }, cancellation.Token);
             await cancellation.CancelAsync();
             await provider.ExecuteAsync(PlayersInsert, new { Id = secondId }, cancellation.Token);
@@ -250,8 +229,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseTheConnectionWhenAQueryFails()
-    {
+    public async Task CloseTheConnectionWhenAQueryFails() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
 
         var query = async () => await provider.QueryAsync<int>(InvalidSql);
@@ -261,8 +239,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseTheConnectionWhenAScalarQueryFails()
-    {
+    public async Task CloseTheConnectionWhenAScalarQueryFails() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
 
         var query = async () => await provider.QueryScalarAsync<int>(InvalidSql);
@@ -272,8 +249,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseTheConnectionWhenAnExecuteViolatesAConstraint()
-    {
+    public async Task CloseTheConnectionWhenAnExecuteViolatesAConstraint() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
         await provider.ExecuteAsync(PlayersInsert, new { Id = id });
@@ -285,12 +261,10 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task CloseTheConnectionWhenAnOperationIsCancelledAfterOpeningIt()
-    {
+    public async Task CloseTheConnectionWhenAnOperationIsCancelledAfterOpeningIt() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         using var cancellation = new CancellationTokenSource();
-        UnderlyingDbConnectionOf(provider).StateChange += (_, change) =>
-        {
+        UnderlyingDbConnectionOf(provider).StateChange += (_, change) => {
             if (change.CurrentState == ConnectionState.Open) cancellation.Cancel();
         };
 
@@ -301,21 +275,16 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task LeaveTheConnectionToTheTransactionWhenAnOperationInsideItFails()
-    {
+    public async Task LeaveTheConnectionToTheTransactionWhenAnOperationInsideItFails() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
         var stateAfterFailure = ConnectionState.Closed;
 
-        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
-        {
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () => {
             await provider.ExecuteAsync(PlayersInsert, new { Id = id });
-            try
-            {
+            try {
                 await provider.ExecuteAsync(InvalidSql);
-            }
-            finally
-            {
+            } finally {
                 stateAfterFailure = provider.ConnectionState;
             }
         });
@@ -327,8 +296,7 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task AbortARunningQueryWhenItsTokenIsCancelled()
-    {
+    public async Task AbortARunningQueryWhenItsTokenIsCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var marker = Guid.NewGuid().ToString("N");
         using var cancellation = new CancellationTokenSource(CancelAfter);
@@ -344,16 +312,14 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
-    public async Task RollBackATransactionWhoseRunningOperationIsCancelled()
-    {
+    public async Task RollBackATransactionWhoseRunningOperationIsCancelled() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         var id = Guid.NewGuid();
         var marker = Guid.NewGuid().ToString("N");
         using var cancellation = new CancellationTokenSource();
         var elapsed = Stopwatch.StartNew();
 
-        var transaction = async () => await provider.ExecuteInTransactionAsync(async () =>
-        {
+        var transaction = async () => await provider.ExecuteInTransactionAsync(async () => {
             await provider.ExecuteAsync(PlayersInsert, new { Id = id }, cancellation.Token);
             cancellation.CancelAfter(CancelAfter);
             await provider.QueryScalarAsync<int>(SlowQuery(marker), cancellationToken: cancellation.Token);
@@ -367,8 +333,7 @@ public class SqlConnectionProviderShould
 
     [SetUp]
     [TearDown]
-    public async Task ClearPlayers()
-    {
+    public async Task ClearPlayers() {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         await provider.ClearAsync([DbTableNames.PlayersTable]);
     }
@@ -382,8 +347,7 @@ public class SqlConnectionProviderShould
     private const string InvalidSql = "SELEC 1;";
 
     /// <summary>The driver's own exception reaches the caller unwrapped (checked by type name to stay driver-agnostic).</summary>
-    private static async Task AssertPropagatesTheDriverFailure(Func<Task> operation, string messageFragment)
-    {
+    private static async Task AssertPropagatesTheDriverFailure(Func<Task> operation, string messageFragment) {
         var failure = (await operation.Should().ThrowAsync<DbException>()).Which;
         failure.GetType().Name.Should().Be("MySqlException");
         failure.Message.Should().Contain(messageFragment);
@@ -396,8 +360,7 @@ public class SqlConnectionProviderShould
     private static string SlowQuery(string marker) => $"SELECT SLEEP(5) /* {marker} */;";
 
     /// <summary>Counts, from another connection, the server queries still running with <paramref name="marker"/>.</summary>
-    private static async Task<long> RunningQueriesWith(string marker)
-    {
+    private static async Task<long> RunningQueriesWith(string marker) {
         await using var observer = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         return await observer.QueryScalarAsync<long>(
             "SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID <> CONNECTION_ID() AND INFO LIKE @Pattern;",
@@ -406,14 +369,12 @@ public class SqlConnectionProviderShould
 
     private static CancellationToken CancelledToken() => new(canceled: true);
 
-    private static async Task AssertPlayerNotWritten(Guid id)
-    {
+    private static async Task AssertPlayerNotWritten(Guid id) {
         await using var observer = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
         (await observer.QueryScalarAsync<long>(PlayerCount, new { Id = id })).Should().Be(0);
     }
 
-    private static void AssertClosedAndNotDisposed(SqlConnectionProvider provider)
-    {
+    private static void AssertClosedAndNotDisposed(SqlConnectionProvider provider) {
         provider.ConnectionState.Should().Be(ConnectionState.Closed);
         provider.IsDisposed.Should().BeFalse();
     }
@@ -421,14 +382,13 @@ public class SqlConnectionProviderShould
     /// <summary>Reads the private connection by reflection to observe its <see cref="Component.Disposed"/> event without widening the public API.</summary>
     private static Component UnderlyingConnectionOf(SqlConnectionProvider provider)
         => (Component)typeof(SqlConnectionProvider)
-            .GetField("_sqlConnection", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .GetField("sqlConnection", BindingFlags.NonPublic | BindingFlags.Instance)!
             .GetValue(provider)!;
 
     private static DbConnection UnderlyingDbConnectionOf(SqlConnectionProvider provider)
         => (DbConnection)UnderlyingConnectionOf(provider);
 
-    private static ServiceProvider BuildScopedServiceProvider()
-    {
+    private static ServiceProvider BuildScopedServiceProvider() {
         var services = new ServiceCollection();
         services.AddScoped<IDatabaseConnectionProvider>(_ =>
             new SqlConnectionProvider(TestDefaultValues.TestConnectionString));

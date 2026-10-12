@@ -1,7 +1,6 @@
 namespace Gaffer.Api.Domain;
 
-public enum FacilityType
-{
+public enum FacilityType {
     Stadium,
     Arena,
     Pitch,
@@ -20,8 +19,7 @@ public class Address(
     string postalCode,
     string city,
     string region,
-    string country)
-{
+    string country) {
     public const int MaxTextLength = 100;
     public const int MaxCodeLength = 20;
     public const string FieldPrefix = "Address.";
@@ -36,8 +34,7 @@ public class Address(
 
     /// <summary>Creates a new address after checking every field, and reports all the invalid ones at once.</summary>
     public static Address Create(Guid id, string? street, string? streetNumber, string? postalCode, string? city,
-        string? region, string? country)
-    {
+        string? region, string? country) {
         var address = new Address(id, street!, streetNumber!, postalCode!, city!, region!, country!);
         var errors = new DomainValidationErrors();
         address.CheckFields(errors);
@@ -45,8 +42,7 @@ public class Address(
         return address;
     }
 
-    internal void CheckFields(DomainValidationErrors errors)
-    {
+    internal void CheckFields(DomainValidationErrors errors) {
         errors.RequireText(FieldPrefix + nameof(Street), Street, MaxTextLength);
         errors.RequireText(FieldPrefix + nameof(StreetNumber), StreetNumber, MaxCodeLength);
         errors.RequireText(FieldPrefix + nameof(PostalCode), PostalCode, MaxCodeLength);
@@ -61,8 +57,7 @@ public class Address(
 /// stands are checked through <see cref="Create"/> (sub-resource) or <see cref="CheckFields"/> (stands nested in a
 /// facility request, where the caller names each stand by its index).
 /// </summary>
-public class Stand(Guid id, string standName, int standCapacity)
-{
+public class Stand(Guid id, string standName, int standCapacity) {
     public const int MaxNameLength = 100;
 
     public Guid Id { get; set; } = id;
@@ -70,8 +65,7 @@ public class Stand(Guid id, string standName, int standCapacity)
     public int StandCapacity { get; set; } = standCapacity;
 
     /// <summary>Creates a new stand after checking every field, and reports all the invalid ones at once.</summary>
-    public static Stand Create(Guid id, string? standName, int standCapacity)
-    {
+    public static Stand Create(Guid id, string? standName, int standCapacity) {
         var errors = new DomainValidationErrors();
         CheckFields(errors, string.Empty, standName, standCapacity);
         errors.ThrowIfAny();
@@ -82,11 +76,9 @@ public class Stand(Guid id, string standName, int standCapacity)
     /// Adds the errors of the stand fields to <paramref name="errors"/>. <paramref name="fieldPrefix"/> names the stand
     /// in the request (e.g. <c>Stands[1].</c>); the stand does not know its position, so whoever builds the list sets it.
     /// </summary>
-    public static void CheckFields(DomainValidationErrors errors, string fieldPrefix, string? standName, int standCapacity)
-    {
+    public static void CheckFields(DomainValidationErrors errors, string fieldPrefix, string? standName, int standCapacity) {
         errors.RequireText(fieldPrefix + nameof(StandName), standName, MaxNameLength);
-        if (standCapacity < 0)
-        {
+        if (standCapacity < 0) {
             errors.Add(fieldPrefix + nameof(StandCapacity), $"{fieldPrefix}{nameof(StandCapacity)} must not be negative.");
         }
     }
@@ -105,8 +97,7 @@ public class Facility(
     FacilityType type,
     int capacity,
     Address? address,
-    List<Stand>? stands)
-{
+    List<Stand>? stands) {
     public const int MaxNameLength = 100;
     public const int MaxStands = 4;
     public const string StandsField = "Stands";
@@ -130,27 +121,21 @@ public class Facility(
     /// <paramref name="todayUtc"/> is the reference date for <see cref="BuildDate"/> (defaults to the current UTC date).
     /// </summary>
     public static Facility Create(Guid id, string? name, bool active, DateTime buildDate, FacilityType type, int capacity,
-        Address? address, List<Stand>? stands, DateTime? todayUtc = null)
-    {
+        Address? address, List<Stand>? stands, DateTime? todayUtc = null) {
         var errors = new DomainValidationErrors();
         errors.RequireText(nameof(Name), name, MaxNameLength);
         CheckBuildDate(errors, buildDate, todayUtc ?? DateTime.UtcNow.Date);
-        if (!Enum.IsDefined(type))
-        {
+        if (!Enum.IsDefined(type)) {
             errors.Add(nameof(Type), $"{nameof(Type)} must be one of the defined values.");
         }
 
-        if (capacity < 0)
-        {
+        if (capacity < 0) {
             errors.Add(nameof(Capacity), $"{nameof(Capacity)} must not be negative.");
         }
 
-        if (address is null)
-        {
+        if (address is null) {
             errors.Add(nameof(Address), $"{nameof(Address)} is required.");
-        }
-        else
-        {
+        } else {
             address.CheckFields(errors);
         }
 
@@ -163,14 +148,11 @@ public class Facility(
     /// Checks the stands sent in a facility request: their number and the fields of each one, named by its index in
     /// the request (<c>Stands[1].StandName</c>). A <c>null</c> stand is reported as <c>Stands[1]</c>.
     /// </summary>
-    public static void CheckRequestedStands(DomainValidationErrors errors, IReadOnlyList<(string? StandName, int StandCapacity)?> requested)
-    {
+    public static void CheckRequestedStands(DomainValidationErrors errors, IReadOnlyList<(string? StandName, int StandCapacity)?> requested) {
         CheckStandCount(errors, requested.Count);
-        for (var index = 0; index < requested.Count; index++)
-        {
+        for (var index = 0; index < requested.Count; index++) {
             var field = $"{StandsField}[{index}]";
-            if (requested[index] is not { } stand)
-            {
+            if (requested[index] is not { } stand) {
                 errors.Add(field, $"{field} is required.");
                 continue;
             }
@@ -179,35 +161,25 @@ public class Facility(
         }
     }
 
-    private static void CheckStandCount(DomainValidationErrors errors, int count)
-    {
-        if (count > MaxStands)
-        {
+    private static void CheckStandCount(DomainValidationErrors errors, int count) {
+        if (count > MaxStands) {
             errors.Add(StandsField, MaxStandsMessage);
         }
     }
 
-    private static void CheckBuildDate(DomainValidationErrors errors, DateTime buildDate, DateTime todayUtc)
-    {
-        if (buildDate == default)
-        {
+    private static void CheckBuildDate(DomainValidationErrors errors, DateTime buildDate, DateTime todayUtc) {
+        if (buildDate == default) {
             errors.Add(nameof(BuildDate), $"{nameof(BuildDate)} is required.");
-        }
-        else if (buildDate.Date < MinimumBuildDate)
-        {
+        } else if (buildDate.Date < MinimumBuildDate) {
             errors.Add(nameof(BuildDate), $"{nameof(BuildDate)} must be on or after {MinimumBuildDate:yyyy-MM-dd}.");
-        }
-        else if (buildDate.Date > todayUtc.Date)
-        {
+        } else if (buildDate.Date > todayUtc.Date) {
             errors.Add(nameof(BuildDate), $"{nameof(BuildDate)} must not be in the future.");
         }
     }
 
-    private static List<Stand> ValidateStands(List<Stand>? stands)
-    {
+    private static List<Stand> ValidateStands(List<Stand>? stands) {
         var items = stands ?? [];
-        if (items.Count > MaxStands)
-        {
+        if (items.Count > MaxStands) {
             throw new FacilityValidationException("Stands cannot exceed 4");
         }
 

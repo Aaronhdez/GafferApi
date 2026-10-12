@@ -7,8 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Gaffer.Api.Tests.Integration;
 
-public class DatabaseStartupShould
-{
+public class DatabaseStartupShould {
     private const string PlayersInsert =
         "INSERT INTO `Players` (Id, FirstName, LastName, SecondLastName, Gender, BirthDate) " +
         "VALUES (@Id, 'Isolation', 'Probe', NULL, 'MALE', '2000-01-01');";
@@ -21,8 +20,7 @@ public class DatabaseStartupShould
             .ClearAsync([DbTableNames.PlayersTable]);
 
     [Test]
-    public async Task ResolveADifferentConnectionProviderPerScopeAndTheSameOneWithinAScope()
-    {
+    public async Task ResolveADifferentConnectionProviderPerScopeAndTheSameOneWithinAScope() {
         await using var serviceProvider = BuildServiceProvider(enabled: true, TestDefaultValues.TestConnectionString);
         await using var scopeA = serviceProvider.CreateAsyncScope();
         await using var scopeB = serviceProvider.CreateAsyncScope();
@@ -37,8 +35,7 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public async Task IsolateAnUncommittedTransactionOfOneScopeFromAnotherScope()
-    {
+    public async Task IsolateAnUncommittedTransactionOfOneScopeFromAnotherScope() {
         await using var serviceProvider = BuildServiceProvider(enabled: true, TestDefaultValues.TestConnectionString);
         await using var scopeA = serviceProvider.CreateAsyncScope();
         await using var scopeB = serviceProvider.CreateAsyncScope();
@@ -47,8 +44,7 @@ public class DatabaseStartupShould
         var id = Guid.NewGuid();
         long countSeenFromB = -1;
 
-        var transactionInA = async () => await providerA.ExecuteInTransactionAsync(async () =>
-        {
+        var transactionInA = async () => await providerA.ExecuteInTransactionAsync(async () => {
             await providerA.ExecuteAsync(PlayersInsert, new { Id = id });
             countSeenFromB = await providerB.QueryScalarAsync<long>(PlayerCount, new { Id = id });
             throw new InvalidOperationException("force rollback");
@@ -61,8 +57,7 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public async Task ResolveADifferentConnectionProviderPerScopeInTheTestServer()
-    {
+    public async Task ResolveADifferentConnectionProviderPerScopeInTheTestServer() {
         await using var scopeA = TestFixture.TestServer.Services.CreateAsyncScope();
         await using var scopeB = TestFixture.TestServer.Services.CreateAsyncScope();
 
@@ -74,8 +69,7 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public async Task FallBackToTheDummyProviderWithoutThrowingWhenTheDatabaseIsUnreachable()
-    {
+    public async Task FallBackToTheDummyProviderWithoutThrowingWhenTheDatabaseIsUnreachable() {
         var configure = () => BuildServiceProvider(enabled: true, UnreachableConnectionString);
 
         await using var serviceProvider = configure.Should().NotThrow().Subject;
@@ -85,8 +79,7 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public void LogOnceThatTheDummyProviderIsUsedWhenTheDatabaseIsUnreachable()
-    {
+    public void LogOnceThatTheDummyProviderIsUsedWhenTheDatabaseIsUnreachable() {
         var logger = new CapturingLogger();
 
         using var serviceProvider = BuildServiceProvider(enabled: true, UnreachableConnectionString, logger);
@@ -98,8 +91,7 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public void NotLogTheFallbackWhenTheDatabaseIsReachable()
-    {
+    public void NotLogTheFallbackWhenTheDatabaseIsReachable() {
         var logger = new CapturingLogger();
 
         using var serviceProvider = BuildServiceProvider(enabled: true, ReachableConnectionString, logger);
@@ -108,12 +100,10 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public async Task GiveTheRegisteredHealthCheckTheHostLoggerSoAFailedProbeIsLogged()
-    {
+    public async Task GiveTheRegisteredHealthCheckTheHostLoggerSoAFailedProbeIsLogged() {
         var logs = new RecordingLoggerProvider();
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
+            .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["DatabaseConfig:Enabled"] = "true",
                 ["DatabaseConfig:ConnectionString"] = ReachableConnectionString
             })
@@ -132,15 +122,13 @@ public class DatabaseStartupShould
             .Which.Level.Should().Be(LogLevel.Warning);
     }
 
-    private sealed class UnreachableProbe : IDatabaseProbe
-    {
+    private sealed class UnreachableProbe : IDatabaseProbe {
         public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(false);
     }
 
     [TestCase(false, true)]
     [TestCase(true, false)]
-    public async Task KeepRegisteringTheDummyProviderWhenTheDatabaseIsDisabledOrNotConfigured(bool enabled, bool configured)
-    {
+    public async Task KeepRegisteringTheDummyProviderWhenTheDatabaseIsDisabledOrNotConfigured(bool enabled, bool configured) {
         await using var serviceProvider = BuildServiceProvider(enabled, configured ? ReachableConnectionString : "");
         await using var scope = serviceProvider.CreateAsyncScope();
 
@@ -149,16 +137,14 @@ public class DatabaseStartupShould
     }
 
     [Test]
-    public async Task RegisterThatTheSqlProviderWasChosenWhenTheDatabaseIsReachable()
-    {
+    public async Task RegisterThatTheSqlProviderWasChosenWhenTheDatabaseIsReachable() {
         await using var serviceProvider = BuildServiceProvider(enabled: true, ReachableConnectionString);
 
         serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.Sql);
     }
 
     [Test]
-    public async Task RegisterThatTheDummyProviderIsAFallbackWhenTheDatabaseIsUnreachable()
-    {
+    public async Task RegisterThatTheDummyProviderIsAFallbackWhenTheDatabaseIsUnreachable() {
         await using var serviceProvider = BuildServiceProvider(enabled: true, UnreachableConnectionString);
 
         serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.DummyByFallback);
@@ -167,8 +153,7 @@ public class DatabaseStartupShould
     [TestCase(false, true)]
     [TestCase(true, false)]
     public async Task RegisterThatTheDummyProviderComesFromTheConfigurationWhenTheDatabaseIsDisabledOrNotConfigured(
-        bool enabled, bool configured)
-    {
+        bool enabled, bool configured) {
         await using var serviceProvider = BuildServiceProvider(enabled, configured ? ReachableConnectionString : "");
 
         serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.DummyByConfiguration);
@@ -177,11 +162,9 @@ public class DatabaseStartupShould
     private static string ReachableConnectionString => TestConfiguration.DatabaseConnectionString;
     private static string UnreachableConnectionString => TestConfiguration.UnreachableDatabaseConnectionString;
 
-    private static ServiceProvider BuildServiceProvider(bool enabled, string? connectionString, ILogger? logger = null)
-    {
+    private static ServiceProvider BuildServiceProvider(bool enabled, string? connectionString, ILogger? logger = null) {
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
+            .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["DatabaseConfig:Enabled"] = enabled.ToString(),
                 ["DatabaseConfig:ConnectionString"] = connectionString
             })
@@ -192,8 +175,7 @@ public class DatabaseStartupShould
     }
 }
 
-internal sealed class CapturingLogger : ILogger
-{
+internal sealed class CapturingLogger : ILogger {
     public List<(LogLevel Level, string Message)> Entries { get; } = [];
 
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;

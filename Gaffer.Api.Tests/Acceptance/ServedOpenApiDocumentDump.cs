@@ -14,16 +14,13 @@ namespace Gaffer.Api.Tests.Acceptance;
 /// </code>
 /// </summary>
 [Explicit("Helper that dumps the served swagger.json; run it on demand with GAFFER_SWAGGER_DUMP_PATH set.")]
-public class ServedOpenApiDocumentDump
-{
+public class ServedOpenApiDocumentDump {
     public const string OutputPathVariable = "GAFFER_SWAGGER_DUMP_PATH";
 
     [Test]
-    public async Task WriteTheServedSwaggerJsonToTheConfiguredPath()
-    {
+    public async Task WriteTheServedSwaggerJsonToTheConfiguredPath() {
         var outputPath = Environment.GetEnvironmentVariable(OutputPathVariable);
-        if (string.IsNullOrWhiteSpace(outputPath))
-        {
+        if (string.IsNullOrWhiteSpace(outputPath)) {
             Assert.Fail($"Set the environment variable {OutputPathVariable} to the file where the served swagger.json must be written. Nothing was written.");
         }
 

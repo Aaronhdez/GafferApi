@@ -13,8 +13,7 @@ public class DatabaseConfig {
 }
 
 /// <summary>Why <see cref="DatabaseStartup.ConfigureDatabase"/> chose the registered connection provider.</summary>
-public enum DatabaseProviderReason
-{
+public enum DatabaseProviderReason {
     Sql,
     /// <summary>Database disabled or without a connection string: the dummy provider is intended.</summary>
     DummyByConfiguration,
@@ -24,25 +23,23 @@ public enum DatabaseProviderReason
 
 public sealed record DatabaseProviderSelection(DatabaseProviderReason Reason);
 
-public static class DatabaseStartup
-{
+public static class DatabaseStartup {
     public const string ReadyTag = "ready";
 
     public static void ConfigureDatabase(
-        this IServiceCollection services, 
+        this IServiceCollection services,
         IConfiguration configuration,
-        ILogger? logger = null)
-    {
+        ILogger? logger = null) {
         var infrastructureOptions = configuration.GetSection("DatabaseConfig");
         services.Configure<DatabaseConfig>(infrastructureOptions);
         var dbConfig = infrastructureOptions.Get<DatabaseConfig>();
         AddDatabaseHealthCheck(services);
-        
+
         if (dbConfig is not { Enabled: true } || string.IsNullOrEmpty(dbConfig.ConnectionString)) {
             AddDummyConnector(services, DatabaseProviderReason.DummyByConfiguration);
             return;
         }
-        
+
         var connectionString = dbConfig.ConnectionString;
         if (!ConnectionIsUp(connectionString)) {
             logger?.LogWarning(
@@ -57,8 +54,7 @@ public static class DatabaseStartup
         services.AddSingleton<IDatabaseProbe>(new SqlDatabaseProbe(connectionString));
     }
 
-    private static void AddDummyConnector(IServiceCollection services, DatabaseProviderReason reason)
-    {
+    private static void AddDummyConnector(IServiceCollection services, DatabaseProviderReason reason) {
         services.AddScoped<IDatabaseConnectionProvider, DummyConnectionProvider>();
         services.AddSingleton(new DatabaseProviderSelection(reason));
     }
@@ -75,8 +71,7 @@ public static class DatabaseStartup
 
     // ConfigureServices is synchronous. The async probe runs on the thread pool so no caller
     // synchronization context can deadlock it, and GetResult() rethrows without AggregateException.
-    private static bool ConnectionIsUp(string connectionString)
-    {
+    private static bool ConnectionIsUp(string connectionString) {
         using var probe = new SqlConnectionProvider(connectionString);
         return Task.Run(probe.TestConnection).GetAwaiter().GetResult();
     }

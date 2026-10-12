@@ -1,4 +1,4 @@
-﻿using AwesomeAssertions;
+using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
@@ -11,39 +11,36 @@ using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;
 
-public class PlayerControllerShould
-{
-    private PlayerController _controller;
-    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> _createPlayerCommandHandler;
-    private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> _searchPlayersQueryHandler;
-    private ICommandHandler<DeletePlayerCommand> _deletePlayerCommandHandler;
-    private ICommandHandler<UpdatePlayerCommand> _updatePlayerCommandHandler;
+public class PlayerControllerShould {
+    private PlayerController controller;
+    private ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler;
+    private IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler;
+    private ICommandHandler<DeletePlayerCommand> deletePlayerCommandHandler;
+    private ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler;
 
     [SetUp]
-    public void Setup()
-    {
-        _searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
-        _createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
-        _deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand>>();
-        _updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand>>();
-        _controller = new PlayerController(_createPlayerCommandHandler,
-            _searchPlayersQueryHandler, _deletePlayerCommandHandler, _updatePlayerCommandHandler);
+    public void Setup() {
+        searchPlayersQueryHandler = Substitute.For<IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>>();
+        createPlayerCommandHandler = Substitute.For<ICommandHandler<CreatePlayerCommand, CreatePlayerResponse>>();
+        deletePlayerCommandHandler = Substitute.For<ICommandHandler<DeletePlayerCommand>>();
+        updatePlayerCommandHandler = Substitute.For<ICommandHandler<UpdatePlayerCommand>>();
+        controller = new PlayerController(createPlayerCommandHandler,
+            searchPlayersQueryHandler, deletePlayerCommandHandler, updatePlayerCommandHandler);
     }
 
     [Test]
-    public async Task CallAQueryToGetAPlayerById()
-    {
+    public async Task CallAQueryToGetAPlayerById() {
         var newGuid = Guid.NewGuid();
-        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+        searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
                 new(Guid.NewGuid(), TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
         ;
 
-        await _controller.GetBy(newGuid);
+        await controller.GetBy(newGuid);
 
-        await _searchPlayersQueryHandler.Received(1)
+        await searchPlayersQueryHandler.Received(1)
             .Handle(Arg.Is<SearchPlayersQuery>(spq =>
                     spq != null && spq.Filters[0].Name == "Id"
                     && spq.Filters[0].Value == $"{newGuid}"),
@@ -51,37 +48,35 @@ public class PlayerControllerShould
     }
 
     [Test]
-    public async Task CallAQueryToSearchAllPlayersWithoutFilters()
-    {
-        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+    public async Task CallAQueryToSearchAllPlayersWithoutFilters() {
+        searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
                 new(Guid.NewGuid(), TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
 
-        await _controller.Search(new SearchPlayersRequest());
+        await controller.Search(new SearchPlayersRequest());
 
-        await _searchPlayersQueryHandler.Received(1)
+        await searchPlayersQueryHandler.Received(1)
             .Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task CallAQueryToSearchAllPlayersWithIdFilter()
-    {
+    public async Task CallAQueryToSearchAllPlayersWithIdFilter() {
         var newGuid = Guid.NewGuid();
         var guidFilter = new SearchPlayersFilter() { Name = "Id", Value = $"{newGuid}" };
         var guidQueryFilter = new QueryFilter() { Name = guidFilter.Name, Value = guidFilter.Value };
         var searchPlayersRequest = new SearchPlayersRequest();
         searchPlayersRequest.Filters.Add(guidFilter);
-        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+        searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>
             {
                 new(newGuid, TestDefaultValues.DefaultFirstName, TestDefaultValues.DefaultLastName, null, default, Gender.MALE)
             });
 
-        await _controller.Search(searchPlayersRequest);
+        await controller.Search(searchPlayersRequest);
 
-        await _searchPlayersQueryHandler.Received(1)
+        await searchPlayersQueryHandler.Received(1)
             .Handle(Arg.Is<SearchPlayersQuery>(spq =>
                     spq != null && spq.Filters[0].Name == guidFilter.Name
                     && spq.Filters[0].Value == guidFilter.Value),
@@ -89,8 +84,7 @@ public class PlayerControllerShould
     }
 
     [Test]
-    public async Task CallACommandToCreateAPlayerById()
-    {
+    public async Task CallACommandToCreateAPlayerById() {
         var newGuid = Guid.NewGuid();
         var request = new CreatePlayerRequest(
             TestDefaultValues.DefaultFirstName,
@@ -98,17 +92,17 @@ public class PlayerControllerShould
             TestDefaultValues.DefaultSecondLastName,
             TestDefaultValues.DefaultBirthDate,
             TestDefaultValues.DefaultGender);
-        _createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
+        createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CreatePlayerResponse(newGuid));
 
-        var createResult = await _controller.Create(request);
+        var createResult = await controller.Create(request);
 
         var created = createResult.Result.Should().BeOfType<CreatedAtActionResult>().Subject;
         created.StatusCode.Should().Be(StatusCodes.Status201Created);
         created.ActionName.Should().Be(nameof(PlayerController.GetBy));
         created.RouteValues.Should().Contain("id", newGuid);
         created.Value.Should().Be(newGuid);
-        await _createPlayerCommandHandler.Received(1).Handle(Arg.Is<CreatePlayerCommand>(command =>
+        await createPlayerCommandHandler.Received(1).Handle(Arg.Is<CreatePlayerCommand>(command =>
             command != null
             && command.FirstName == request.FirstName
             && command.LastName == request.LastName
@@ -119,86 +113,79 @@ public class PlayerControllerShould
     }
 
     [Test]
-    public async Task CallACommandToDeleteAPlayerById()
-    {
+    public async Task CallACommandToDeleteAPlayerById() {
         var id = Guid.NewGuid();
 
-        await _controller.Delete(id);
+        await controller.Delete(id);
 
-        await _deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
+        await deletePlayerCommandHandler.Received(1).Handle(Arg.Is<DeletePlayerCommand>(command =>
             command != null && command.Id == id
         ), Arg.Any<CancellationToken>());
     }
-    
+
     [Test]
-    public async Task PassTheRequestTokenToTheQueryWhenGettingAPlayerById()
-    {
+    public async Task PassTheRequestTokenToTheQueryWhenGettingAPlayerById() {
         using var cancellation = new CancellationTokenSource();
-        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+        searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns([new SearchPlayerResult(Guid.NewGuid(), TestDefaultValues.DefaultFirstName,
                 TestDefaultValues.DefaultLastName, null, default, Gender.MALE)]);
 
-        await _controller.GetBy(Guid.NewGuid(), cancellation.Token);
+        await controller.GetBy(Guid.NewGuid(), cancellation.Token);
 
-        await _searchPlayersQueryHandler.Received(1).Handle(Arg.Any<SearchPlayersQuery>(), cancellation.Token);
+        await searchPlayersQueryHandler.Received(1).Handle(Arg.Any<SearchPlayersQuery>(), cancellation.Token);
     }
 
     [Test]
-    public async Task PassTheRequestTokenToTheQueryWhenSearchingPlayers()
-    {
+    public async Task PassTheRequestTokenToTheQueryWhenSearchingPlayers() {
         using var cancellation = new CancellationTokenSource();
-        _searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
+        searchPlayersQueryHandler.Handle(Arg.Any<SearchPlayersQuery>(), Arg.Any<CancellationToken>())
             .Returns(new List<SearchPlayerResult>());
 
-        await _controller.Search(new SearchPlayersRequest(), cancellation.Token);
+        await controller.Search(new SearchPlayersRequest(), cancellation.Token);
 
-        await _searchPlayersQueryHandler.Received(1).Handle(Arg.Any<SearchPlayersQuery>(), cancellation.Token);
+        await searchPlayersQueryHandler.Received(1).Handle(Arg.Any<SearchPlayersQuery>(), cancellation.Token);
     }
 
     [Test]
-    public async Task PassTheRequestTokenToTheCommandWhenCreatingAPlayer()
-    {
+    public async Task PassTheRequestTokenToTheCommandWhenCreatingAPlayer() {
         using var cancellation = new CancellationTokenSource();
-        _createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
+        createPlayerCommandHandler.Handle(Arg.Any<CreatePlayerCommand>(), Arg.Any<CancellationToken>())
             .Returns(new CreatePlayerResponse(Guid.NewGuid()));
 
-        await _controller.Create(new CreatePlayerRequest(
+        await controller.Create(new CreatePlayerRequest(
             TestDefaultValues.DefaultFirstName,
             TestDefaultValues.DefaultLastName,
             TestDefaultValues.DefaultSecondLastName,
             TestDefaultValues.DefaultBirthDate,
             TestDefaultValues.DefaultGender), cancellation.Token);
 
-        await _createPlayerCommandHandler.Received(1).Handle(Arg.Any<CreatePlayerCommand>(), cancellation.Token);
+        await createPlayerCommandHandler.Received(1).Handle(Arg.Any<CreatePlayerCommand>(), cancellation.Token);
     }
 
     [Test]
-    public async Task PassTheRequestTokenToTheCommandWhenDeletingAPlayer()
-    {
+    public async Task PassTheRequestTokenToTheCommandWhenDeletingAPlayer() {
         using var cancellation = new CancellationTokenSource();
 
-        await _controller.Delete(Guid.NewGuid(), cancellation.Token);
+        await controller.Delete(Guid.NewGuid(), cancellation.Token);
 
-        await _deletePlayerCommandHandler.Received(1).Handle(Arg.Any<DeletePlayerCommand>(), cancellation.Token);
+        await deletePlayerCommandHandler.Received(1).Handle(Arg.Any<DeletePlayerCommand>(), cancellation.Token);
     }
 
     [Test]
-    public async Task PassTheRequestTokenToTheCommandWhenUpdatingAPlayer()
-    {
+    public async Task PassTheRequestTokenToTheCommandWhenUpdatingAPlayer() {
         using var cancellation = new CancellationTokenSource();
 
-        await _controller.Update(Guid.NewGuid(), new UpdatePlayerRequest(), cancellation.Token);
+        await controller.Update(Guid.NewGuid(), new UpdatePlayerRequest(), cancellation.Token);
 
-        await _updatePlayerCommandHandler.Received(1).Handle(Arg.Any<UpdatePlayerCommand>(), cancellation.Token);
+        await updatePlayerCommandHandler.Received(1).Handle(Arg.Any<UpdatePlayerCommand>(), cancellation.Token);
     }
 
     [Test]
-    public async Task CallACommandToUpdateAPlayerById()
-    {
+    public async Task CallACommandToUpdateAPlayerById() {
         var id = Guid.NewGuid();
 
-        await _controller.Update(id, new UpdatePlayerRequest());
-        await _updatePlayerCommandHandler.Received(1).Handle(Arg.Is<UpdatePlayerCommand>(command =>
+        await controller.Update(id, new UpdatePlayerRequest());
+        await updatePlayerCommandHandler.Received(1).Handle(Arg.Is<UpdatePlayerCommand>(command =>
             command != null && command.Id == id
         ), Arg.Any<CancellationToken>());
     }

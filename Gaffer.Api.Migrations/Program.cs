@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using Azure.Identity;
 using FluentMigrator;
 using FluentMigrator.Runner;
@@ -9,29 +9,23 @@ using MySqlConnector;
 
 namespace Gaffer.Api.Migrations;
 
-public class Program
-{
+public class Program {
     private const string ConnectionStringsSection = "ConnectionStrings";
     private const string TargetKey = "Target";
     private const int ConfigurationErrorExitCode = 2;
 
-    public static int Main(string[] args)
-    {
+    public static int Main(string[] args) {
         Console.WriteLine("Gaffer Api Migrations");
         var configuration = BuildConfiguration(args);
         List<DatabaseSettings> databaseSettings;
-        try
-        {
+        try {
             databaseSettings = ResolveDatabases(configuration);
-        }
-        catch (InvalidOperationException e)
-        {
+        } catch (InvalidOperationException e) {
             Console.Error.WriteLine(e.Message);
             return ConfigurationErrorExitCode;
         }
 
-        foreach (var databaseSetting in databaseSettings)
-        {
+        foreach (var databaseSetting in databaseSettings) {
             var serviceCollection = new ServiceCollection();
             ApplyMigrationsIn(databaseSetting.ConnectionString, databaseSetting.Name, serviceCollection);
             serviceCollection.Clear();
@@ -48,15 +42,13 @@ public class Program
         .Build();
 
     // Every non-empty ConnectionStrings:<DatabaseName> is migrated; --Target <DatabaseName> restricts the run to one.
-    private static List<DatabaseSettings> ResolveDatabases(IConfiguration configuration)
-    {
+    private static List<DatabaseSettings> ResolveDatabases(IConfiguration configuration) {
         var configured = configuration.GetSection(ConnectionStringsSection).GetChildren()
             .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
             .Select(entry => new DatabaseSettings { Name = entry.Key, ConnectionString = entry.Value! })
             .ToList();
         var target = configuration[TargetKey];
-        if (!string.IsNullOrWhiteSpace(target))
-        {
+        if (!string.IsNullOrWhiteSpace(target)) {
             configured = configured
                 .Where(database => string.Equals(database.Name, target, StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -73,8 +65,7 @@ public class Program
     }
 
     private static void ApplyMigrationsIn(string connectionString, string databaseName,
-        IServiceCollection serviceCollection)
-    {
+        IServiceCollection serviceCollection) {
         var serviceProvider = serviceCollection
             .AddFluentMigratorCore()
             .ConfigureRunner(rb => rb
@@ -87,8 +78,7 @@ public class Program
         using var scope = serviceProvider.CreateScope();
         var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
 
-        try
-        {
+        try {
             Console.WriteLine($"Creating Database {databaseName} id not exists");
             EnsureDatabaseExists($"{connectionString}", databaseName);
 
@@ -97,16 +87,13 @@ public class Program
 
             Console.WriteLine();
             Console.WriteLine($"Migrations for {databaseName} finished.");
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             Console.WriteLine(e);
             Environment.Exit(1);
         }
     }
 
-    static void EnsureDatabaseExists(string connectionString, string databaseName)
-    {
+    static void EnsureDatabaseExists(string connectionString, string databaseName) {
         using var connection = new MySqlConnection(connectionString);
         connection.Open();
 
@@ -122,8 +109,7 @@ public class Program
 
 }
 
-public class DatabaseSettings
-{
+public class DatabaseSettings {
     public string ConnectionString { get; set; } = null!;
     public string Name { get; set; } = null!;
 }

@@ -8,8 +8,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Shared.Exceptions;
 
-public static class ExceptionToHttpResponseConverters
-{
+public static class ExceptionToHttpResponseConverters {
     private const string SearchFilterNotPermittedKey = "Error.Search.FilterNotPermitted";
 
     public static readonly IReadOnlyDictionary<Type, Func<Exception, ProblemDetails>> PlayerConverters =
@@ -133,14 +132,13 @@ public static class ExceptionToHttpResponseConverters
                     "Error.Facilities.Stands.Create.MaxStandsExceeded")
             },
         };
-    
+
     /// <summary>
     /// The only builder of the validation 400 (domain rules and model binding): the operation's translation key
     /// plus <c>Errors</c> (field → messages).
     /// </summary>
     public static ProblemDetails BuildValidationProblemDetails(string title, string errorTranslationKey,
-        IReadOnlyDictionary<string, string[]> errors)
-    {
+        IReadOnlyDictionary<string, string[]> errors) {
         var problemDetails = BuildBadRequestProblemDetailsWithExtension(title, ValidationFailedException.InvalidFieldsDetail,
             errorTranslationKey);
         problemDetails.Extensions["Errors"] = errors;
@@ -153,20 +151,16 @@ public static class ExceptionToHttpResponseConverters
     /// name (<c>errorTranslationKey</c>, <c>errors</c>) and the <c>errors</c> keys in camelCase per segment
     /// (<c>Stands[1].StandName</c> → <c>stands[1].standName</c>). The <see cref="ProblemDetails"/> is not modified.
     /// </summary>
-    public static string Serialize(ProblemDetails problemDetails)
-    {
-        var body = new JObject
-        {
+    public static string Serialize(ProblemDetails problemDetails) {
+        var body = new JObject {
             ["type"] = problemDetails.Type,
             ["title"] = problemDetails.Title,
             ["status"] = problemDetails.Status,
             ["detail"] = problemDetails.Detail,
             ["instance"] = problemDetails.Instance,
         };
-        foreach (var (name, value) in problemDetails.Extensions)
-        {
-            body[CamelCase(name)] = value switch
-            {
+        foreach (var (name, value) in problemDetails.Extensions) {
+            body[CamelCase(name)] = value switch {
                 null => JValue.CreateNull(),
                 IReadOnlyDictionary<string, string[]> errors => new JObject(
                     errors.Select(error => new JProperty(CamelCasePerSegment(error.Key), new JArray(error.Value)))),
@@ -183,27 +177,22 @@ public static class ExceptionToHttpResponseConverters
         segment.Length == 0 ? segment : char.ToLowerInvariant(segment[0]) + segment[1..];
 
     // Helper methods to build ProblemDetails
-    private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails()
-    {
+    private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails() {
         return BuildBadRequestProblemDetailsWithExtension(
             SearchFilterNotPermittedKey,
             "FilterNotPermitted",
             SearchFilterNotPermittedKey);
     }
 
-    private static ProblemDetails BuildNotFoundProblemDetails()
-    {
-        return new ProblemDetails
-        {
+    private static ProblemDetails BuildNotFoundProblemDetails() {
+        return new ProblemDetails {
             Status = (int)HttpStatusCode.NotFound
         };
     }
 
     private static ProblemDetails BuildNotFoundProblemDetailsWithExtension(string title, string detail,
-        string errorTranslationKey)
-    {
-        return new ProblemDetails
-        {
+        string errorTranslationKey) {
+        return new ProblemDetails {
             Title = title,
             Detail = detail,
             Status = (int)HttpStatusCode.NotFound,
@@ -214,12 +203,10 @@ public static class ExceptionToHttpResponseConverters
                 { "ErrorTranslationKey", errorTranslationKey }
             }
         };
-    }    
+    }
     private static ProblemDetails BuildBadRequestProblemDetailsWithExtension(string title, string detail,
-        string errorTranslationKey)
-    {
-        return new ProblemDetails
-        {
+        string errorTranslationKey) {
+        return new ProblemDetails {
             Title = title,
             Detail = detail,
             Status = (int)HttpStatusCode.BadRequest,
