@@ -211,7 +211,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         {
             await LockFacility(id, cancellationToken);
             var criteria = new FacilitySearchCriteria();
-            criteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{id}", CriteriaType = CriteriaType.NONE });
+            criteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{id}" });
             var facility = (await Get(criteria, cancellationToken)).First();
             await WriteFacility(buildUpdated(facility), cancellationToken);
         }, cancellationToken);
@@ -307,9 +307,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
     {
         await dbConnectionProvider.ExecuteInTransactionAsync(async () =>
         {
-            await DeleteStands(id, cancellationToken);
-            await DeleteAddress(id, cancellationToken);
-
             const string deleteFacilityQuery = "DELETE FROM `Facilities` WHERE Id = @Id;";
             await dbConnectionProvider.ExecuteAsync(deleteFacilityQuery, new { Id = id }, cancellationToken);
         }, cancellationToken);
@@ -381,26 +378,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             FacilityId = facilityId,
             StandId = stand.Id
         }, cancellationToken);
-    }
-
-    private async Task DeleteStands(Guid facilityId, CancellationToken cancellationToken)
-    {
-        const string deleteStandsQuery =
-            "DELETE FROM `Stands` WHERE Id IN (SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId);";
-        await dbConnectionProvider.ExecuteAsync(deleteStandsQuery, new { FacilityId = facilityId }, cancellationToken);
-
-        const string deleteStandRelationsQuery = "DELETE FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
-        await dbConnectionProvider.ExecuteAsync(deleteStandRelationsQuery, new { FacilityId = facilityId }, cancellationToken);
-    }
-
-    private async Task DeleteAddress(Guid facilityId, CancellationToken cancellationToken)
-    {
-        const string deleteAddressQuery =
-            "DELETE FROM `Addresses` WHERE Id IN (SELECT AddressId FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId);";
-        await dbConnectionProvider.ExecuteAsync(deleteAddressQuery, new { FacilityId = facilityId }, cancellationToken);
-
-        const string deleteAddressRelationQuery = "DELETE FROM `Facilities_Addresses` WHERE FacilityId = @FacilityId;";
-        await dbConnectionProvider.ExecuteAsync(deleteAddressRelationQuery, new { FacilityId = facilityId }, cancellationToken);
     }
 
     private class FacilityRow

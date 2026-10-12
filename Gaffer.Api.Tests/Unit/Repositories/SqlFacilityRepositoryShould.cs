@@ -492,8 +492,8 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
 
             await _recordedRepository.Delete(facility.Id, _cancellation.Token);
 
-            // Transaction + stands and their links + address and its link + facility.
-            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 6);
+            // Transaction + facility row; the schema (cascading FKs and TRG_Facilities_BeforeDelete) removes the rest.
+            _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 2);
         }
 
         private static Facility AFacilityWithTwoStands() => new(
@@ -553,6 +553,50 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 "SELECT COUNT(*) FROM `Facilities_Stands`;");
             remainingStandLinks.Should().Be(0);
         }
+
+        /// <summary>
+        /// Pins the schema dependency that lets <see cref="SqlFacilityRepository.Delete"/> remove only the
+        /// <c>Facilities</c> row: the cascading foreign keys and <c>TRG_Facilities_BeforeDelete</c> clean the
+        /// address, the stands and both link tables of that facility, and leave any other facility untouched.
+        /// </summary>
+        [Test]
+        public async Task RemoveTheAddressStandsAndLinksThroughTheSchemaWhenOnlyTheFacilityRowIsDeleted()
+        {
+            var deleted = AFacilityWithStands("Deleted Arena", 2);
+            var kept = AFacilityWithStands("Kept Arena", 3);
+            await _repository.Save(deleted, CancellationToken.None);
+            await _repository.Save(kept, CancellationToken.None);
+
+            await _databaseConnectionProvider.ExecuteAsync(
+                "DELETE FROM `Facilities` WHERE Id = @Id;", new { Id = deleted.Id });
+
+            (await RowsOf(deleted)).Should().Be((0, 0, 0, 0, 0));
+            (await RowsOf(kept)).Should().Be((1, 1, 1, 3, 3));
+        }
+
+        private static Facility AFacilityWithStands(string name, int standCount) => new(
+            Guid.NewGuid(),
+            name,
+            true,
+            new DateTime(2020, 7, 20),
+            FacilityType.Arena,
+            18000,
+            new Address(Guid.NewGuid(), "Arena Road", "50", "08001", "Barcelona", "Catalonia", "Spain"),
+            Enumerable.Range(0, standCount).Select(i => new Stand(Guid.NewGuid(), $"{name} {i}", 1000)).ToList());
+
+        private async Task<(int Facilities, int Addresses, int AddressLinks, int Stands, int StandLinks)> RowsOf(Facility facility)
+        {
+            var standIds = facility.Stands.Select(stand => stand.Id).ToArray();
+            return (
+                await Count("SELECT COUNT(*) FROM `Facilities` WHERE Id = @Id;", new { facility.Id }),
+                await Count("SELECT COUNT(*) FROM `Addresses` WHERE Id = @Id;", new { facility.Address.Id }),
+                await Count("SELECT COUNT(*) FROM `Facilities_Addresses` WHERE FacilityId = @Id;", new { facility.Id }),
+                await Count("SELECT COUNT(*) FROM `Stands` WHERE Id IN @Ids;", new { Ids = standIds }),
+                await Count("SELECT COUNT(*) FROM `Facilities_Stands` WHERE FacilityId = @Id;", new { facility.Id }));
+        }
+
+        private Task<int> Count(string query, object parameters)
+            => _databaseConnectionProvider.QueryScalarAsync<int>(query, parameters);
     }
 
     [TestFixture]

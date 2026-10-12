@@ -68,7 +68,8 @@ public static class DatabaseStartup
             DatabaseHealthCheck.Name,
             serviceProvider => new DatabaseHealthCheck(
                 serviceProvider.GetRequiredService<DatabaseProviderSelection>(),
-                serviceProvider.GetService<IDatabaseProbe>()),
+                serviceProvider.GetService<IDatabaseProbe>(),
+                logger: serviceProvider.GetService<ILogger<DatabaseHealthCheck>>()),
             failureStatus: null,
             tags: [ReadyTag]));
 

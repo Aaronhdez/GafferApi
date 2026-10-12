@@ -27,8 +27,7 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         playerSearchCriteria.criteriaList.Add(new SearchCriteria
         {
             Name = "Id",
-            Value = $"{command.Id}",
-            CriteriaType = CriteriaType.NONE
+            Value = $"{command.Id}"
         });
         var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();

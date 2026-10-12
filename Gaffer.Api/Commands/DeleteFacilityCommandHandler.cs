@@ -24,8 +24,7 @@ public class DeleteFacilityCommandHandler(IFacilityRepository facilityRepository
         var criteria = new SearchCriteria
         {
             Name = "Id",
-            Value = command.Id.ToString(),
-            CriteriaType = CriteriaType.NONE
+            Value = command.Id.ToString()
         };
         var searchCriteria = new FacilitySearchCriteria();
         searchCriteria.criteriaList.Add(criteria);

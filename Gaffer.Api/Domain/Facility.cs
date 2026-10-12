@@ -161,14 +161,21 @@ public class Facility(
 
     /// <summary>
     /// Checks the stands sent in a facility request: their number and the fields of each one, named by its index in
-    /// the request (<c>Stands[1].StandName</c>).
+    /// the request (<c>Stands[1].StandName</c>). A <c>null</c> stand is reported as <c>Stands[1]</c>.
     /// </summary>
-    public static void CheckRequestedStands(DomainValidationErrors errors, IReadOnlyList<(string? StandName, int StandCapacity)> requested)
+    public static void CheckRequestedStands(DomainValidationErrors errors, IReadOnlyList<(string? StandName, int StandCapacity)?> requested)
     {
         CheckStandCount(errors, requested.Count);
         for (var index = 0; index < requested.Count; index++)
         {
-            Stand.CheckFields(errors, $"{StandsField}[{index}].", requested[index].StandName, requested[index].StandCapacity);
+            var field = $"{StandsField}[{index}]";
+            if (requested[index] is not { } stand)
+            {
+                errors.Add(field, $"{field} is required.");
+                continue;
+            }
+
+            Stand.CheckFields(errors, $"{field}.", stand.StandName, stand.StandCapacity);
         }
     }
 

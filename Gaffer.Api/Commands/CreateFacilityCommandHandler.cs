@@ -23,7 +23,7 @@ public record CreateFacilityCommand(
     FacilityType Type,
     int Capacity,
     CreateFacilityAddressCommand? Address,
-    List<CreateFacilityStandCommand>? Stands)
+    IReadOnlyList<CreateFacilityStandCommand?>? Stands)
     : ICommand<CreateFacilityResponse>;
 
 public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository)
@@ -44,7 +44,7 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
                 command.Address.Region,
                 command.Address.Country);
 
-        var stands = command.Stands?.Select(stand =>
+        var stands = command.Stands?.OfType<CreateFacilityStandCommand>().Select(stand =>
                 new Stand(Guid.NewGuid(), stand.StandName, stand.StandCapacity))
             .ToList();
 
@@ -53,7 +53,7 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
         {
             // Every invalid field is reported at once: the sent stands (by index) and the facility and its address.
             var errors = new DomainValidationErrors();
-            Facility.CheckRequestedStands(errors, command.Stands?.Select(stand => ((string?)stand.StandName, stand.StandCapacity)).ToList() ?? []);
+            Facility.CheckRequestedStands(errors, command.Stands?.Select(ToRequestedStand).ToList() ?? []);
             errors.Collect(() => facility = Facility.Create(
                 Guid.NewGuid(),
                 command.Name,
@@ -73,4 +73,8 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
         await facilityRepository.Save(facility!, cancellationToken);
         return new CreateFacilityResponse(facility!.Id);
     }
+
+    // A null stand stays null so the domain reports it by its index; it is never turned into a Stand.
+    private static (string? StandName, int StandCapacity)? ToRequestedStand(CreateFacilityStandCommand? stand)
+        => stand is null ? null : (stand.StandName, stand.StandCapacity);
 }

@@ -24,7 +24,7 @@ public class UpdateFacilityCommand : ICommand
     public FacilityType Type { get; set; }
     public int Capacity { get; set; }
     public UpdateFacilityAddressCommand? Address { get; set; }
-    public List<UpdateFacilityStandCommand>? Stands { get; set; }
+    public IReadOnlyList<UpdateFacilityStandCommand?>? Stands { get; set; }
 }
 
 public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository) : ICommandHandler<UpdateFacilityCommand>
@@ -66,8 +66,9 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         // revalidated (Q16). Every invalid field is reported at once.
         var requested = command.Stands ?? [];
         var errors = new DomainValidationErrors();
-        Facility.CheckRequestedStands(errors, requested.Select(stand => ((string?)stand.StandName, stand.StandCapacity)).ToList());
-        var stands = MergeStands(existing, requested);
+        Facility.CheckRequestedStands(errors, requested.Select(ToRequestedStand).ToList());
+        // A null stand is only reported (by its index); the merge works on the stands actually sent.
+        var stands = MergeStands(existing, requested.OfType<UpdateFacilityStandCommand>().ToList());
 
         Facility? updated = null;
         errors.Collect(() => updated = Facility.Create(
@@ -82,6 +83,9 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         errors.ThrowIfAny();
         return updated!;
     }
+
+    private static (string? StandName, int StandCapacity)? ToRequestedStand(UpdateFacilityStandCommand? stand)
+        => stand is null ? null : (stand.StandName, stand.StandCapacity);
 
     /// <summary>
     /// Merges the requested stands into the existing ones: a stand sent with the <c>Id</c> of an existing stand

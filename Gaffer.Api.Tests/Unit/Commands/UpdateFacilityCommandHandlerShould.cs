@@ -33,7 +33,7 @@ public class UpdateFacilityCommandHandlerShould
                 return Task.CompletedTask;
             });
 
-    private static UpdateFacilityCommand BuildCommand(Guid id, List<UpdateFacilityStandCommand>? stands = null) => new()
+    private static UpdateFacilityCommand BuildCommand(Guid id, IReadOnlyList<UpdateFacilityStandCommand?>? stands = null) => new()
     {
         Id = id,
         Name = "New Stadium Name",
@@ -302,6 +302,21 @@ public class UpdateFacilityCommandHandlerShould
         var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
         exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
         exception.Errors.Keys.Should().BeEquivalentTo("Stands[1].StandName", "Stands[2].StandCapacity");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectANullSentStandTogetherWithTheOtherStandErrorsWithoutUpdating()
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        GivenExisting(BuildExistingFacility(_facilityId, [north]));
+        var command = BuildCommand(_facilityId, [new UpdateFacilityStandCommand("Valid", 10, north.Id), null, new UpdateFacilityStandCommand("Valid", -1)]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Stands[1]", "Stands[2].StandCapacity");
         _updatedFacility.Should().BeNull();
     }
 

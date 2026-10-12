@@ -52,7 +52,7 @@ public class FacilitiesController(
                 request.Address.City,
                 request.Address.Region,
                 request.Address.Country),
-            request.Stands?.Select(stand => new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
+            request.Stands?.Select(stand => stand is null ? null : new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
 
         var result = await createFacilityCommandHandler.Handle(command, cancellationToken);
         return CreatedAtAction(nameof(GetBy), new { id = result.Id }, result.Id);
@@ -82,7 +82,7 @@ public class FacilitiesController(
                 request.Address.City,
                 request.Address.Region,
                 request.Address.Country),
-            Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
+            Stands = request.Stands?.Select(stand => stand is null ? null : new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
         }, cancellationToken);
     }
 }

@@ -746,6 +746,7 @@ public class FacilityFeaturesShould
     // --- Step 03b: domain validation of the nested stands (OPT-037: one representative per rule type) ---
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.NullStandRepresentative))]
     public async Task RejectTheCreationOfAFacilityWithAnInvalidStandWithoutSavingIt(string field, Action<JObject> change)
     {
         var before = await FacilityValidationCases.CountStoredRows();
@@ -757,6 +758,7 @@ public class FacilityFeaturesShould
     }
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.NullStandRepresentative))]
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.TooManyStands))]
     public async Task RejectTheUpdateOfAFacilityWithInvalidStandsAndChangeNothing(string field, Action<JObject> change)
     {
@@ -814,6 +816,22 @@ public class FacilityFeaturesShould
         (await GetFacility(createdId)).Should().BeEquivalentTo(before);
     }
 
+    [Test]
+    public async Task RejectFiveSentStandsForAFacilityThatHasFourAndChangeNothing()
+    {
+        var created = await PostRawJson(FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, FacilityValidationCases.FourStoredStands)));
+        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync());
+        var id = await created.Content.ReadFromJsonAsync<Guid>();
+        var before = await GetFacility(id);
+
+        var response = await PutRawJson(id, FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, FacilityValidationCases.FiveSentStands)));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
+        (await GetFacility(id)).Should().BeEquivalentTo(before);
+    }
+
     private async Task<HttpResponseMessage> PostRawJson(string json)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreateFacility())
@@ -851,6 +869,7 @@ public class FacilityValidationInTheProductionPipelineShould
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.NullStands))]
     public async Task RejectTheCreationWithTheOperationKeyAndFieldWithoutSaving(string field, Action<JObject> change)
     {
         var before = await FacilityValidationCases.CountStoredRows();
@@ -863,6 +882,7 @@ public class FacilityValidationInTheProductionPipelineShould
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.NullStands))]
     public async Task RejectTheUpdateWithTheOperationKeyAndFieldWithoutChanges(string field, Action<JObject> change)
     {
         var created = await Send(HttpMethod.Post, FacilitiesPath, FacilityValidationCases.ValidBody());
@@ -874,6 +894,23 @@ public class FacilityValidationInTheProductionPipelineShould
         var response = await Send(HttpMethod.Put, $"{FacilitiesPath}{id}", FacilityValidationCases.ValidBody(change));
 
         await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, field);
+        (await _server.Client.GetStringAsync($"{FacilitiesPath}{id}")).Should().Be(before);
+    }
+
+    [Test]
+    public async Task RejectFiveSentStandsForAFacilityThatHasFourInTheDomainAndChangeNothing()
+    {
+        var created = await Send(HttpMethod.Post, FacilitiesPath, FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, FacilityValidationCases.FourStoredStands)));
+        var createdRaw = await created.Content.ReadAsStringAsync();
+        created.StatusCode.Should().Be(HttpStatusCode.Created, createdRaw);
+        var id = JsonConvert.DeserializeObject<Guid>(createdRaw);
+        var before = await _server.Client.GetStringAsync($"{FacilitiesPath}{id}");
+
+        var response = await Send(HttpMethod.Put, $"{FacilitiesPath}{id}", FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, FacilityValidationCases.FiveSentStands)));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
         (await _server.Client.GetStringAsync($"{FacilitiesPath}{id}")).Should().Be(before);
     }
 
@@ -1008,6 +1045,31 @@ public static class FacilityValidationCases
         yield return Case("Stands[0].StandName null", "Stands[0].StandName", body => SetStands(body, (null, 10)));
     }
 
+
+    /// <summary>
+    /// TECHDEBT-006 AC1.12 (Q9 a)): a <c>null</c> element in <c>stands</c> is reported by its index, never a 500.
+    /// <see cref="NullStandRepresentative"/> is the one case used with the <see cref="TestFixture"/> host (OPT-037).
+    /// </summary>
+    public static IEnumerable<TestCaseData> NullStands()
+    {
+        yield return new TestCaseData("Stands[0]", (Action<JObject>)(body => body["stands"] = new JArray(JValue.CreateNull())))
+            .SetArgDisplayNames("stands [null]");
+        foreach (var testCase in NullStandRepresentative()) yield return testCase;
+    }
+
+    public static IEnumerable<TestCaseData> NullStandRepresentative()
+    {
+        yield return new TestCaseData("Stands[1]", (Action<JObject>)(body =>
+        {
+            SetStands(body, ("North", 100), ("South", 100));
+            ((JArray)body["stands"]!).Insert(1, JValue.CreateNull());
+        })).SetArgDisplayNames("null between two valid stands");
+    }
+
+    /// <summary>TECHDEBT-006 AC1.13: five stands sent to a facility that already has four.</summary>
+    public static readonly (string? Name, int Capacity)[] FourStoredStands = [("A", 1), ("B", 1), ("C", 1), ("D", 1)];
+
+    public static readonly (string? Name, int Capacity)[] FiveSentStands = [("E", 1), ("F", 1), ("G", 1), ("H", 1), ("I", 1)];
     public static void SetStands(JObject body, params (string? Name, int Capacity)[] stands) =>
         body["stands"] = new JArray(stands.Select(stand => new JObject
         {

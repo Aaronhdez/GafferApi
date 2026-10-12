@@ -177,13 +177,43 @@ public class FacilityShould
     public void CheckEveryRequestedStandNamingItByItsIndexAndTheirNumber()
     {
         var errors = new DomainValidationErrors();
-        (string?, int)[] requested = [("Valid", 1), ("", 1), ("Valid", 1), ("Valid", -1), ("Valid", 1)];
+        (string?, int)?[] requested = [("Valid", 1), ("", 1), ("Valid", 1), ("Valid", -1), ("Valid", 1)];
 
         Facility.CheckRequestedStands(errors, requested);
 
         var act = () => errors.ThrowIfAny();
         act.Should().ThrowExactly<DomainValidationException>().Which.Errors.Keys
             .Should().BeEquivalentTo("Stands", "Stands[1].StandName", "Stands[3].StandCapacity");
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    [TestCase(2)]
+    public void ReportANullRequestedStandByItsIndex(int nullIndex)
+    {
+        var errors = new DomainValidationErrors();
+        var requested = new (string?, int)?[] { ("A", 1), ("B", 1), ("C", 1) };
+        requested[nullIndex] = null;
+
+        Facility.CheckRequestedStands(errors, requested);
+
+        var act = () => errors.ThrowIfAny();
+        var exception = act.Should().ThrowExactly<DomainValidationException>().Which;
+        exception.Errors.Keys.Should().Equal($"Stands[{nullIndex}]");
+        exception.Errors[$"Stands[{nullIndex}]"].Should().Equal($"Stands[{nullIndex}] is required.");
+    }
+
+    [Test]
+    public void ReportNullRequestedStandsTogetherWithTheOtherStandErrors()
+    {
+        var errors = new DomainValidationErrors();
+        (string?, int)?[] requested = [null, ("", 1), null, ("Valid", 1), ("Valid", -1)];
+
+        Facility.CheckRequestedStands(errors, requested);
+
+        var act = () => errors.ThrowIfAny();
+        act.Should().ThrowExactly<DomainValidationException>().Which.Errors.Keys.Should().BeEquivalentTo(
+            "Stands", "Stands[0]", "Stands[1].StandName", "Stands[2]", "Stands[4].StandCapacity");
     }
 
     [Test]

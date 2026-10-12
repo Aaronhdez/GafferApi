@@ -24,8 +24,7 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         var criteria = new SearchCriteria
         {
             Name = "Id",
-            Value = command.Id.ToString(),
-            CriteriaType = CriteriaType.NONE
+            Value = command.Id.ToString()
         };
         var searchCriteria = new PlayerSearchCriteria();
         searchCriteria.criteriaList.Add(criteria);

@@ -161,6 +161,21 @@ public class CreateFacilityCommandHandlerShould
     }
 
     [Test]
+    public async Task RejectANullStandTogetherWithTheOtherStandErrorsAndNotSaveIt()
+    {
+        var command = new CreateFacilityCommand("Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 100,
+            new CreateFacilityAddressCommand("Main Avenue", "1", "28001", "Madrid", "Madrid", "Spain"),
+            [new CreateFacilityStandCommand("Valid", 10), null, new CreateFacilityStandCommand("", 10)]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesCreate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Stands[1]", "Stands[2].StandName");
+        await _repository.DidNotReceiveWithAnyArgs().Save(default!, default);
+    }
+
+    [Test]
     public async Task ReportTheStandErrorsTogetherWithTheFacilityErrors()
     {
         var command = new CreateFacilityCommand("", true, new DateTime(2020, 1, 1), FacilityType.Arena, -1,

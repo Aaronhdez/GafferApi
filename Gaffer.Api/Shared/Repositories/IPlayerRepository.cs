@@ -26,8 +26,7 @@ public class SearchCriteria
 public enum CriteriaType
 {
     AND,
-    OR,
-    NONE
+    OR
 }
 
 public class PlayerNotFoundException : Exception

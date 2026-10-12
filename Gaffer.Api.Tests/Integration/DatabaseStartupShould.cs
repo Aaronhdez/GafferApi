@@ -1,7 +1,9 @@
 using AwesomeAssertions;
+using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Startups;
 using Gaffer.Api.Tests.TestShared;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Gaffer.Api.Tests.Integration;
 
@@ -103,6 +105,36 @@ public class DatabaseStartupShould
         using var serviceProvider = BuildServiceProvider(enabled: true, ReachableConnectionString, logger);
 
         logger.Entries.Should().BeEmpty();
+    }
+
+    [Test]
+    public async Task GiveTheRegisteredHealthCheckTheHostLoggerSoAFailedProbeIsLogged()
+    {
+        var logs = new RecordingLoggerProvider();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["DatabaseConfig:Enabled"] = "true",
+                ["DatabaseConfig:ConnectionString"] = ReachableConnectionString
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddLogging(logging => logging.AddProvider(logs));
+        services.ConfigureDatabase(configuration, logger: null);
+        // The provider is chosen with the real database; the probe used by the health check then fails.
+        services.AddSingleton<IDatabaseProbe>(new UnreachableProbe());
+        await using var serviceProvider = services.BuildServiceProvider();
+
+        var report = await serviceProvider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+
+        report.Status.Should().Be(HealthStatus.Unhealthy);
+        logs.EntriesFor<DatabaseHealthCheck>().Should().ContainSingle()
+            .Which.Level.Should().Be(LogLevel.Warning);
+    }
+
+    private sealed class UnreachableProbe : IDatabaseProbe
+    {
+        public Task<bool> IsReachableAsync(CancellationToken cancellationToken) => Task.FromResult(false);
     }
 
     [TestCase(false, true)]

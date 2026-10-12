@@ -14,11 +14,13 @@ public class SearchPlayersEndpointShould
 {
     private const string FilterNotPermittedKey = "Error.Search.FilterNotPermitted";
     private IGafferApiClient _client;
+    private readonly Dictionary<string, Guid> _createdPlayers = new();
 
     [SetUp]
     public async Task SetUp()
     {
         _client = TestFixture.GafferApiClientTest;
+        _createdPlayers.Clear();
         await ClearPlayers();
         await CreatePlayer("Javier", "Martel");
         await CreatePlayer("Paul", "Gascoigne");
@@ -78,16 +80,53 @@ public class SearchPlayersEndpointShould
         players.Should().ContainSingle(p => p.FirstName == "Paul");
     }
 
+    [Test]
+    public async Task ReturnEveryPlayerWhenSearchingWithoutFilters()
+    {
+        var response = await SendSearch();
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
+        players!.Select(p => p.Id).Should().BeEquivalentTo(_createdPlayers.Values);
+    }
+
+    [Test]
+    public async Task ReturnOnlyThePlayerWithTheGivenId()
+    {
+        var id = _createdPlayers["Gascoigne"];
+
+        var response = await SendSearch("Id", $"{id}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
+        players.Should().ContainSingle().Which.Should().Be(
+            new SearchPlayerResponse(id, "Paul", "Gascoigne", null, TestDefaultValues.DefaultBirthDate, Gender.MALE));
+    }
+
+    [TestCase("FirstName", "Paul", "Gascoigne")]
+    [TestCase("LastName", "Martel", "Martel")]
+    public async Task ReturnOnlyThePlayerMatchingTheNameFilter(string fieldName, string value, string expectedLastName)
+    {
+        var response = await SendSearch(fieldName, value);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var players = await response.Content.ReadFromJsonAsync<List<SearchPlayerResponse>>(TestJson.Options);
+        players.Should().ContainSingle().Which.Id.Should().Be(_createdPlayers[expectedLastName]);
+    }
+
     private async Task CreatePlayer(string firstName, string lastName)
     {
         var request = new CreatePlayerRequest(firstName, lastName, null, TestDefaultValues.DefaultBirthDate, Gender.MALE);
-        await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), request);
+        _createdPlayers[lastName] = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), request);
     }
 
-    private async Task<HttpResponseMessage> SendSearch(string fieldName, string value)
+    private Task<HttpResponseMessage> SendSearch(string fieldName, string value)
+        => SendSearch(new SearchPlayersFilter { Name = fieldName, Value = value });
+
+    private async Task<HttpResponseMessage> SendSearch(params SearchPlayersFilter[] filters)
     {
         var request = new SearchPlayersRequest();
-        request.Filters.Add(new SearchPlayersFilter { Name = fieldName, Value = value });
+        request.Filters.AddRange(filters);
         return await _client.SendAsync(new HttpRequestMessage(HttpMethod.Post, Uris.SearchPlayers())
         {
             Content = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json")
