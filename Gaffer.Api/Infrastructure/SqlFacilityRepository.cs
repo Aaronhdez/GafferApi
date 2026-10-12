@@ -118,7 +118,11 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         }, cancellationToken);
     }
 
-    public async Task Update(Facility facility, CancellationToken cancellationToken)
+    /// <summary>
+    /// Writes the facility, its address and its stands. Only <see cref="Update(Guid, Func{Facility, Facility}, CancellationToken)"/>
+    /// calls it, inside the transaction that holds the facility row lock, so it joins that ambient transaction.
+    /// </summary>
+    private async Task WriteFacility(Facility facility, CancellationToken cancellationToken)
     {
         const string updateFacilityQuery =
             "UPDATE `Facilities` SET " +
@@ -209,7 +213,7 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
             var criteria = new FacilitySearchCriteria();
             criteria.criteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{id}", CriteriaType = CriteriaType.NONE });
             var facility = (await Get(criteria, cancellationToken)).First();
-            await Update(buildUpdated(facility), cancellationToken);
+            await WriteFacility(buildUpdated(facility), cancellationToken);
         }, cancellationToken);
     }
 

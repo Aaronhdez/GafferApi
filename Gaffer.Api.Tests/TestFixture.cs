@@ -110,6 +110,8 @@ public class TestFixture
                         });
                     services.AddRouting();
                     services.AddControllers();
+                    // Same model binding 400 as production (Startup.ConfigureServices).
+                    services.ConfigureValidationResponses();
                     services.AddScoped<IDatabaseConnectionProvider>(_ => new SqlConnectionProvider(testDatabase));
                     // Same repository and handler registrations as production (Startup.ConfigureServices).
                     services.ConfigureRepositories(builderContext.Configuration);

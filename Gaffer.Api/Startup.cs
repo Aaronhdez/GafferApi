@@ -37,6 +37,7 @@ public class Startup(IConfiguration configuration)
                 options.SerializerSettings.Converters.Add(new StringEnumConverter());
             });
 
+        services.ConfigureValidationResponses();
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
         // The host's logging pipeline is not resolvable while services are being registered,

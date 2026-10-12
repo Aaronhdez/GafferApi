@@ -1,0 +1,6 @@
+# Usage - REVIEWER
+
+| Ciclo | Tokens entrada | Tokens salida | Origen del dato | Llamadas a herramientas | Ficheros leídos (nº y mayores) | Comandos con salida grande | Observaciones |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ~45 000 | ~5 000 | estimado | 17 | 6 (`01-*`, `STATUS.md`, `REVIEW.md`, `usage/BUILDER.md` vía `cat`; `SqlFacilityRepository.cs` y `Startup.cs`/`StartupTestServer.cs` por rangos `sed -n`) | Ninguno (build/test filtrados por resumen; `git diff` limitado a código del plan) | Rojo AC1.1 reproducido en worktree `HEAD` sin tocar el árbol de trabajo; suite 324/324; veredicto APPROVED. |
+| 2 | ~70 000 | ~9 000 | estimado | 27 | 9 (`STATUS.md`, `02-*`, `REVIEW.md`, `usage/REVIEWER.md` en un `cat` persistido de 29,7 KB; diff de producto y de `PlayerFeaturesShould.cs`; `DatabaseStartup.cs` por rangos) | `cat` combinado de 4 ficheros del plan (salida persistida); diff completo de `PlayerFeaturesShould.cs` (~240 líneas) | Rojo de aceptación (33/76) y unitario (CS) reproducido en un worktree `HEAD`; suite 413/413; pipeline de producción comprobado con `dotnet run` contra `GafferDB_Test` (2 arranques descartados: Dummy y `env` mal citado); veredicto APPROVED; hallazgo `AddControllers` frente a `AddMvcCore` para el paso 03. |

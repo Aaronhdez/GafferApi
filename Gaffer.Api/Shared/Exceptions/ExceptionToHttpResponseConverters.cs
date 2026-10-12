@@ -3,6 +3,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace Gaffer.Api.Shared.Exceptions;
 
@@ -59,6 +60,13 @@ public static class ExceptionToHttpResponseConverters
                     "Cannot create facility",
                     ex.Message,
                     "Error.Facilities.Create.Validation")
+            },
+            {
+                typeof(ValidationFailedException),
+                ex => BuildValidationProblemDetails(
+                    ((ValidationFailedException)ex).Title,
+                    ((ValidationFailedException)ex).ErrorTranslationKey,
+                    ((ValidationFailedException)ex).Errors)
             },
             {
                 typeof(FacilityNotFoundException),
@@ -125,6 +133,22 @@ public static class ExceptionToHttpResponseConverters
             },
         };
     
+    /// <summary>
+    /// The only builder of the validation 400 (domain rules and model binding): the operation's translation key
+    /// plus <c>Errors</c> (field → messages).
+    /// </summary>
+    public static ProblemDetails BuildValidationProblemDetails(string title, string errorTranslationKey,
+        IReadOnlyDictionary<string, string[]> errors)
+    {
+        var problemDetails = BuildBadRequestProblemDetailsWithExtension(title, ValidationFailedException.InvalidFieldsDetail,
+            errorTranslationKey);
+        problemDetails.Extensions["Errors"] = errors;
+        return problemDetails;
+    }
+
+    /// <summary>The JSON body of every error response (exception middleware and model binding).</summary>
+    public static string Serialize(ProblemDetails problemDetails) => JsonConvert.SerializeObject(problemDetails);
+
     // Helper methods to build ProblemDetails
     private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails()
     {

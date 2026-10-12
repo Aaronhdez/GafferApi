@@ -1,0 +1,6 @@
+# Usage - BUILDER
+
+| Ciclo | Tokens entrada | Tokens salida | Origen del dato | Llamadas a herramientas | Ficheros leídos (nº y mayores) | Comandos con salida grande | Observaciones |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | ~60 000 | ~8 000 | estimado | 25 | 7 (`00-overview` ~17 KB, `01-*`, `STATUS.md`, `REVIEW.md`; `SqlFacilityRepository.cs` y `SqlFacilityRepositoryShould.cs` por rangos `sed -n`; `IFacilityRepository.cs` completo) | Ninguno (build/test filtrados por resumen; `dotnet run` redirigido a scratchpad) | Paso 01: rojo 2/2 → verde; suite 322 → 324; swagger servido idéntico (sha256). Builds `--no-incremental` dominan el tiempo. |
+| 2 | ~150 000 | ~25 000 | estimado | 55 | 16 (`00-overview` ~17 KB, `02-*`, `STATUS.md`, `REVIEW.md`; `PlayerFeaturesShould.cs`, `UpdatePlayerCommandHandlerShould.cs`, `TestFixture.cs`, `ExceptionToHttpResponseConverters.cs`/`Shoulds` por rangos) | Sonda AC2.0 (~30 líneas a scratchpad, leída una vez); listado de tests con `--logger console;verbosity=normal` filtrado por `grep` | Paso 02: rojo aceptación 33/76 y rojo unitario por compilación → verde 196/196; suite 324 → 413; swagger vía `StartupTestServer` idéntico. Sonda temporal creada y eliminada en el ciclo. |

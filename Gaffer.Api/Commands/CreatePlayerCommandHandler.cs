@@ -1,5 +1,6 @@
 ﻿using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
@@ -18,10 +19,25 @@ public class CreatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 {
     public async Task<CreatePlayerResponse> Handle(CreatePlayerCommand command, CancellationToken cancellationToken)
     {
-        var newPlayer = new Player(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName, command.Gender, command.Birthdate);
+        var newPlayer = CreatePlayer(command);
         await playerRepository.Save(newPlayer, cancellationToken);
         return new CreatePlayerResponse(newPlayer.Id);
     }
+
+    private static Player CreatePlayer(CreatePlayerCommand command)
+    {
+        try
+        {
+            return Player.Create(Guid.NewGuid(), command.FirstName, command.LastName, command.SecondLastName,
+                command.Gender, command.Birthdate);
+        }
+        catch (DomainValidationException ex)
+        {
+            throw new ValidationFailedException(CannotCreatePlayerTitle, ValidationErrorKeys.PlayersCreate, ex.Errors);
+        }
+    }
+
+    private const string CannotCreatePlayerTitle = "Cannot create player";
 }
 
 

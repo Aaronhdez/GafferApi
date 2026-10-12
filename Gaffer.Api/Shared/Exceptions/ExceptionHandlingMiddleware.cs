@@ -4,7 +4,6 @@ using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 
 namespace Gaffer.Api.Shared.Exceptions;
 
@@ -76,7 +75,7 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
     {
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = GetResponseStatus(problemDetails.Status);
-        var result = JsonConvert.SerializeObject(problemDetails);
+        var result = ExceptionToHttpResponseConverters.Serialize(problemDetails);
         return context.Response.WriteAsync(result);
     }
 

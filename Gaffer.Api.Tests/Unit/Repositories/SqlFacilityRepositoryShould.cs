@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
@@ -251,7 +252,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
                 [new Stand(north.Id, "North Renovated", 5000), east]);
 
-            await _repository.Update(updated, CancellationToken.None);
+            await _repository.Update(original.Id, _ => updated, CancellationToken.None);
 
             var result = await GetById(original.Id);
             result.Name.Should().Be(updated.Name);
@@ -305,7 +306,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
                 [new Stand(north.Id, "North Renovated", 5000), new Stand(Guid.NewGuid(), standNameLongerThanItsColumn, 1000)]);
 
-            var act = async () => await _repository.Update(updated, CancellationToken.None);
+            var act = async () => await _repository.Update(original.Id, _ => updated, CancellationToken.None);
 
             var failure = await act.Should().ThrowAsync<Exception>();
             TestContext.Out.WriteLine(failure.Which.Message);
@@ -427,9 +428,10 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 facility.Capacity, facility.Address,
                 [facility.Stands[0], new Stand(Guid.NewGuid(), "East", 1000)]);
 
-            await _recordedRepository.Update(updated, _cancellation.Token);
+            await _recordedRepository.Update(facility.Id, _ => updated, _cancellation.Token);
 
-            // Transaction + facility + address + linked stands lookup + one stand update + one stand insert and its link.
+            // Write alone: transaction + facility + address + linked stands lookup + one stand update + one stand insert and its link
+            // (the row lock and the facility read inside the same transaction add more calls).
             _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 7);
         }
 
@@ -722,5 +724,31 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
     {
         public Guid FacilityId { get; init; }
         public Guid StandId { get; init; }
+    }
+}
+public class FacilityRepositoryContractShould
+{
+    [Test]
+    public void OnlyAcceptAWholeFacilityForCreationSoEveryUpdateGoesThroughTheLock()
+    {
+        var methodsTakingAFacility = typeof(IFacilityRepository).GetMethods()
+            .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(Facility)))
+            .Select(method => method.Name);
+
+        methodsTakingAFacility.Should().Equal(nameof(IFacilityRepository.Save));
+    }
+
+    [Test]
+    public void ExposeNoPublicFacilityWriteWithoutTheIdAndTheBuildFunction()
+    {
+        var publicMethodsTakingAFacility = typeof(SqlFacilityRepository)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(Facility)))
+            .Select(method => method.Name);
+
+        publicMethodsTakingAFacility.Should().Equal(nameof(SqlFacilityRepository.Save));
+        typeof(SqlFacilityRepository).GetMethod(nameof(SqlFacilityRepository.Update),
+                [typeof(Guid), typeof(Func<Facility, Facility>), typeof(CancellationToken)])
+            .Should().NotBeNull();
     }
 }
