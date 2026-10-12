@@ -1,5 +1,6 @@
 ﻿using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
@@ -71,6 +72,15 @@ public class Startup(IConfiguration configuration)
                 }
             })
             .UseRouting()
-            .UseEndpoints(endpoints => endpoints.MapControllers());
+            .UseEndpoints(endpoints =>
+            {
+                endpoints.MapControllers();
+                // Plain-text status (Healthy/Degraded/Unhealthy), outside /api and the OpenAPI document.
+                endpoints.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
+                endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
+                {
+                    Predicate = registration => registration.Tags.Contains(DatabaseStartup.ReadyTag)
+                });
+            });
     }
 }

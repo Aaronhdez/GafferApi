@@ -8,105 +8,113 @@ El detalle completo se conserva solo para los 2 ciclos más recientes (OPT-013);
 | --- | --- | --- | --- | --- | --- |
 | 1 | 01 `Update(Facility)` fuera del contrato | APPROVED | P1-1 (OPT-032), P1-2 (OPT-033) | 3-5 llamadas BUILDER + 2-5 REVIEWER por paso | Aprobadas 2026-10-11 |
 | 2 | 02 Validación de dominio de Player | APPROVED | P2-1 (OPT-034), P2-2 (OPT-035), P2-3 (OPT-036) | ~12-16 llamadas BUILDER (P2-1) en pasos 03-04 | P2-1 y P2-3 aprobadas 2026-10-12; P2-2 no abordada por el operador |
-| 3 | 03a Validación de Facility y dirección | APPROVED | P3-1, P3-2, P3-3 | P3-1: ~15-25 llamadas BUILDER en 03b (estimación) | Pendiente de decisión del operador |
+| 3 | 03a Validación de Facility y dirección | APPROVED | P3-1 (OPT-037), P3-2 (OPT-038), P3-3 (OPT-039) | P3-1: ~15-25 llamadas BUILDER en 03b (estimación) | Aprobadas 2026-10-12 |
+| 4 | 03b Validación de gradas y `/stands` | APPROVED | P4-1 (OPT-040), P4-2 (OPT-041) | P4-1: ~1 000 tokens/llamada de REVIEWER (estimación) | Aprobadas 2026-10-12 |
+| 5 | 05 Health check de base de datos | APPROVED | Sin propuestas nuevas | n/a | n/a |
 
-## Ciclo 2 - Paso 02 (validación de dominio de Player) - APPROVED
+## Ciclo 4 - Paso 03b (validación de gradas y `/stands`) - APPROVED
 
 ### Uso medido
 
-`usage-slice` ejecutado una vez (ventanas de `STATUS.md`, `--repo gaffer-api`): "sin datos" en ambas ventanas, claude-code y copilot. Cuarto ciclo sin datos; sin escalera de reintento (OPT-031). Sin `token-consumer` no se separa entrada nueva de caché.
+`usage-slice`: no ejecutado. Los ciclos 1-3 de este plan ya devolvieron "sin datos" (OPT-031); se cita `usage/*.md` como `estimado` y los totales del ORCHESTRATOR como `medido:agent-result` (cota inferior, OPT-023). Sin `token-consumer` no se separa entrada nueva de caché.
 
-| Rol | Tokens | Tool uses | Duración | Origen | Autoinforme `usage/*.md` (`estimado`) |
+| Rol | Tokens | Tool uses | Duración | Tokens/llamada | Autoinforme `usage/*.md` (`estimado`) |
 | --- | --- | --- | --- | --- | --- |
-| BUILDER | 165 359 (ciclo 1: 59 467; x2,8) | 80 (ciclo 1: 29; x2,8) | 771 s (ciclo 1: 257 s; x3,0) | `medido:agent-result` (cota inferior, OPT-023) | ~150 000 + ~25 000, 55 llamadas (subestima las llamadas en 25) |
-| REVIEWER | 98 414 (ciclo 1: 39 989; x2,5) | 39 (ciclo 1: 19; x2,1) | 497 s (ciclo 1: 161 s; x3,1) | `medido:agent-result` (cota inferior, OPT-023) | ~70 000 + ~9 000, 27 llamadas (subestima en 12) |
-
-Los tokens por llamada son estables (BUILDER ~2 070 en ciclo 2 frente a ~2 050 en ciclo 1; REVIEWER ~2 520 frente a ~2 100): el coste crece con el número de llamadas, no con lecturas grandes.
+| BUILDER | 173 693 (ciclo 3: 177 920; -2,4 %) | 87 (ciclo 3: 86; +1) | 742 s (ciclo 3: 760 s) | ~1 997 (ciclo 3: ~2 069) | ~170 000 + ~28 000, 58 llamadas (subestima las llamadas en 29) |
+| REVIEWER | 111 762 (ciclo 3: 70 446; +58,7 %) | 32 (ciclo 3: 29; +3) | 282 s (ciclo 3: 234 s) | ~3 493 (ciclo 3: ~2 429; +44 %) | ~75 000 + ~11 000, 24 llamadas (subestima en 8) |
 
 ### Spikes
 
 | # | Spike | Valor / origen | Causa probable |
 | --- | --- | --- | --- |
-| S1 | BUILDER x2,8 en tokens y llamadas | 165 k / 80 usos frente a 59 k / 29 | Alcance del paso, no lecturas: 12+ ficheros de producto/test, 89 tests nuevos (324 a 413), caracterización AC2.0 de 13 casos, dos rojos (aceptación y compilación), cambio de comportamiento Q17 con 4 tests adaptados, `ValidationStartup` nuevo y ~13 invocaciones de build/test en `STATUS.md`. Lecturas contenidas: 16 ficheros, el mayor `00-overview` ~17 KB. |
-| S2 | Primer verde fallido | `STATUS.md`: 3 errores (aserción `Contain([])` del helper; test de 29-feb mal planteado) | Fallos de test propios; un ciclo extra build+test (~3-4 llamadas). |
-| S3 | Sonda `ZzCycle2ProbeShould.cs` creada y borrada | `STATUS.md` fila AC2.0+AC2.6 | Efecto de OPT-032 rama (b): el AC pide volcado con `StartupTestServer`, pero no hay ayudante reutilizable: ~6-8 llamadas (estimación). Los pasos 03 y 04 la repetirían. |
-| S4 | Rojo en worktree por REVIEWER (OPT-033 sin aplicar) | `STATUS.md`: dos filas de REVIEWER | Segunda improvisación de la receta: ~5-8 de las 39 llamadas (estimación). |
-| S5 | Pruebas manuales REVIEWER con `dotnet run` + curl | `STATUS.md` fila "pipeline de producción"; 2 arranques descartados | Lo no redundante era confirmar `ConfigureValidationResponses` bajo `AddMvcCore` real, porque `TestFixture` usa `AddControllers`. Los 2 arranques descartados cuestan ~4-6 llamadas (estimación). |
-| S6 | `cat` combinado de 4 ficheros del plan (29,7 KB, persistido) | `usage/REVIEWER.md` | REVIEWER relee `STATUS.md`, `REVIEW.md` y `usage` completos cada ciclo; OPT-007 aplicable con lectura por rangos. |
+| S1 | BUILDER no baja de ~87 llamadas pese a un paso con 63 tests nuevos (574 a 637) frente a 161 en 03a | 87 usos, 173 k; `git status` | El coste por llamada es constante (~2 000) y el número de llamadas se mantiene con ~60 % menos de tests. Entonces el volumen de tests no era el factor dominante de las llamadas: pesan los ficheros de producto (11 modificados), los dos rojos (aceptación y compilación), un tercer rojo de producción del sub-recurso tras un fallo propio del test (`"Id"` mayúsculas, 4 × `ArgumentNullException`; `STATUS.md` fila 4) y tres pasadas de resumen del rojo para obtener el `n × estado` (`usage/BUILDER.md`). Descomposición estimada, no medida. |
+| S2 | Tokens/llamada de REVIEWER sube a ~3 493 (+44 %) | 111 762 / 32 | El número de llamadas apenas cambia (+3); crece el contexto por llamada: diff completo de producto, diff de tests (~600 líneas en dos llamadas), `StandShould.cs` entero y `REVIEW.md` del ciclo 3 (`usage/REVIEWER.md`). Con contexto acumulado en caché, cada llamada posterior re-lee un contexto más grande. Atenuante: el rojo se reprodujo sobre `git archive HEAD` sin worktree (más barato que el worktree). |
+| S3 | Un fallo propio de test en el rojo de producción | `STATUS.md` fila 4 (segunda) | Lectura de `id` sensible a mayúsculas; ~2-3 llamadas extra (estimación). |
 
-### Propuestas
+### Efecto observado de OPT-037, OPT-038 y OPT-039
 
-| ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
-| --- | --- | --- | --- | --- |
-| P2-1 | Ayudante permanente `[Explicit]` que escribe el `swagger.json` servido por `StartupTestServer` a una ruta por variable de entorno; documentarlo en `test-stack.md`. | Plan (paso 03) y `test-stack.md` | ~12-16 llamadas de BUILDER en pasos 03-04 | `STATUS.md` fila AC2.0+AC2.6; S3 |
-| P2-2 | Decidir si `TestFixture` pasa a `AddMvcCore` como producción, o limitar la prueba de producción de REVIEWER. | Decisión del operador / plan (03-04) | ~8-12 llamadas de REVIEWER por paso (estimación) | S5 |
-| P2-3 | Limitar el tamaño del paso 03: dividir en 03a (Facility) y 03b (gradas) si prevé más de ~50 tests nuevos o ~10 ficheros. | Agente PLANNER / `03-*.md` | No reduce el total; un `NEEDS_CHANGES` costaría ~80-100 k en lugar de ~165 k | S1, S2 |
-
-**Aprobación (operador, 2026-10-12):** P2-1 registrada como OPT-034; P2-3 como OPT-036; P2-2 como OPT-035 sin aplicación ("Obviemos este punto"; `Estado` queda `pendiente` por falta de estado "descartada").
-
-## Ciclo 3 - Paso 03a (validación de Facility y dirección) - APPROVED
-
-### Uso medido
-
-`usage-slice`: no ejecutado. Los ciclos 1 y 2 de este plan (y HARNESS-001) ya devolvieron "sin datos", así que se cita `usage/*.md` como `estimado` y `agent-result` como `medido` sin repetir la escalera (OPT-031). Sin `token-consumer` no se separa entrada nueva de caché.
-
-| Rol | Tokens | Tool uses | Duración | Tokens/llamada | Origen | Autoinforme `usage/*.md` (`estimado`) |
-| --- | --- | --- | --- | --- | --- | --- |
-| BUILDER | 177 920 (ciclo 2: 165 359; +7,6 %) | 86 (ciclo 2: 80; +7,5 %) | 760 s (ciclo 2: 771 s) | ~2 069 (ciclo 2: ~2 067) | `medido:agent-result` (cota inferior, OPT-023) | ~180 000 + ~30 000, 62 llamadas (subestima en 24) |
-| REVIEWER | 70 446 (ciclo 2: 98 414; -28 %) | 29 (ciclo 2: 39; -26 %) | 234 s (ciclo 2: 497 s; -53 %) | ~2 429 (ciclo 2: ~2 523) | `medido:agent-result` (cota inferior, OPT-023) | ~80 000 + ~10 000, 30 llamadas (acierta) |
-
-Tokens por llamada idénticos a los ciclos 1 y 2: BUILDER cuesta ~2 070 tokens por llamada en tres ciclos. El coste depende solo del número de llamadas.
-
-### Spikes
-
-| # | Spike | Valor / origen | Causa probable |
-| --- | --- | --- | --- |
-| S1 | BUILDER sigue en 178 k / 86 usos pese a la división (OPT-036) | +7,6 % frente al ciclo 2 | La división se hizo por feature, no por tamaño. 03a cerró con 161 tests nuevos (413 a 574; el umbral de OPT-036 era ~50 tests o ~10 ficheros) y 13 ficheros modificados más 2 nuevos (`git status`). El paso 02 tenía 89 tests y 12+ ficheros: 03a es mayor. Ver análisis más abajo. |
-| S2 | La misma matriz de 34 casos inválidos se prueba en tres capas | `STATUS.md` "Tests nuevos por criterio": AC3a.1 (34 en create), AC3a.2 (34 en update), AC3a.7 (34 en `FacilityShould`), AC3a.11 (16 × POST/PUT en producción) | Cada capa exige rojo y verde con su propia lista. Es el origen principal de los 161 tests y del rojo de aceptación de 106/132 que BUILDER tuvo que agrupar con `sort \| uniq -c`. El dominio ya cubre cada regla; aceptación solo necesita demostrar el cableado HTTP. |
-| S3 | Primer verde fallido | `STATUS.md`: 2 × CS8602 en `UpdateFacilityCommandHandlerShould` (L76/L228, `command.Address` pasó a anulable) y 1 test (`ThrowExceptionWhenAddressIsMissing` esperaba `NullReferenceException`) | Consecuencia previsible del cambio de nulabilidad de `Address` en el comando; un grep de usos de `command.Address` antes de editar lo habría adelantado. Un ciclo extra build+test (~3-4 llamadas). Repetición del patrón de S2 del ciclo 2. |
-| S4 | La tabla de rojo de BUILDER subestimaba el fallo | BUILDER: "16 + 16 `FacilityValidationInTheProductionPipelineShould` (todos **500**)"; REVIEWER: 32 casos = 18 × 500, 7 × 201, 7 × 200 (`STATUS.md` fila REVIEWER rojo; `REVIEW.md` ciclo 3) | BUILDER generalizó a partir del primer fallo (o de una muestra) en lugar de agrupar el estado obtenido por test. No cambió el veredicto (el rojo existe), pero la evidencia de rojo debe ser cuantitativa; REVIEWER pagó la corrección con una ejecución en worktree. El error es de procedimiento: el AC pide demostrar el rojo, no cómo resumirlo. |
-| S5 | REVIEWER repite el worktree de `HEAD` (OPT-033 sin aplicar) | `STATUS.md` filas "REVIEWER rojo" y "rojo unitario" | Tercera improvisación (ciclos 1, 2, 3). Menor coste que en el ciclo 2: 29 llamadas frente a 39. |
-| S6 | Sin spikes de lecturas | 18 ficheros leídos por BUILDER y 8 por REVIEWER, todos por rangos o `grep`; `00-overview` por `grep` de Q3-Q23 | OPT-007/018/024/025 sin regresión. |
-
-### Por qué BUILDER sigue por encima de 170 k
-
-Evidencia: 80 → 86 llamadas con ~2 070 tokens/llamada constantes. Solo el recuento de llamadas explica el coste.
-
-| Contribuyente | Llamadas estimadas | Origen |
+| ID | Evidencia | Efecto |
 | --- | --- | --- |
-| Líneas base y preflight (docker, build, test) | ~4 | `STATUS.md` filas 1-3 |
-| Ayudante AC3a.0: crear, ejecutar sin variable, 2 capturas "antes", 1 "después" | ~6-7 | `STATUS.md` filas AC3a.0 y AC3a.8 |
-| Rojo de aceptación + agrupación 106 nombres + rojo unitario por compilación | ~5-6 | filas "Rojo" |
-| Escribir 161 tests en 5 ficheros de test (aceptación, `FacilityShould`, 2 handlers, converters, repositorio) | ~18-22 | `git status`: 7 ficheros de test |
-| Cambios de producto (6 ficheros + refactor `Player.CheckName`) | ~12-14 | `git status` |
-| Primer verde fallido (S3) + segundo verde + refactor | ~6-8 | filas "Verde" |
-| AC3a.9 (build, test, grep) y lecturas | ~12-15 | filas AC3a.9 y `usage/BUILDER.md` |
+| OPT-037 | `REVIEW.md` ciclo 4: "Reparto por capa (OPT-037): cumple" (matriz solo en `StandShould`; un caso por regla en handlers; aceptación con un representante por tipo; producción solo casos divergentes). Tests nuevos 63 frente a 161 (-61 %); AC3b.1 rojo 3/3 con un representante por regla. | Aplicada y cumplida. Ahorro de BUILDER no observable: 87 frente a 86 llamadas y -2,4 % de tokens, frente a ~15-25 llamadas esperadas. El alcance cambió a la vez (gradas son más pequeñas que facility+dirección), así que no se puede aislar. Sí redujo carga de suite y de rojo (32/199 frente a 106/154 de rojos agrupados). |
+| OPT-038 | `STATUS.md` tabla "Rojo (OPT-038), por clase de test"; REVIEWER reprodujo 32/199 (mismo recuento) y no halló imprecisión (en el ciclo 3 hubo una). | Aplicada y eficaz sobre su objetivo (cero correcciones de REVIEWER). Coste: tres pasadas de resumen en BUILDER (~2-3 llamadas, estimación). |
+| OPT-039 | `REVIEW.md` ciclo 4: "grep de usos registrado; sin cambios de firma ni de nulabilidad de tipos compartidos". Verde 350/350 al primer intento. | Aplicada. Eficacia no demostrable: el paso no cambió firmas compartidas, así que no se puso a prueba. El primer verde limpio es coherente pero no atribuible. |
 
-Conclusión: OPT-034 eliminó la sonda (~6-8 llamadas), pero el paso añadió 161 tests y una matriz triplicada (S2), que consumieron lo ahorrado. La división de OPT-036 no bajó el coste porque 03a sigue siendo el paso más grande del plan (más grande que el paso 02). Si 03b conserva el mismo patrón (gradas anidadas y `/stands`), se esperan ~80-90 llamadas otra vez.
+BUILDER sigue en ~87 llamadas porque las tres reglas atacan el volumen de tests, el rojo mal descrito y el primer verde fallido, y ninguna ataca el grueso (cambios de producto, rojos múltiples, resúmenes). El ahorro esperado de OPT-037 estaba sobreestimado.
 
 ### Propuestas
 
 | ID | Propuesta | Ámbito | Ahorro esperado | Fuente |
 | --- | --- | --- | --- | --- |
-| P3-1 | Pirámide de pruebas explícita para pasos de validación: la matriz completa de casos inválidos va en la capa de dominio (`FacilityShould`/`StandShould`) y en un caso por regla en los handlers; los tests de aceptación cubren un representante por tipo de regla (texto vacío, máximo+1, ausente, rango, enum, fecha) en create y update, más la capa de producción (`StartupTestServer`) para ausente/null. PLANNER lo fija en los AC del paso 03b y 05 (no reduce el contrato probado: las reglas siguen cubiertas en dominio). | Agente PLANNER / `03b-*.md` y plantilla de plan | ~15-25 llamadas de BUILDER en 03b (estimación): menos tests de aceptación (de ~70 a ~20), rojo agrupado más corto, menos tiempo de suite | S1, S2; `STATUS.md` "Tests nuevos por criterio" |
-| P3-2 | Evidencia de rojo cuantitativa: en la fila de rojo de `STATUS.md`, BUILDER agrupa por resultado obtenido (`... \| grep -oE "Status code[^,]*\|Expected[^,]*" \| sort \| uniq -c` o equivalente) y escribe `n × estado` por clase de test; nunca "todos". Añadirlo a `.claude/agents/builder.md` y `.github/doc/work-guidelines.md`. | `.claude/agents/builder.md` (el operador la aplica) | Evita 1 corrección de REVIEWER (no medible en tokens) y reduce el riesgo de aceptar un rojo mal descrito | S4; `REVIEW.md` ciclo 3 |
-| P3-3 | Antes de editar un tipo compartido (p. ej. cambio de nulabilidad de `Address` en el comando), `grep -rn` de sus usos en producto y tests y adaptar en el mismo paso, evitando el primer verde fallido. | `.claude/agents/builder.md` | ~3-4 llamadas por cambio de firma (S3) | `STATUS.md` fila "Verde (primer intento)" |
+| P4-1 | REVIEWER lee el diff de tests por `git diff --stat` + `grep -n "public .*Task\|\[Fact\|\[Theory"` de los nombres nuevos y solo abre por rango los que justifican un AC; el diff completo solo para producto. | `.claude/agents/reviewer.md` (lo aplica el operador) | ~500-1 000 tokens/llamada de REVIEWER (estimación) | S2 |
+| P4-2 | BUILDER define una sola vez el comando de resumen del rojo (`... \| grep -oE ... \| sort \| uniq -c` por clase) y lo reutiliza; evita las tres pasadas. Aplicable al paso 05. | Plan paso 05 / `builder.md` | ~2-3 llamadas de BUILDER por rojo | S1 |
 
-**Propuesta principal: P3-1.** No se registra nada en `MEMORIES.md` sin la aprobación del operador.
+**Propuesta principal: P4-1.**
 
 ### Brechas de datos
 
-- `token-consumer` sin datos por quinto ciclo seguido en este plan; `agent-result` es cota inferior (OPT-023). La descomposición de llamadas de BUILDER es una estimación a partir de las filas de `STATUS.md` y `git status`, no una medición.
-- El ahorro de OPT-034 no es medible en totales: el alcance del paso cambió a la vez (89 → 161 tests).
+- `token-consumer` sin datos por sexto ciclo seguido en este plan; `agent-result` es cota inferior. La descomposición de S1 y el ahorro de P4-1/P4-2 son estimaciones.
+- El efecto de OPT-037 no se separa del cambio de alcance entre 03a y 03b.
 
-### Efecto observado de memorias anteriores
+**Aprobación (operador, 2026-10-12, "Apruebo el P4-1 y 2, y confirmo el 400, luego lanza el paso 5"):** P4-1 registrada como OPT-040 y P4-2 como OPT-041, ambas `pendiente`; el ORCHESTRATOR las pasa a REVIEWER y BUILDER en el ciclo 5 y el operador las aplica a mano en `reviewer.md`/`builder.md`.
 
-| ID | Observación |
-| --- | --- |
-| OPT-034 | Aplicada. El ayudante `ServedOpenApiDocumentDump` (clase `[Explicit]`, `GAFFER_SWAGGER_DUMP_PATH`) existe y no aparece como omitido (413 antes y después). BUILDER lo usó en 4 ejecuciones (sin variable, 2 "antes", 1 "después") y REVIEWER en 3 (HEAD, actual, sin variable); sin sonda ni host duplicado, sha256 idéntico a la captura del ciclo 2 (`be49f0ab...a5a6bfe`) y a lo largo de HEAD y árbol actual. Evita las ~6-8 llamadas de la sonda del ciclo 2; el ahorro no se ve en los totales por el mayor alcance. Pendiente: documentarlo en `test-stack.md` (observación 6 de BUILDER). |
-| OPT-036 | Aplicada por PLANNER (03a Facility + dirección; 03b gradas y `/stands`; health check al paso 05). Efecto en coste: nulo, BUILDER +7,6 % (177 920 frente a 165 359) porque 03a superó los umbrales del propio OPT-036 (161 tests y 15 ficheros frente a ~50 y ~10). Efecto en riesgo: positivo, APPROVED en el primer ciclo, sin `NEEDS_CHANGES`. REVIEWER bajó a 70 446 (-28 %). El umbral del tamaño no se ha comprobado antes de dividir; ver P3-1. |
-| OPT-035 | Sin aplicación del operador, pero REVIEWER no usó `dotnet run` ni arranques descartados: AC3a.11 (`FacilityValidationInTheProductionPipelineShould`, `StartupTestServer`) cubre la divergencia de `AddMvcCore` en tests. 39 → 29 llamadas de REVIEWER; no se atribuye a OPT-035 al no estar aplicada. |
-| OPT-033 | Sin aplicar por el operador; REVIEWER repitió el worktree (S5). Sigue `pendiente`. |
-| OPT-032 | Rama (b) aplicada otra vez, ahora con el ayudante: sin desviación que justificar (`FacilitiesControllerContractShould` en verde). |
-| OPT-031 | Aplicada: sin llamada a `usage-slice`. |
-| OPT-007 | Mejor: REVIEWER leyó `STATUS.md` y `03a-*` en un solo `cat`; sin relecturas persistidas de decenas de KB. |
+## Ciclo 5 - Paso 05 (health check de base de datos) - APPROVED
+
+### Uso medido
+
+`usage-slice`: no ejecutado (OPT-031; los ciclos 1-4 ya devolvieron "sin datos"). Totales del ORCHESTRATOR como `medido:agent-result` (cota inferior, OPT-023); `usage/*.md` como `estimado`. Sin `token-consumer` no se separa entrada nueva de caché.
+
+| Rol | Tokens | Tool uses | Duración | Tokens/llamada | Autoinforme `usage/*.md` (`estimado`) |
+| --- | --- | --- | --- | --- | --- |
+| BUILDER | 97 593 (ciclo 4: 173 693; -43,8 %) | 37 (ciclo 4: 87; -57 %) | 488 s (ciclo 4: 742 s) | ~2 638 (ciclo 4: ~1 997) | ~95 000 + ~16 000, 30 llamadas (subestima en 7) |
+| REVIEWER | 64 496 (ciclo 4: 111 762; -42,3 %) | 23 (ciclo 4: 32; -28 %) | 267 s (ciclo 4: 282 s) | ~2 804 (ciclo 4: ~3 493; -19,7 %) | ~70 000 + ~10 000, 17 llamadas (subestima en 6) |
+
+### Spikes
+
+| # | Spike | Valor / origen | Causa probable |
+| --- | --- | --- | --- |
+| S1 | Ninguno al alza: es el ciclo más barato del plan para ambos roles | BUILDER 97 k / 37; REVIEWER 64 k / 23 | Paso menor (suite 637 a 665, +28 tests; 4 × 404 y 3 × CS0246 de rojo; verde al primer intento) y reglas OPT-037/038/039/041 ya aplicadas. |
+| S2 | Tokens/llamada de BUILDER sube a ~2 638 (+32 %) | 97 593 / 37 | Menos llamadas con más contexto acumulado por llamada (`STATUS.md` completo de 116 líneas antes de compactar, `05-*`, varios ficheros de arranque). El coste total baja porque el recuento de llamadas cae más que lo que sube el coste por llamada. |
+| S3 | Heredoc largo fallido en Git Bash (REVIEWER, también en ciclos 3-4 para BUILDER) | `usage/REVIEWER.md` ciclo 5 | Repetición del patrón; se resolvió con `Write` a scratchpad + `cat >>`. Coste: 1-2 llamadas. |
+| S4 | AC5.5 mide 5009-5015 ms con timeout de 5 s | `STATUS.md` observación 1; `usage/REVIEWER.md` | No es un coste de tokens: riesgo de prueba sensible al tiempo, aceptado por REVIEWER. Pendiente de decisión del operador. |
+
+### Efecto observado de OPT-040 y OPT-041
+
+| ID | Evidencia | Efecto |
+| --- | --- | --- |
+| OPT-040 | `REVIEW.md` ciclo 5: `git diff --stat` + `git status`, diff completo solo de producto, inventario de tests por `grep` de `[Test]`/`[TestCase`/`public .*Task`, rangos abiertos solo para AC5.2, AC5.4, AC5.5. REVIEWER 6 ficheros leídos y 17 llamadas (autoinforme) frente a 24 y 7. | Aplicada y eficaz. Tokens/llamada -19,7 % (3 493 a 2 804), alineado con las ~500-1 000 tokens/llamada esperadas (~700 observadas). El total (-42 %) incluye el efecto del alcance menor. Defecto del texto registrado: citaba `[Fact]`/`[Theory]` (xUnit); el proyecto usa NUnit y el ORCHESTRATOR lo adaptó a `\[Test\]\|\[TestCase`. Corregido en MEMORIES.md. |
+| OPT-041 | `STATUS.md` fila 5 "Resumen del rojo (OPT-041)": comando único para tests y para compilación, reutilizado en los dos rojos; `usage/BUILDER.md`: "comando único de OPT-041". | Aplicada y eficaz sobre su objetivo: una definición en lugar de tres pasadas (~2-3 llamadas ahorradas, estimación). No aislable del menor alcance. |
+
+### Propuestas
+
+Ninguna nueva. Las dos observaciones menores (heredocs largos en Git Bash, AC5.5 sensible al tiempo) no justifican una regla nueva: OPT-024 y el uso de `Write` ya cubren lo primero, y lo segundo es una decisión del operador.
+
+**Propuesta principal: ninguna nueva.** Pendiente de aplicación permanente por el operador: OPT-033, OPT-035, OPT-037 a OPT-041 en `reviewer.md`/`builder.md`/plantilla de plan, según su ámbito.
+
+### Brechas de datos
+
+- `token-consumer` sin datos por séptimo ciclo seguido en este plan; `agent-result` es cota inferior. Ahorros de OPT-040/041 estimados y confundidos con el cambio de alcance.
+
+## Cierre del plan: tendencia de los ciclos 1-5
+
+| Ciclo | Paso | BUILDER tokens / llamadas | REVIEWER tokens / llamadas | Suite (tests) |
+| --- | --- | --- | --- | --- |
+| 1 | 01 | n/d en este archivo (detalle en Git) | n/d | 322 a 324 |
+| 2 | 02 | 165 359 / 80 | 98 414 / 39 | 324 a 413 |
+| 3 | 03a | 177 920 / 86 | 70 446 / 29 | 413 a 574 |
+| 4 | 03b | 173 693 / 87 | 111 762 / 32 | 574 a 637 |
+| 5 | 05 | 97 593 / 37 | 64 496 / 23 | 637 a 665 |
+
+Tendencia: BUILDER estuvo plano en ~165-178 k y 80-87 llamadas durante los ciclos 2-4 (coste ~2 000 tokens/llamada constante, el recuento de llamadas manda) y cayó 44 % en el ciclo 5. REVIEWER oscila (98 k, 70 k, 112 k, 64 k) según el tamaño del diff de tests y del método de rojo; el ciclo 5 es su mínimo.
+
+| OPT | Ahorro real | Valoración |
+| --- | --- | --- |
+| OPT-034 (ayudante swagger) | Sin sonda ni host duplicado, sha256 estable en ciclos 3-5; ~6-8 llamadas evitadas | Real, no visible en totales |
+| OPT-038 (rojo cuantitativo) | Cero correcciones de REVIEWER en ciclos 4-5 (hubo una en el ciclo 3) | Real en calidad, coste ~2-3 llamadas |
+| OPT-040 (REVIEWER por `--stat` + `grep`) | -19,7 % tokens/llamada | Real, medida parcial |
+| OPT-041 (resumen de rojo único) | ~2-3 llamadas BUILDER por rojo | Real, estimada |
+| OPT-036 (dividir pasos) | Riesgo menor (APPROVED en primer ciclo en 3, 4 y 5); coste nulo en 03a | Real en riesgo, no en coste |
+| OPT-037 (pirámide de pruebas) | 161 a 63 tests; ahorro de BUILDER no aislable | Aplicada, ahorro no demostrado |
+| OPT-039 (grep de usos antes de cambiar firma) | No puesta a prueba | Sin evidencia |
+| OPT-033, OPT-035 | Sin aplicar por el operador | Pendiente |
+
+Conclusión: el ahorro más claro llega en el ciclo 5 por la combinación de un paso pequeño con OPT-037/038/040/041. La mayor palanca restante habría sido ajustar el tamaño del paso por llamadas esperadas (~85) en vez de por feature; el paso 05 lo confirma indirectamente. Sin datos de `token-consumer` no se puede separar caché de entrada nueva en ningún ciclo.

@@ -220,6 +220,26 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
         }
 
         [Test]
+        public async Task ReadAStoredStandThatBreaksTheCreationRulesWithoutValidatingIt()
+        {
+            var facility = new Facility(Guid.NewGuid(), "Legacy Stands Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 100,
+                new Address(Guid.NewGuid(), "Street", "1", "08001", "City", "Region", "Country"), []);
+            await _repository.Save(facility, CancellationToken.None);
+            var standId = Guid.NewGuid();
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, '', -5);", new { Id = standId });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);",
+                new { FacilityId = facility.Id, StandId = standId });
+
+            var stands = await _repository.GetStands(facility.Id, CancellationToken.None);
+            var stand = await _repository.GetStand(facility.Id, standId, CancellationToken.None);
+
+            stands.Should().ContainSingle().Which.Should().BeEquivalentTo(new Stand(standId, "", -5));
+            stand.Should().BeEquivalentTo(new Stand(standId, "", -5));
+        }
+
+        [Test]
         public async Task ReturnEmptyListWhenNoFacilityMatchesCriteria()
         {
             var facility = new Facility(

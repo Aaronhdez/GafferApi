@@ -21,6 +21,7 @@ public sealed class DomainValidationErrors
 
     public bool HasErrors => _errors.Count > 0;
 
+    /// <summary>Adds a message to the field; the same message is kept once even if several checks report it.</summary>
     public void Add(string field, string message)
     {
         if (!_errors.TryGetValue(field, out var messages))
@@ -29,7 +30,10 @@ public sealed class DomainValidationErrors
             _errors[field] = messages;
         }
 
-        messages.Add(message);
+        if (!messages.Contains(message))
+        {
+            messages.Add(message);
+        }
     }
 
     /// <summary>

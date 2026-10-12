@@ -169,6 +169,28 @@ Aprobación del operador (literal, transmitida por ORCHESTRATOR): "Aprueba las p
 | - | AC3a.11 + AC3b.11 | Nuevo (OPT-035): evidencia de producción en casos divergentes |
 | AC4.1-AC4.8 | AC5.1-AC5.8 | Mismo texto; AC5.6 usa el ayudante de AC3a.0 |
 
+## Optimizaciones aplicadas al plan (2026-10-12, tras el ciclo 3)
+
+Aprobación del operador (literal, transmitida por ORCHESTRATOR): "Apruebo P3-1 a 3 y luego lanza el ciclo 4". Detalle en `MEMORIES.md` (OPT-037 a OPT-039) y en `OPTIMIZATION.md`, ciclo 3.
+
+| ID | Propuesta | Aplicada por | Dónde | Efecto en el plan |
+| --- | --- | --- | --- | --- |
+| OPT-037 | P3-1 | PLANNER | `03b-*.md` y `05-*.md`, sección "Reparto por capa" y AC3b.1-AC3b.4, AC3b.7, AC3b.11 | Pirámide de pruebas: la matriz completa va en dominio/unitario; los handlers, un caso por regla; la aceptación con `TestFixture`, un representante por tipo de regla y operación; la capa de producción (`StartupTestServer`) conserva solo los casos divergentes de OPT-035. No se elimina ningún criterio. |
+| OPT-038 | P3-2 | PLANNER (regla del plan) | Sección siguiente | Aplicada como regla para los ciclos 4-5. La aplicación permanente en `.claude/agents/builder.md`/`work-guidelines.md` la hace el operador. |
+| OPT-039 | P3-3 | PLANNER (regla del plan) | Sección siguiente | Aplicada como regla para los ciclos 4-5. La aplicación permanente la hace el operador. |
+
+### Reglas del plan para los ciclos 4-5 (OPT-038, OPT-039)
+
+- **Rojo cuantitativo (OPT-038)**: BUILDER registra el rojo en `STATUS.md` como `n × estado` por clase de test, agrupando el resultado obtenido en cada test (p. ej. `18 × 500, 7 × 201, 7 × 200`), o `n × CSxxxx` si el rojo es de compilación. Nunca "todos" ni un resultado extrapolado de una muestra.
+- **Grep de usos antes de cambiar tipos compartidos (OPT-039)**: antes de cambiar la firma o la nulabilidad de un tipo compartido (comando, DTO, entidad de dominio, interfaz o clase de `Startups/`), BUILDER ejecuta `grep -rn "<Tipo o miembro>" Gaffer.Api Gaffer.Api.Tests --include=*.cs` y adapta todos los usos de producto y tests en el mismo paso. Anota en `STATUS.md` el comando y el número de usos.
+
+### Errata detectada por REVIEWER en el ciclo 3 (corregida en el texto)
+
+| Dónde | Antes | Ahora | Evidencia |
+| --- | --- | --- | --- |
+| AC3a.4, AC3a.10, AC3b.4, AC3b.10 | `PUT /facilities/{id}` correcto → 204 | → **200** (sin cambio de contrato) | `FacilitiesController.Update` devuelve `Task` (sin `NoContent`); los tests ya exigían 200 (`REVIEW.md` ciclo 3). `PUT .../stands/{standId}` sigue en **204** (TECHDEBT-004 Q9) y `DELETE .../stands/{standId}` en 204: no cambian. |
+| Alcance de tests de 03a y 03b | `Integration/SqlFacilityRepositoryShould.cs` | `Unit/Repositories/SqlFacilityRepositoryShould.cs` | Ubicación real del fichero (`Glob`). El paso 05 no lo cita. |
+
 ## Fuera de alcance (decisión del operador: para el final)
 
 - N+1 y paginación; código muerto en `Program.cs`; entorno por defecto `Development`; borrados redundantes con cascada/trigger; `mariadb:latest` en CI; `Features_Refactor/`; `CriteriaType.NONE`; ProblemDetails en camelCase.

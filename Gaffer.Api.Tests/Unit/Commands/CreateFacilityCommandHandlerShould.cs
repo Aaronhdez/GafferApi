@@ -139,8 +139,38 @@ public class CreateFacilityCommandHandlerShould
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<FacilityValidationException>()
-            .WithMessage("*Stands cannot exceed 4*");
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesCreate);
+        exception.Errors.Keys.Should().Equal("Stands");
+        await _repository.DidNotReceiveWithAnyArgs().Save(default!, default);
+    }
+
+    [Test]
+    public async Task RejectInvalidStandsNamingThemByTheirIndexAndNotSaveIt()
+    {
+        var command = new CreateFacilityCommand("Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 100,
+            new CreateFacilityAddressCommand("Main Avenue", "1", "28001", "Madrid", "Madrid", "Spain"),
+            [new CreateFacilityStandCommand("", 10), new CreateFacilityStandCommand("Valid", -1)]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesCreate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Stands[0].StandName", "Stands[1].StandCapacity");
+        await _repository.DidNotReceiveWithAnyArgs().Save(default!, default);
+    }
+
+    [Test]
+    public async Task ReportTheStandErrorsTogetherWithTheFacilityErrors()
+    {
+        var command = new CreateFacilityCommand("", true, new DateTime(2020, 1, 1), FacilityType.Arena, -1,
+            new CreateFacilityAddressCommand("Main Avenue", "1", "28001", "Madrid", "Madrid", "Spain"),
+            [new CreateFacilityStandCommand(new string('s', 101), 10)]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which.Errors.Keys
+            .Should().BeEquivalentTo("Name", "Capacity", "Stands[0].StandName");
     }
 
     [Test]

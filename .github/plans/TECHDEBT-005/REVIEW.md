@@ -174,3 +174,117 @@ Rojo reproducido en un worktree temporal `HEAD` (scratchpad, eliminado al termin
 ### Bloqueos
 
 Ninguno.
+
+## Ciclo 4 - Paso 03b (validación de dominio de gradas anidadas y del sub-recurso `/stands`)
+
+**Veredicto: APPROVED** (con una confirmación del operador recomendada en el checkpoint; ver decisión 1, no bloqueante)
+
+### Alcance revisado
+
+| Elemento | Resultado |
+| --- | --- |
+| `git status` | Del plan: `Domain/Facility.cs` (`Stand.Create`/`CheckFields`, `Facility.CheckRequestedStands`, límite como campo), `Domain/DomainValidationException.cs` (`Add` sin duplicados), handlers de create/update de facility y `FacilityStandCommandHandlers.cs`, `ValidationFailedException.cs` (clave `FacilitiesStands`), `Startups/ValidationStartup.cs` (2 entradas); tests `FacilityFeaturesShould.cs`, `FacilityStandsFeaturesShould.cs`, `Unit/Domain/StandShould.cs` (nuevo), `FacilityShould.cs`, 3 de handlers, converters, `SqlFacilityRepositoryShould.cs`. Plan: `00`/`03a`/`03b`/`05` (erratas y OPT-037-039 de PLANNER), `STATUS*.md`, `OPTIMIZATION.md`, `usage/BUILDER.md`. Ajenos (preservados, no revisados): `MEMORIES.md`, `HARNESS-001/*`. |
+| Fuera de alcance | Sin cambios en `TestFixture.cs`, `Startup.cs` (OPT-035), controladores, DTOs, `SqlFacilityRepository.cs`, `ExceptionToHttpResponseConverters.cs` (el converter de `ValidationFailedException` es genérico), migraciones, `nswag.json` ni cliente generado. |
+| DI `TestFixture.cs` | No requerida: ningún handler nuevo (`StandValidation` es un ayudante estático interno). |
+| Orden | Sub-recurso: `StandValidation.Create` antes del repositorio → 400 antes que 404 (Q21 a)). `PUT /facilities/{id}`: validación dentro del callback del lock → 404 antes que 400 y rollback. `DuplicatedStand` (lanzado por `MergeStands`) gana a los errores de grada acumulados (obs. 4 de BUILDER): sin cambio respecto a hoy. |
+| Rehidratación (Q16) | Constructor primario de `Stand` intacto; `Facility.Create` no revalida las gradas que recibe; solo se validan las enviadas (`CheckRequestedStands`). |
+
+### Evidencia por criterio (re-ejecutada por REVIEWER; `Quionis_DB` Up en `0.0.0.0:3306`)
+
+Rojo reproducido sobre `git archive HEAD` en el scratchpad (sin worktree ni cambios en el árbol de trabajo; eliminado al terminar), con los tests nuevos copiados: aceptación exit 1, 32/199 con error (mismo recuento que BUILDER).
+
+| AC | Evidencia REVIEWER | Estado |
+| --- | --- | --- |
+| AC3b.1 | Rojo HEAD 3/3 `RejectTheCreationOfAFacilityWithAnInvalidStandWithoutSavingIt` (espacios, 101, capacidad -1; un representante por regla, OPT-037). Verde: 400 `Error.Facilities.Create.Validation`, campo `Stands[1].*`, filas sin cambio. | Demostrado |
+| AC3b.2 | Rojo HEAD 3/3 `RejectTheUpdateOfAFacilityWithInvalidStandsAndChangeNothing` + los 2 `RejectAnUpdateLeavingMoreThanFourStands...` (clave de create). El caso `5 stands` ya era 400 en `TestFixture` (`[MaxLength(4)]`); su equivalente de producción sí estaba en rojo (AC3b.11). Verde: clave de update, `GET` idéntico; fusión (`DiscardSilently...`) y lock en verde en la suite. | Demostrado |
+| AC3b.3 | Rojo HEAD 6/6 `RejectAnInvalidStandWithoutChangingTheStands` (POST/PUT × 3) y 2/2 `RejectAnInvalidStandBeforeLookingForTheFacility`. Verde: 400 `Error.Facilities.Stands.Validation`, `GET .../stands` igual; facility inexistente → 400. | Demostrado |
+| AC3b.4 | `CreateAndUpdateAFacilityWithStandsAtTheLimits` (201/200) y `CreateAndReplaceAStandWithValuesAtTheLimits` (201/204) verdes en HEAD (caracterización) y ahora; `GET` devuelve lo enviado. | Demostrado |
+| AC3b.5 | Rojo HEAD: `ReportEveryInvalidField...` (sin `Stands[i].*`) y 4/4 `ReturnTheValidationFormatForStandBodiesThatCannotBeBound`. Verde: 7 campos con índice en POST y PUT, sin eco del valor; JSON mal formado y tipo incorrecto en `/stands` → formato Q4 con clave de gradas, sin `ZZZ_NOT_A_NUMBER`. | Demostrado |
+| AC3b.11 | `FacilityValidationInTheProductionPipelineShould` + `DivergentStandBodies` (6) y `FacilityStandValidationInTheProductionPipelineShould` (4) sobre `StartupTestServer`. Rojo HEAD 10/10 con error. Verde: 400 con clave y campo, sin escritura. Diferencias de mensaje por host en `STATUS.md` (obs. 1). Capa limitada a los casos divergentes (OPT-037). | Demostrado |
+| AC3b.6 | `RejectAStandNameLongerThanItsColumnWithAValidationError` (300 caracteres): rojo HEAD, verde 400 de gradas sin escritura. `LeaveNoRowsWhenTheStandInsertFails` y `LeaveEverythingUnchangedWhenAnOperationOfTheUpdateFails` sin cambios en el diff y verdes. | Demostrado |
+| AC3b.7 | Rojo unitario HEAD: build exit 1, 9 × CS0117 + 3 × CS7036 (coincide con BUILDER). Verde: `StandShould` con la matriz completa (vacío, espacios, 101, `null`, -1, `int.MinValue`; 1/100 caracteres, 0, `int.MaxValue`; varios campos sin eco; prefijo; rehidratación); handlers: create/update de facility (índice, `Stands`, sin `Save`/`Update`) y POST/PUT de `/stands` (`StandName`, `StandCapacity`, título y clave, sin `AddStand`/`UpdateStand`); converters con la clave de gradas. | Demostrado |
+| AC3b.10 | `KeepReadingKeepingAndDeletingAStoredStandThatBreaksTheRules` (GET 200, PUT válido 200 conservando la grada, DELETE 204) y `SqlFacilityRepositoryShould.ReadAStoredStandThatBreaksTheCreationRulesWithoutValidatingIt` verdes en HEAD y ahora; `KeepAStoredStandThatBreaksTheRulesWhenItIsNotSent` (unitario). | Demostrado |
+| AC3b.8 | Rama "comparación con ayudante" (diff en `ValidationStartup.cs`): volcado REVIEWER con `ServedOpenApiDocumentDump` exit 0, 21617 bytes, sha256 `be49f0ab...a5a6bfe` = captura "antes" de BUILDER y de los ciclos 2-3. `FacilitiesControllerContractShould` + `OpenApiContractShould` exit 0, 15/15. Cliente sin tocar. | Demostrado |
+| AC3b.9 | Build `--no-incremental -v q` exit 0, 0 Advertencia(s); suite exit 0, 637/637, 0 omitidos (574 → 637); `CancellationToken.None` = 0. Tests adaptados listados en `STATUS.md`. | Demostrado |
+
+Reparto por capa (OPT-037): cumple. Matriz completa solo en `StandShould`; handlers con un caso por regla y handler; aceptación con un representante por tipo y operación (+ `5 stands` en el PUT); producción solo con los casos divergentes. OPT-038: rojo por clase como `n × estado` en `STATUS.md`, verificado. OPT-039: grep de usos registrado; sin cambios de firma ni de nulabilidad de tipos compartidos.
+
+### Decisiones sobre los cambios de comportamiento declarados por BUILDER
+
+| # | Cambio | Decisión |
+| --- | --- | --- |
+| 1 | `PUT /facilities/{id}` con > 4 gradas **enviadas** sobre una facility con 4: antes 200 con descarte silencioso (producción), ahora 400 `Error.Facilities.Update.Validation` con `Errors.Stands` | **Autorizado por el plan; no bloqueante.** (a) AC3b.2 exige "5 gradas" → 400 con clave de update, sin condicionarlo a las gradas existentes; (b) AC3b.11 exige que producción rechace "5 gradas (`[MaxLength(4)]`) en `PUT` de facility" con 400, clave, campo y sin escritura, es decir, el comportamiento de `[MaxLength(4)]`, que no depende de las gradas guardadas; (c) en TECHDEBT-003 paso 02 el orden diseñado era "(1) validación de la petición (`[MaxLength(4)]`) ... (3) clasificación/descarte R-MAX": R-MAX solo se aplica a peticiones de ≤ 4 gradas, y el 200 silencioso con > 4 era un efecto de la divergencia OPT-035 (`AddMvcCore` no evalúa DataAnnotations), no del contrato. TECHDEBT-004 Q11 a) ("conserva su fusión") se respeta: `DiscardSilentlyEveryUnmatchedStandWhenTheFacilityAlreadyHasFourStands` (≤ 4 enviadas) sigue verde. **Recomendación para el checkpoint**: que ORCHESTRATOR informe al operador de que es un cambio visible en producción (un cliente que envíe 5+ gradas a una facility llena pasa de 200 a 400). DOCUMENTER debe reflejarlo en `doc/features/facility-update.md` (L17, L26) y en `doc/features/technical/facility-update.md` (L114), que hoy solo describen el descarte por grada. |
+| 2 | > 4 gradas anidadas: `Detail` "Stands cannot exceed 4" sin `Errors` → `Detail` genérico + `Errors.Stands` = "Stands cannot exceed 4." | Aceptado. Q4/Q18 a) y AC3b.11 piden clave y **campo**; el texto se conserva en `Errors.Stands` y la clave de create no cambia. "Se mantiene el `Detail` actual de máximo de gradas" del contrato de 03b se refiere a `MaxStandsExceeded` del sub-recurso, que no cambia (`FacilityMaxStandsExceededException` sin tocar). La guarda del constructor (`FacilityValidationException`) sigue existiendo y cubierta. |
+| 3 | `DomainValidationErrors.Add` no repite mensajes idénticos del mismo campo | Aceptado. Evita el doble "Stands cannot exceed 4." (enviadas y total fusionado). Ninguna regla de Player/Facility/Address emitía mensajes repetidos en un campo; suite verde. Cubierto por `ContainSingle` en los tests de update. |
+| 4 | 8 tests adaptados y un test HTTP nuevo de 300 caracteres | Correcto. Las adaptaciones endurecen las aserciones (de "400 o 422" o excepción por mensaje a 400 + clave exacta + campo + sin escritura); el paso de clave create → update es el de Q4 previsto en AC3b.2. El test de 300 caracteres es nuevo porque TECHDEBT-004 AC4.11 no dejó uno HTTP; cubre AC3b.6. |
+
+### Observaciones no bloqueantes
+
+| # | Observación |
+| --- | --- |
+| 1 | No hay test de aceptación HTTP del caso "facility con 4 gradas + 5 enviadas" (decisión 1); solo el unitario `RejectMoreThanFourSentStandsEvenWhenTheFacilityIsFullWithoutUpdating`. El comportamiento HTTP se deduce de ese test y de AC3b.11 (facility recién creada). Basta para el plan; conviene añadirlo si el operador confirma el cambio. |
+| 2 | Un elemento `null` dentro de `stands` (`"stands":[null]`) sigue dando `NullReferenceException` en el mapeo de `FacilitiesController` (L55, L85; deducido del código, no probado; preexistente, fuera de los AC de 03b). |
+| 3 | Los mensajes por host de AC3b.11 se deducen del código y no se asertan (igual que en 03a; riesgo conocido de OPT-035). |
+
+### Bloqueos
+
+Ninguno.
+
+## Ciclo 5 - Paso 05 (`/health/live` y `/health/ready`; se mantiene el fallback a Dummy)
+
+Veredicto: **APPROVED**
+
+### Alcance revisado
+
+| Elemento | Resultado |
+| --- | --- |
+| `git diff --stat` + `git status` (OPT-040) | Producto del paso: `Startup.cs`, `Startups/DatabaseStartup.cs`, `Shared/ConnectionProviders/SqlConnectionProvider.cs`, nuevo `Infrastructure/DatabaseHealthCheck.cs` (diff completo leído). Tests: nuevos `Acceptance/HealthCheckShould.cs`, `Unit/HealthChecks/DatabaseHealthCheckShould.cs`; modificados `DatabaseStartupShould.cs`, `SqlConnectionProviderShould.cs`, `TestFixture.cs`, `StartupTestServer.cs` (inventario por `grep` de `[Test]`/`[TestCase`/`public .*Task`; abiertos solo los rangos de AC5.2, AC5.4 y AC5.5). Resto del diff = ciclos 2-4 ya aprobados y cambios ajenos (MEMORIES.md, HARNESS-001, ficheros de plan), no revisados |
+| Sin paquete nuevo (Q11) | `Microsoft.AspNetCore.Diagnostics.HealthChecks` / `Microsoft.Extensions.Diagnostics.HealthChecks` del framework compartido; ningún `.csproj` en el diff |
+| Fuera de alcance | `ci.yml` sin tocar (Q15 a)); cliente generado no tocado ni verificado |
+| `TestFixture.cs` | Registra `DatabaseProviderSelection(Sql)` junto a su `SqlConnectionProvider`, igual que producción con BD alcanzable. Su `TestStartup` no llama a `AddHealthChecks`, así que allí el registro es inerte pero coherente; `TestServerDependenciesShould` en verde |
+
+### Evidencia por criterio (re-ejecutada por REVIEWER; `Quionis_DB` Up en `0.0.0.0:3306`)
+
+| AC | Evidencia | Resultado |
+| --- | --- | --- |
+| Rojo aceptación | Copia del árbol actual en scratchpad con los 3 ficheros de producto y los 3 de test del paso devueltos a `HEAD` (sus diffs solo contienen el paso 05) y sin `DatabaseHealthCheck.cs` ni `Unit/HealthChecks`; filtro `~HealthCheckShould` | exit 1; 4 × con error, todos con `404` en `/health/live` (ruta inexistente). Coincide con BUILDER |
+| Rojo unitario | Misma copia con los tests del paso restaurados; `dotnet build Gaffer.Api.Tests -v q` | exit 1; `DatabaseHealthCheckShould.cs` 3 × CS0246. Coincide con BUILDER |
+| Verde del paso | Filtro `HealthCheckShould`, `DatabaseHealthCheckShould`, `DatabaseStartupShould`, `SqlConnectionProviderShould`, `TestServerDependenciesShould`, `FacilitiesControllerContractShould`, `OpenApiContractShould` con `verbosity=normal` | exit 0; 73 correctas (58 del paso + 15 de contrato) |
+| AC5.1 | `ReportLiveAndReadyAsHealthyWhenTheDatabaseIsReachable` (`StartupTestServer`, pipeline de producción) | `GET /health/live: 200 Healthy`; `GET /health/ready: 200 Healthy` |
+| AC5.2 | `ReportReadinessAsUnhealthyWhenTheApiFellBackToTheDummyProvider...`: cadena inalcanzable, proveedor resuelto `DummyConnectionProvider` con `TestConnection()` = `true` afirmado en el propio test | `/health/live` 200 `Healthy`; `/health/ready` **503 `Unhealthy`** pese al `true` del Dummy |
+| AC5.3 | `ReportReadinessAsDegradedWhenTheDatabaseIsDisabled` y `...WhenThereIsNoConnectionString` | 2 × `/health/ready: 200 Degraded`; `/health/live` 200 (Q13 a)) |
+| AC5.4 | Matriz unitaria `ReportTheStatusOfTheChosenProvider`: 10 casos Dummy (5 resultados de sonda × 2 motivos; sonda nunca llamada) + 4 Sql; `ReportUnhealthyWhenTheFallbackDummyIsUsedEvenIfTheDatabaseAnswersAgain` | Fallback → `Unhealthy` con sonda correcta; configuración → `Degraded`; Sql correcta → `Healthy`; Sql fallida, con excepción o bloqueada → `Unhealthy`. Se decide por el motivo registrado, no por `TestConnection()` del proveedor, como exige el contrato |
+| AC5.5 seguridad | `ShouldNotExposeAnything` (sin `Exception`, `Data` vacío, descripción sin `db-host`/`gaffer-user`/`s3cr3t`/`Pwd`/`MySqlException`) en toda la matriz, incluido Sql con excepción sensible; aserción sobre el cuerpo HTTP en AC5.2 (claves de la cadena, `Exception`, `MySql`). El escritor por defecto solo emite el estado | Cumple |
+| AC5.5 tiempo y cancelación | `GiveUpAsUnhealthyWithinFiveSecondsWhenTheProbeDoesNotAnswer` (sonda que ignora el token, timeout por defecto) y `StopWithTheRequestWhenItsTokenIsCancelledDuringTheProbe` | `Unhealthy` tras **5015 ms** (BUILDER: 5009 ms) con el token de la sonda cancelado; cancelación de la petición → `OperationCanceledException` tras 100 ms (BUILDER: 102 ms). `SqlConnectionProviderShould` +2: token ya cancelado → OCE con la conexión cerrada; token vivo → `true` |
+| AC5.6 | Rama "comparación con el ayudante" (el diff toca `Startup.cs` y `DatabaseStartup.cs`): `GAFFER_SWAGGER_DUMP_PATH=... dotnet test --filter ~ServedOpenApiDocumentDump` | exit 0; 21617 bytes; sha256 `be49f0abd26c4c6fe3bd95a16691c6734012310127dd1521fddb98092a5a6bfe`, igual que antes (STATUS ciclo 5 y ciclos 3-4); `grep -c /health` = 0; contratos 15/15 dentro del filtro del paso |
+| AC5.7 | `DatabaseStartupShould` +4 (`Sql`, `DummyByFallback`, `DummyByConfiguration` × 2); `git diff -U0` sin líneas `-` en aserciones existentes | En verde; L75/L86/L110 sin cambios |
+| AC5.8 | `dotnet build gaffer-api.sln --no-incremental -v q`; `dotnet test gaffer-api.sln --no-build -v q`; `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs` | build exit 0, 0 Advertencia(s); suite exit 0, 665/665 (637 → 665, +28), 0 omitidos; 0 apariciones |
+
+### Decisiones sobre los puntos que dejó BUILDER
+
+| # | Punto | Decisión |
+| --- | --- | --- |
+| 1 | Timeout interno exactamente 5 s; medido 5009/5015 ms; el test admite < 5,5 s | **Cumple.** La tabla de contrato de 05 fija el umbral como "comprobación > 5 s → 503", es decir, el corte se produce a los 5 s; Q11 fija "5 s como máximo" para la comprobación, no para la latencia total de la petición. Los 9-15 ms son la planificación del temporizador y la continuación. No hace falta bajar el límite. Si el operador quiere una cota estricta de la respuesta HTTP, sería una decisión nueva (p. ej. 4,5 s internos) |
+| 2 | Ficheros fuera de la tabla de alcance | **Dentro del alcance razonable.** `Unit/HealthChecks/DatabaseHealthCheckShould.cs`: la tabla ya pide "`Unit/` (comprobación de BD)" sin fichero concreto. `SqlConnectionProvider.TestConnection(CancellationToken)`: aditiva y necesaria para que la sonda real respete el token (AC5.5); `IDatabaseConnectionProvider` y `TestConnection()` sin cambio de firma (OPT-039: 7 usos intactos); sus 2 tests en `SqlConnectionProviderShould`. `StartupTestServer.StartAsync(bool, string?)` + `Services`: infraestructura de test necesaria para AC5.2-AC5.3 con el pipeline de producción (OPT-022); `StartAsync(string)` delega y sus usos no cambian |
+
+### Comprobaciones adicionales
+
+| Comprobación | Resultado |
+| --- | --- |
+| Confirmación del operador sobre el ciclo 4 en `STATUS.md` | Presente en "Decisiones del operador sobre ciclos cerrados": literal "Apruebo el P4-1 y 2, y confirmo el 400, luego lanza el paso 5", con su alcance (PUT con > 4 gradas sobre una facility con 4 → 400) |
+| Q12 | El proveedor elegido no cambia (Dummy por fallback se mantiene); readiness lo marca `Unhealthy` sin sondear |
+| Q14 | Endpoints mapeados con `MapHealthChecks` fuera de `/api/v{version}`, sin metadatos de ApiExplorer; ausentes del swagger servido |
+
+### Observaciones no bloqueantes
+
+| # | Observación |
+| --- | --- |
+| 1 | `/health/ready` es anónimo y, con el motivo `Sql`, abre una conexión nueva por petición sin caché ni limitación de frecuencia (BUILDER obs. 3). Fuera del plan; candidato a deuda técnica si se expone públicamente |
+| 2 | Si una sonda ignorase el token, `WaitAsync` acota la espera pero la tarea sigue en segundo plano. La sonda real (`OpenAsync`/`ExecuteScalarAsync` con token) sí lo respeta, así que no hay fuga práctica |
+| 3 | Una excepción de la sonda se convierte en `Unhealthy` sin registrarse en el log; dificulta el diagnóstico aunque evita exponerla. Podría añadirse un `LogWarning` sin incluirla en el resultado |
+| 4 | `DatabaseStartup.cs` pierde el BOM de la línea 1 y gana salto de línea final; cosmético |
+| 5 | La celda Sql × "cancelada por el llamador" no está en la matriz `TestCaseSource`; la cubre `StopWithTheRequestWhenItsTokenIsCancelledDuringTheProbe` (propaga OCE, como hace el servicio de health checks del framework) |
+
+### Bloqueos
+
+Ninguno.

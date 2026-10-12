@@ -131,13 +131,70 @@ public class FacilityShould
     }
 
     [Test]
-    public void KeepRejectingMoreThanFourStandsOnCreation()
+    public void RejectMoreThanFourStandsOnCreationAsAFieldError()
     {
         var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
 
         var act = () => Create(new Values(), stands);
 
+        act.Should().ThrowExactly<DomainValidationException>().Which.Errors.Should().ContainKey("Stands")
+            .WhoseValue.Should().Equal("Stands cannot exceed 4.");
+    }
+
+    [Test]
+    public void ReportTheStandLimitTogetherWithTheFacilityErrors()
+    {
+        var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
+
+        var act = () => Create(new Values(Name: "", Capacity: -1), stands);
+
+        act.Should().ThrowExactly<DomainValidationException>().Which.Errors.Keys.Should().BeEquivalentTo("Name", "Capacity", "Stands");
+    }
+
+    [Test]
+    public void AcceptFourStandsAndNotRevalidateTheStandsItReceives()
+    {
+        var stands = Enumerable.Range(0, 3).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100))
+            .Append(new Stand(Guid.NewGuid(), "", -5)).ToList();
+
+        var facility = Create(new Values(), stands);
+
+        facility.Stands.Should().HaveCount(4);
+    }
+
+    [Test]
+    public void KeepTheConstructorGuardForMoreThanFourStands()
+    {
+        var stands = Enumerable.Range(0, 5).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 100)).ToList();
+
+        var act = () => new Facility(Guid.NewGuid(), "Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 1,
+            AddressOf(new Values()), stands);
+
         act.Should().ThrowExactly<FacilityValidationException>().WithMessage("*Stands cannot exceed 4*");
+    }
+
+    [Test]
+    public void CheckEveryRequestedStandNamingItByItsIndexAndTheirNumber()
+    {
+        var errors = new DomainValidationErrors();
+        (string?, int)[] requested = [("Valid", 1), ("", 1), ("Valid", 1), ("Valid", -1), ("Valid", 1)];
+
+        Facility.CheckRequestedStands(errors, requested);
+
+        var act = () => errors.ThrowIfAny();
+        act.Should().ThrowExactly<DomainValidationException>().Which.Errors.Keys
+            .Should().BeEquivalentTo("Stands", "Stands[1].StandName", "Stands[3].StandCapacity");
+    }
+
+    [Test]
+    public void AcceptUpToFourValidRequestedStands()
+    {
+        var errors = new DomainValidationErrors();
+
+        Facility.CheckRequestedStands(errors, [("A", 0), ("B", 1), ("C", 1), (new string('d', 100), 1)]);
+        Facility.CheckRequestedStands(errors, []);
+
+        errors.HasErrors.Should().BeFalse();
     }
 
     [Test]

@@ -33,6 +33,16 @@ Fuera: `.github/workflows/ci.yml` (Q15 a)); cliente generado.
 
 ## Criterios de aceptación
 
+### Reparto por capa (OPT-037, pirámide de pruebas)
+
+Ningún criterio se elimina; solo se fija cuántos casos exige cada capa.
+
+| Capa | Criterios | Casos exigidos |
+| --- | --- | --- |
+| Unitario (comprobación de BD) | AC5.4, AC5.5 | **Matriz completa**: motivo del proveedor (Sql, Dummy por configuración, Dummy por fallback) × resultado de la sonda (correcta, fallida, bloqueada > 5 s, cancelada), y la aserción de cuerpo sin datos sensibles. |
+| Integración (`DatabaseStartupShould`) | AC5.7 | Un caso por motivo registrado (3), además de las aserciones actuales. |
+| Aceptación (`StartupTestServer`, pipeline de producción, OPT-022) | AC5.1-AC5.3 | **Un representante por situación de la tabla de contrato** (BD disponible, fallback, `Enabled = false`, sin cadena); `/health/live` una vez por host. No se repite la matriz de la sonda (timeout, cancelación) por HTTP. |
+
 | ID | Criterio |
 | --- | --- |
 | AC5.1 | Aceptación, BD disponible (Docker local): `GET /health/live` → 200 `Healthy` y `GET /health/ready` → 200 `Healthy`. |
@@ -52,6 +62,7 @@ Fuera: `.github/workflows/ci.yml` (Q15 a)); cliente generado.
 
 ## Cómo demostrarlo
 
+- Rojo en `STATUS.md` como `n × estado` por clase de test (OPT-038) y `grep` de usos antes de cambiar firmas o nulabilidad de tipos compartidos, p. ej. `DatabaseStartup` o `IDatabaseConnectionProvider` (OPT-039): reglas del plan en `00`.
 - Filtro de los tests del paso en rojo y verde; tiempos observados de AC5.5 en `STATUS.md`.
 - AC5.6 según su procedimiento, con el ayudante de AC3a.0.
 - Suite completa y build `--no-incremental -v q`.

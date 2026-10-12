@@ -149,7 +149,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "Stands");
     }
 
     [Test]
@@ -316,7 +316,7 @@ public class FacilityFeaturesShould
 
         var response = await SendUpdateFacilityRequest(createdId, updateRequestBody);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
     }
 
     [Test]
@@ -423,7 +423,7 @@ public class FacilityFeaturesShould
             StandWithoutId("B", 1000),
             StandWithoutId("C", 1000)));
 
-        await AssertRejectedWithoutChanges(response, "Error.Facilities.Create.Validation", facilityId, before);
+        await AssertRejectedWithoutChanges(response, "Error.Facilities.Update.Validation", facilityId, before);
     }
 
     [Test]
@@ -436,7 +436,7 @@ public class FacilityFeaturesShould
             StandWithoutId("A", 1000),
             StandWithId(Guid.NewGuid(), "B", 1000)));
 
-        await AssertRejectedWithoutChanges(response, "Error.Facilities.Create.Validation", facilityId, before);
+        await AssertRejectedWithoutChanges(response, "Error.Facilities.Update.Validation", facilityId, before);
     }
 
     [Test]
@@ -743,6 +743,77 @@ public class FacilityFeaturesShould
         (await GetFacility(legacy.Id)).Name.Should().Be(FacilityValidationCases.ValidName);
     }
 
+    // --- Step 03b: domain validation of the nested stands (OPT-037: one representative per rule type) ---
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    public async Task RejectTheCreationOfAFacilityWithAnInvalidStandWithoutSavingIt(string field, Action<JObject> change)
+    {
+        var before = await FacilityValidationCases.CountStoredRows();
+
+        var response = await PostRawJson(FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, field);
+        (await FacilityValidationCases.CountStoredRows()).Should().Be(before);
+    }
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.TooManyStands))]
+    public async Task RejectTheUpdateOfAFacilityWithInvalidStandsAndChangeNothing(string field, Action<JObject> change)
+    {
+        var createdId = await CreateFacilityWithStands("North", "South");
+        var before = await GetFacility(createdId);
+
+        var response = await PutRawJson(createdId, FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, field);
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
+    [Test]
+    public async Task CreateAndUpdateAFacilityWithStandsAtTheLimits()
+    {
+        var longest = new string('s', 100);
+        var created = await PostRawJson(FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, (longest, 0), ("North", 1))));
+        var createdRaw = await created.Content.ReadAsStringAsync();
+        created.StatusCode.Should().Be(HttpStatusCode.Created, createdRaw);
+        var id = JsonConvert.DeserializeObject<Guid>(createdRaw);
+        (await GetFacility(id)).Stands.Select(stand => (stand.StandName, stand.StandCapacity))
+            .Should().BeEquivalentTo([(longest, 0), ("North", 1)]);
+
+        var updatedName = new string('u', 100);
+        var updated = await PutRawJson(id, FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, (updatedName, 0))));
+
+        updated.StatusCode.Should().Be(HttpStatusCode.OK, await updated.Content.ReadAsStringAsync());
+        (await GetFacility(id)).Stands.Select(stand => (stand.StandName, stand.StandCapacity))
+            .Should().BeEquivalentTo([(longest, 0), ("North", 1), (updatedName, 0)]);
+    }
+
+    [Test]
+    public async Task ReportEveryInvalidFieldOfTheFacilityItsAddressAndItsStandsWithoutEchoingTheRejectedValues()
+    {
+        var createdId = await CreateFacilityWithStands("North");
+        var before = await GetFacility(createdId);
+        var invalid = FacilityValidationCases.ValidBody(body =>
+        {
+            FacilityValidationCases.SeveralInvalidFields(body);
+            FacilityValidationCases.SetStands(body, (FacilityValidationCases.TooLongText, 10), ("Valid", -1));
+        });
+        string[] fields = [.. FacilityValidationCases.SeveralInvalidFieldNames, "Stands[0].StandName", "Stands[1].StandCapacity"];
+
+        var created = await PostRawJson(invalid);
+        var updated = await PutRawJson(createdId, invalid);
+
+        foreach (var (response, key) in new[] { (created, FacilityValidationCases.CreateValidationKey), (updated, FacilityValidationCases.UpdateValidationKey) })
+        {
+            var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, key, fields);
+            problem.ToString().Should().NotContain(FacilityValidationCases.TooLongText);
+        }
+
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
     private async Task<HttpResponseMessage> PostRawJson(string json)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreateFacility())
@@ -779,6 +850,7 @@ public class FacilityValidationInTheProductionPipelineShould
     public async Task OneTimeTearDown() => await _server.DisposeAsync();
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
     public async Task RejectTheCreationWithTheOperationKeyAndFieldWithoutSaving(string field, Action<JObject> change)
     {
         var before = await FacilityValidationCases.CountStoredRows();
@@ -790,6 +862,7 @@ public class FacilityValidationInTheProductionPipelineShould
     }
 
     [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
     public async Task RejectTheUpdateWithTheOperationKeyAndFieldWithoutChanges(string field, Action<JObject> change)
     {
         var created = await Send(HttpMethod.Post, FacilitiesPath, FacilityValidationCases.ValidBody());
@@ -902,6 +975,45 @@ public static class FacilityValidationCases
             yield return Case($"{errorField} null", errorField, body => body["address"]![field] = null);
         }
     }
+
+    /// <summary>Step 03b (OPT-037): one representative per stand rule; the invalid stand is the second one.</summary>
+    public static IEnumerable<TestCaseData> InvalidNestedStands()
+    {
+        TestCaseData Case(string name, string field, (string? Name, int Capacity) invalid) =>
+            new TestCaseData(field, (Action<JObject>)(body => SetStands(body, ("Valid", 100), invalid))).SetArgDisplayNames(name);
+
+        yield return Case("Stands[1].StandName whitespace", "Stands[1].StandName", ("   ", 100));
+        yield return Case("Stands[1].StandName 101 chars", "Stands[1].StandName", (TooLongText, 100));
+        yield return Case("Stands[1].StandCapacity -1", "Stands[1].StandCapacity", ("Valid", -1));
+    }
+
+    public static IEnumerable<TestCaseData> TooManyStands()
+    {
+        yield return new TestCaseData("Stands", (Action<JObject>)(body =>
+            SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)))).SetArgDisplayNames("5 stands");
+    }
+
+    /// <summary>
+    /// Step 03b (AC3b.11): stand cases where the <see cref="TestFixture"/> host rejects through model binding
+    /// ([MaxLength(4)], implicit required) and production reaches the domain (OPT-035).
+    /// </summary>
+    public static IEnumerable<TestCaseData> DivergentStandBodies()
+    {
+        TestCaseData Case(string name, string field, Action<JObject> change) =>
+            new TestCaseData(field, change).SetArgDisplayNames(name);
+
+        yield return Case("5 stands", "Stands", body => SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)));
+        yield return Case("Stands[0].StandName absent", "Stands[0].StandName",
+            body => body["stands"] = new JArray(new JObject { ["standCapacity"] = 10 }));
+        yield return Case("Stands[0].StandName null", "Stands[0].StandName", body => SetStands(body, (null, 10)));
+    }
+
+    public static void SetStands(JObject body, params (string? Name, int Capacity)[] stands) =>
+        body["stands"] = new JArray(stands.Select(stand => new JObject
+        {
+            ["standName"] = stand.Name,
+            ["standCapacity"] = stand.Capacity,
+        }));
 
     public static IEnumerable<(string Name, Action<JObject> Change)> Boundaries()
     {

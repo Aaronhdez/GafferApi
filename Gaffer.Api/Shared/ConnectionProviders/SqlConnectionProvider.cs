@@ -21,17 +21,24 @@ public class SqlConnectionProvider : IDatabaseConnectionProvider, IAsyncDisposab
     }
 
     /// <summary>Checks connectivity with a schema-independent query. Connectivity failures yield <c>false</c> instead of throwing.</summary>
-    public async Task<bool> TestConnection()
+    public Task<bool> TestConnection() => TestConnection(default);
+
+    /// <summary>
+    /// Same check bound to <paramref name="cancellationToken"/>: a cancelled token throws
+    /// <see cref="OperationCanceledException"/> (before touching the connection when already cancelled).
+    /// </summary>
+    public async Task<bool> TestConnection(CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var ownsConnection = _sqlConnection.State != ConnectionState.Open;
         try
         {
             if (ownsConnection)
             {
-                await _sqlConnection.OpenAsync();
+                await _sqlConnection.OpenAsync(cancellationToken);
             }
             await using var command = new MySqlCommand("SELECT 1;", _sqlConnection);
-            await command.ExecuteScalarAsync();
+            await command.ExecuteScalarAsync(cancellationToken);
             return true;
         }
         catch (Exception ex) when (ex is DbException or TimeoutException or SocketException)

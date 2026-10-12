@@ -141,8 +141,10 @@ public class UpdateFacilityCommandHandlerShould
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<FacilityValidationException>()
-            .WithMessage("*Stands cannot exceed 4*");
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Stands");
+        exception.Errors["Stands"].Should().ContainSingle("the sent and the resulting stands both exceed the limit, reported once");
         _updatedFacility.Should().BeNull();
     }
 
@@ -263,8 +265,56 @@ public class UpdateFacilityCommandHandlerShould
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<FacilityValidationException>().WithMessage("*Stands cannot exceed 4*");
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Stands");
         _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectMoreThanFourSentStandsEvenWhenTheFacilityIsFullWithoutUpdating()
+    {
+        var stands = Enumerable.Range(0, 4).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList();
+        GivenExisting(BuildExistingFacility(_facilityId, stands));
+        var command = BuildCommand(_facilityId, Enumerable.Range(0, 5).Select(i => new UpdateFacilityStandCommand($"New {i}", 10)).ToList());
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.Errors.Keys.Should().Equal("Stands");
+        exception.Errors["Stands"].Should().ContainSingle();
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectInvalidSentStandsNamingThemByTheirIndexInsideTheLockWithoutUpdating()
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        GivenExisting(BuildExistingFacility(_facilityId, [north]));
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("Valid", 10),
+            new UpdateFacilityStandCommand("   ", 10, north.Id),
+            new UpdateFacilityStandCommand("Valid", -1),
+        ]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Stands[1].StandName", "Stands[2].StandCapacity");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task KeepAStoredStandThatBreaksTheRulesWhenItIsNotSent()
+    {
+        var legacyStand = new Stand(Guid.NewGuid(), "", -5);
+        GivenExisting(BuildExistingFacility(_facilityId, [legacyStand]));
+
+        await _handler.Handle(BuildCommand(_facilityId, [new UpdateFacilityStandCommand("East", 10)]), CancellationToken.None);
+
+        UpdatedFacility().Stands.Select(Describe).Should().Contain(Describe(legacyStand));
+        UpdatedFacility().Stands.Should().HaveCount(2);
     }
 
     [Test]

@@ -48,10 +48,13 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
                 new Stand(Guid.NewGuid(), stand.StandName, stand.StandCapacity))
             .ToList();
 
-        Facility facility;
+        Facility? facility = null;
         try
         {
-            facility = Facility.Create(
+            // Every invalid field is reported at once: the sent stands (by index) and the facility and its address.
+            var errors = new DomainValidationErrors();
+            Facility.CheckRequestedStands(errors, command.Stands?.Select(stand => ((string?)stand.StandName, stand.StandCapacity)).ToList() ?? []);
+            errors.Collect(() => facility = Facility.Create(
                 Guid.NewGuid(),
                 command.Name,
                 command.Active,
@@ -59,14 +62,15 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
                 command.Type,
                 command.Capacity,
                 address,
-                stands);
+                stands));
+            errors.ThrowIfAny();
         }
         catch (DomainValidationException ex)
         {
             throw new ValidationFailedException(CannotCreateFacilityTitle, ValidationErrorKeys.FacilitiesCreate, ex.Errors);
         }
 
-        await facilityRepository.Save(facility, cancellationToken);
-        return new CreateFacilityResponse(facility.Id);
+        await facilityRepository.Save(facility!, cancellationToken);
+        return new CreateFacilityResponse(facility!.Id);
     }
 }

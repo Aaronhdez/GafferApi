@@ -26,6 +26,8 @@ public static class ValidationStartup
             [(typeof(PlayerController), nameof(PlayerController.Update))] = ("Cannot update player", ValidationErrorKeys.PlayersUpdate),
             [(typeof(FacilitiesController), nameof(FacilitiesController.Create))] = (CreateFacilityCommandHandler.CannotCreateFacilityTitle, ValidationErrorKeys.FacilitiesCreate),
             [(typeof(FacilitiesController), nameof(FacilitiesController.Update))] = (UpdateFacilityCommandHandler.CannotUpdateFacilityTitle, ValidationErrorKeys.FacilitiesUpdate),
+            [(typeof(FacilityStandsController), nameof(FacilityStandsController.Create))] = (AddFacilityStandCommandHandler.CannotCreateStandTitle, ValidationErrorKeys.FacilitiesStands),
+            [(typeof(FacilityStandsController), nameof(FacilityStandsController.Update))] = (ReplaceFacilityStandCommandHandler.CannotUpdateStandTitle, ValidationErrorKeys.FacilitiesStands),
         };
 
     public static IServiceCollection ConfigureValidationResponses(this IServiceCollection services)

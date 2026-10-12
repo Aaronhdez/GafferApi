@@ -62,9 +62,15 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
                 command.Address.Region,
                 command.Address.Country);
 
-        var stands = MergeStands(existing, command.Stands ?? []);
+        // Only the stands sent are checked (by their index in the request); stored stands kept by the merge are not
+        // revalidated (Q16). Every invalid field is reported at once.
+        var requested = command.Stands ?? [];
+        var errors = new DomainValidationErrors();
+        Facility.CheckRequestedStands(errors, requested.Select(stand => ((string?)stand.StandName, stand.StandCapacity)).ToList());
+        var stands = MergeStands(existing, requested);
 
-        return Facility.Create(
+        Facility? updated = null;
+        errors.Collect(() => updated = Facility.Create(
             existing.Id,
             command.Name,
             command.Active,
@@ -72,16 +78,16 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
             command.Type,
             command.Capacity,
             address,
-            stands);
+            stands));
+        errors.ThrowIfAny();
+        return updated!;
     }
-
-    private const int MaxStands = 4;
 
     /// <summary>
     /// Merges the requested stands into the existing ones: a stand sent with the <c>Id</c> of an existing stand
     /// updates it in place; existing stands not sent are kept unchanged; any other stand (no <c>Id</c>, unknown
     /// <c>Id</c> or the <c>Id</c> of another facility's stand) is created with a new generated <c>Id</c> when the
-    /// facility has fewer than <see cref="MaxStands"/> stands and silently discarded otherwise. The resulting total
+    /// facility has fewer than <see cref="Facility.MaxStands"/> stands and silently discarded otherwise. The resulting total
     /// is validated by <see cref="Facility"/>.
     /// </summary>
     /// <exception cref="CannotUpdateFacilityDuplicatedStandException">The <c>Id</c> of an existing stand is repeated.</exception>
@@ -100,7 +106,7 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         var kept = existing.Stands.Select(stand => updates.TryGetValue(stand.Id, out var update)
             ? new Stand(stand.Id, update.StandName, update.StandCapacity)
             : stand);
-        var created = existing.Stands.Count < MaxStands
+        var created = existing.Stands.Count < Facility.MaxStands
             ? requested.Where(stand => !IsMatched(stand)).Select(stand => new Stand(Guid.NewGuid(), stand.StandName, stand.StandCapacity))
             : [];
 

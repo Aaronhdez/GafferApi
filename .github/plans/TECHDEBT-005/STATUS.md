@@ -3,11 +3,11 @@
 | Campo | Valor |
 | --- | --- |
 | Estado | APPROVED |
-| Ciclo | 3 |
+| Ciclo | 5 |
 | Aprobación del plan | Aprobado por el operador el 2026-10-11 (transmitido por ORCHESTRATOR): "vamos con el 2" |
-| Pasos completados | 01 (APPROVED en ciclo 1); 02 (APPROVED en ciclo 2); 03a (APPROVED en ciclo 3) |
+| Pasos completados | 01 (APPROVED en ciclo 1); 02 (APPROVED en ciclo 2); 03a (APPROVED en ciclo 3); 03b (APPROVED en ciclo 4); 05 (APPROVED en ciclo 5) |
 | Pasos bloqueados | Ninguno (Q23 respondida 2026-10-12; Q18-Q21 con valor por defecto a)) |
-| Siguiente | OPTIMIZER ciclo 3; checkpoint humano (ciclo 4: paso 03b) |
+| Siguiente | OPTIMIZER ciclo 5; checkpoint humano (todos los pasos APPROVED: DOCUMENTER con aprobación explícita) |
 | Bloqueos | Ninguno |
 
 ## Índice resumido de ciclos APPROVED
@@ -16,6 +16,14 @@
 | --- | --- | --- | --- | --- |
 | 1 | 01 `Update(Facility)` fuera del contrato | APPROVED | AC1.1-AC1.6 (rojo 2/2 → verde; suite 322 → 324; swagger idéntico) | sin commit registrado (rama `TECHDEBT-005`); detalle en `STATUS-archive.md` |
 | 2 | 02 Validación de dominio de Player (Q17 `SecondLastName`) | APPROVED | AC2.0-AC2.9 (rojo aceptación 33/76 + rojo unitario por compilación → verde; suite 324 → 413; swagger vía `StartupTestServer` idéntico) | sin commit registrado (rama `TECHDEBT-005`, `e28e545` contiene el paso); detalle en `STATUS-archive.md` |
+| 3 | 03a Ayudante `swagger.json` (OPT-034) + validación de dominio de Facility y dirección | APPROVED | AC3a.0-AC3a.11 (rojo aceptación 106/132, producción 32/32: 18 × 500, 7 × 201, 7 × 200; rojo unitario 12 × CS0117, 8 × CS1501 → verde; suite 413 → 574; swagger sha256 `be49f0ab...` idéntico) | sin commit registrado (rama `TECHDEBT-005`, `7a22e5c` contiene el paso); detalle en `STATUS-archive.md` |
+| 4 | 03b Validación de dominio de gradas (anidadas + sub-recurso `/stands`) | APPROVED | AC3b.1-AC3b.11 (rojo aceptación 32/199, producción del sub-recurso 6/6: 1 × 201, 1 × 204, 2 × 500, 2 × 404; rojo unitario 9 × CS0117 + 3 × CS7036 → verde; suite 574 → 637; swagger sha256 `be49f0ab...` idéntico) | sin commit registrado (rama `TECHDEBT-005`); detalle en `STATUS-archive.md` |
+
+## Decisiones del operador sobre ciclos cerrados
+
+| Ciclo | Decisión (literal) | Alcance |
+| --- | --- | --- |
+| 4 | "Apruebo el P4-1 y 2, y confirmo el 400, luego lanza el paso 5" | "confirmo el 400": acepta el cambio visible señalado por REVIEWER en el ciclo 4 (`REVIEW.md`, decisión 1): `PUT /facilities/{id}` con más de 4 gradas enviadas sobre una facility que ya tiene 4 devuelve 400 (`Errors.Stands`) en vez del 200 con descarte silencioso de antes |
 
 ## Secuenciación
 
@@ -24,8 +32,8 @@
 | 1 | 01 `Update(Facility)` fuera del contrato | APPROVED |
 | 2 | 02 Validación de dominio de Player (incluye el cambio de `SecondLastName` de Q17 respecto a TECHDEBT-002) | APPROVED |
 | 3 | 03a Ayudante de volcado del `swagger.json` (OPT-034) + validación de dominio de Facility y dirección (create/update) | APPROVED |
-| 4 | 03b Validación de dominio de gradas (anidadas + sub-recurso `/stands`) | Pendiente |
-| 5 | 05 Health check (se mantiene el fallback a Dummy) | Pendiente |
+| 4 | 03b Validación de dominio de gradas (anidadas + sub-recurso `/stands`) | APPROVED |
+| 5 | 05 Health check (se mantiene el fallback a Dummy) | APPROVED |
 | 6 | Reserva | - |
 
 Re-secuenciación OPT-036 (PLANNER, 2026-10-12): antiguo paso 03 dividido en 03a/03b; antiguo 04 → 05. Correspondencia de criterios en `00-overview-and-open-questions.md`.
@@ -40,93 +48,74 @@ Re-secuenciación OPT-036 (PLANNER, 2026-10-12): antiguo paso 03 dividido en 03a
 | 2 | REVIEWER | 2026-10-11T18:19:16Z | 2026-10-11T18:27:30Z |
 | 3 | BUILDER | 2026-10-12T01:36:12Z | 2026-10-12T01:48:33Z |
 | 3 | REVIEWER | 2026-10-12T01:49:01Z | 2026-10-12T01:52:22Z |
+| 4 | BUILDER | 2026-10-12T02:01:23Z | 2026-10-12T02:13:13Z |
+| 4 | REVIEWER | 2026-10-12T02:13:56Z | 2026-10-12T02:17:58Z |
+| 5 | BUILDER | 2026-10-12T10:54:55Z | 2026-10-12T11:01:47Z |
+| 5 | REVIEWER | 2026-10-12T11:03:14Z | 2026-10-12T11:07:16Z |
 
 ## Comandos y resultados
 
 | Ciclo | Comando | Resultado |
 | --- | --- | --- |
-| 3 | `docker ps` (preflight) | `Quionis_DB` Up, `0.0.0.0:3306->3306` |
-| 3 | Línea base: `dotnet build gaffer-api.sln --no-incremental -v q` | exit 0; 0 Advertencia(s), 0 Errores |
-| 3 | Línea base: `dotnet test gaffer-api.sln --no-build -v q` | exit 0; 413/413, 0 omitidos |
-| 3 | AC3a.0, ayudante creado (antes de tocar producto): `dotnet test gaffer-api.sln --no-build -v q` | exit 0; 413/413, 0 omitidos (el `[Explicit]` no se ejecuta ni cuenta como omitido) |
-| 3 | AC3a.0 sin variable: `dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~ServedOpenApiDocumentDump"` | exit 1; mensaje `Set the environment variable GAFFER_SWAGGER_DUMP_PATH ... Nothing was written.`; ningún fichero escrito |
-| 3 | AC3a.0/AC3a.8 antes (x2): `GAFFER_SWAGGER_DUMP_PATH="$(cygpath -w <scratchpad>/c3/swagger-before{1,2}.json)" dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~ServedOpenApiDocumentDump"` | exit 0 ambas; 21617 bytes; sha256 `be49f0abd26c4c6fe3bd95a16691c6734012310127dd1521fddb98092a5a6bfe` en las dos; `cmp` exit 0 (igual que la captura del ciclo 2) |
-| 3 | Rojo aceptación: `dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~FacilityFeaturesShould\|FullyQualifiedName~FacilityValidationInTheProductionPipelineShould"` | exit 1; 106/132 con error: 34 `RejectTheCreationOfAnInvalidFacilityWithoutSavingIt(*)` (201, o 400 ASP.NET sin clave), 34 `RejectTheUpdateOfAFacilityWithAnInvalidBodyAndChangeNothing(*)`, 16 + 16 `FacilityValidationInTheProductionPipelineShould` (todos **500** `Unknown error` en producción), 4 `ReturnTheValidationFormatForBodiesThatCannotBeBound`, `ReportEveryInvalidField...`, `RejectCreatingAFacilityWithMissingAddress` (400 ASP.NET sin clave). Verdes antes (caracterización): límites AC3a.4 (create/update), 404 con cuerpo inválido, AC3a.10 |
-| 3 | Rojo unitario: `dotnet build Gaffer.Api.Tests -v q` | exit 1; CS0117 (`ValidationErrorKeys.FacilitiesCreate/FacilitiesUpdate`), CS1501 (`Facility.Create`, `Address.Create`) |
-| 3 | Verde (primer intento), filtro del paso (6 patrones `FullyQualifiedName~`: `FacilityFeaturesShould`, `FacilityValidationInTheProductionPipelineShould`, `FacilityShould`, `FacilityCommandHandlerShould`, `ExceptionToHttpResponseConvertersShould`, `SqlFacilityRepositoryShould`) | build: 2 CS8602 en `UpdateFacilityCommandHandlerShould` L76/L228 (`command.Address` ahora anulable) → `!`; test exit 1, 1/273: `CreateFacilityCommandHandlerShould.ThrowExceptionWhenAddressIsMissing` esperaba `NullReferenceException` (adaptado, ver tabla) |
-| 3 | Verde + refactor (`Player.CheckName` → `DomainValidationErrors.RequireText`): mismo filtro + `PlayerShould\|PlayerFeaturesShould` | exit 0; 367/367; build 0 Advertencia(s) |
-| 3 | AC3a.9: `dotnet build gaffer-api.sln --no-incremental -v q` | exit 0; 0 Advertencia(s), 0 Errores |
-| 3 | AC3a.9: `dotnet test gaffer-api.sln --no-build -v q` | exit 0; 574/574 (413 + 161), 0 omitidos |
-| 3 | AC3a.8 después: mismo comando del ayudante con `swagger-after.json` + `cmp swagger-before1.json swagger-after.json` | exit 0; 21617 bytes; sha256 `be49f0ab...a5a6bfe`; `cmp` exit 0 |
-| 3 | AC3a.9: `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs \| wc -l` | 0 |
-| 3 | REVIEWER: `docker ps`; build `--no-incremental -v q`; `dotnet test gaffer-api.sln --no-build -v q` | `Quionis_DB` Up 3306; build exit 0, 0 Advertencia(s); test exit 0, 574/574, 0 omitidos |
-| 3 | REVIEWER rojo (worktree `HEAD` temporal + tests nuevos de aceptación) | exit 1; 106/154 con error; producción (`StartupTestServer`) 32/32: 18 × 500, 7 × 201, 7 × 200 (corrige "todos 500" de la fila de rojo de BUILDER) |
-| 3 | REVIEWER rojo unitario (mismo worktree + tests unitarios) | build exit 1; 12 × CS0117, 8 × CS1501 |
-| 3 | REVIEWER AC3a.8/AC3a.0: ayudante en `HEAD` y en el árbol actual; sin variable | ambos exit 0, sha256 `be49f0ab...a5a6bfe`, `cmp` exit 0; sin variable exit 1 con el mensaje esperado. Worktree eliminado. Veredicto APPROVED (`REVIEW.md` ciclo 3) |
+| 5 | Compactación (OPT-026/OPT-029) | Ciclo 4 colapsado en el índice; sus comandos y su detalle movidos tal cual a `STATUS-archive.md` |
+| 5 | `docker ps` (preflight) | `Quionis_DB` Up, `0.0.0.0:3306->3306` |
+| 5 | Línea base: `dotnet build gaffer-api.sln --no-incremental -v q` | exit 0; 0 Advertencia(s) |
+| 5 | Línea base: `dotnet test gaffer-api.sln --no-build -v q` | exit 0; 637/637, 0 omitidos |
+| 5 | AC5.6 antes: `GAFFER_SWAGGER_DUMP_PATH="<scratchpad>/c5/swagger-before.json" dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~ServedOpenApiDocumentDump"` | exit 0; 21617 bytes; sha256 `be49f0abd26c4c6fe3bd95a16691c6734012310127dd1521fddb98092a5a6bfe`; `grep -c /health` 0 |
+| 5 | Resumen del rojo (OPT-041), definido una vez y reutilizado: `dotnet test Gaffer.Api.Tests --no-build --filter "$F" --logger "console;verbosity=normal" > red.txt; grep -oE "Con error [A-Za-z]+\|but found [A-Za-z]+\.[A-Za-z]+( \{value: [0-9]+\})?" red.txt \| sort \| uniq -c`; para compilación: `dotnet build Gaffer.Api.Tests -v q > red.txt; grep -oE "[A-Za-z]+\.cs\([0-9]+,[0-9]+\): error CS[0-9]+" red.txt \| sort -u` y `uniq -c` por fichero y código | - |
+| 5 | Rojo aceptación (solo tests; producto sin tocar): filtro `FullyQualifiedName~HealthCheckShould` | exit 1; `HealthCheckShould` 4/4 con error: 4 × 404 (ruta inexistente) |
+| 5 | Rojo unitario/integración: `dotnet build Gaffer.Api.Tests -v q` | exit 1; `DatabaseHealthCheckShould.cs` 3 × CS0246 (`IDatabaseProbe`, `DatabaseProviderReason` ×2). La fase de declaración detiene la compilación: los usos de `DatabaseProviderSelection` en `DatabaseStartupShould` y de `TestConnection(CancellationToken)` en `SqlConnectionProviderShould` no llegan a informarse |
+| 5 | OPT-039: `grep -rn "TestConnection(" Gaffer.Api Gaffer.Api.Tests --include=*.cs \| wc -l` y `grep -rn "StartupTestServer.StartAsync" Gaffer.Api.Tests --include=*.cs` | 7 usos / 7 usos. Sin cambio de firma: `IDatabaseConnectionProvider.TestConnection()` intacto (se añade una sobrecarga `TestConnection(CancellationToken)` solo en `SqlConnectionProvider`); `StartupTestServer.StartAsync(string)` intacto (delegado en la sobrecarga nueva `StartAsync(bool enabled, string? connectionString)`). Ningún uso adaptado |
+| 5 | Verde, filtro del paso: `...~HealthCheckShould\|...~DatabaseHealthCheckShould\|...~DatabaseStartupShould\|...~SqlConnectionProviderShould\|...~TestServerDependenciesShould` | exit 0; 58/58 al primer intento. AC5.5 tiempos: sonda bloqueada (timeout por defecto 5 s) → `Unhealthy` tras 5009 ms; cancelación de la petición a los 100 ms → `OperationCanceledException` tras 102 ms |
+| 5 | AC5.8: `dotnet build gaffer-api.sln --no-incremental -v q` | exit 0; 0 Advertencia(s) |
+| 5 | AC5.8: `dotnet test gaffer-api.sln --no-build -v q` | exit 0; 665/665 (637 + 28), 0 omitidos |
+| 5 | AC5.6 después: mismo comando del ayudante con `swagger-after.json` + `cmp swagger-before.json swagger-after.json` + `grep -c /health` | exit 0; 21617 bytes; sha256 `be49f0ab...a5a6bfe`; `cmp` exit 0; 0 rutas `/health` |
+| 5 | AC5.6: `dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~FacilitiesControllerContractShould\|FullyQualifiedName~OpenApiContractShould"` | exit 0; 15/15 |
+| 5 | AC5.8: `grep -rn "CancellationToken.None" Gaffer.Api --include=*.cs \| wc -l` | 0 |
+| 5 | REVIEWER: rojo en copia del árbol con los ficheros del paso en `HEAD` (scratchpad) | aceptación exit 1, 4 × 404; build de tests exit 1, 3 × CS0246 en `DatabaseHealthCheckShould.cs` |
+| 5 | REVIEWER: build `--no-incremental -v q` + suite completa | build exit 0, 0 Advertencia(s); suite exit 0, 665/665, 0 omitidos |
+| 5 | REVIEWER: filtro del paso + contratos (`verbosity=normal`) | exit 0; 73/73; sonda bloqueada → `Unhealthy` en 5015 ms; cancelación en 100 ms; `/health/ready` 200 Healthy / 503 Unhealthy (fallback) / 2 × 200 Degraded |
+| 5 | REVIEWER: ayudante `ServedOpenApiDocumentDump` + `grep -c /health` + `CancellationToken.None` | exit 0; 21617 bytes; sha256 `be49f0ab...a5a6bfe` igual; 0 `/health`; 0 `CancellationToken.None` |
+| 5 | REVIEWER: veredicto | APPROVED (`REVIEW.md` ciclo 5): timeout de 5 s exactos aceptado; los 4 ficheros fuera de la tabla, dentro del alcance razonable |
 
-## Ciclo 3 (BUILDER) - detalle (paso 03a)
-
-### AC3a.0 Ayudante permanente (OPT-034)
-
-| Campo | Valor |
-| --- | --- |
-| Fichero | `Gaffer.Api.Tests/Acceptance/ServedOpenApiDocumentDump.cs` (clase `[Explicit]`, test `WriteTheServedSwaggerJsonToTheConfiguredPath`) |
-| Variable | `GAFFER_SWAGGER_DUMP_PATH` (ruta Windows; desde Git Bash con `cygpath -w`) |
-| Comando | `GAFFER_SWAGGER_DUMP_PATH="$(cygpath -w <ruta>/swagger.json)" dotnet test Gaffer.Api.Tests --no-build --filter "FullyQualifiedName~ServedOpenApiDocumentDump"` |
-| Comportamiento | Arranca `StartupTestServer`, pide `/swagger/v1/swagger.json` y escribe los bytes tal cual. Sin variable: `Assert.Fail` con mensaje claro antes de arrancar el servidor; no escribe nada. |
-| Suite normal | 413 antes y después de añadirlo (no aparece como omitido). Determinista: dos ejecuciones, mismo sha256. |
-
-### Fechas de los casos (OPT-036)
-
-Hoy UTC al escribir los tests: 2026-10-12; "mañana" 2026-10-13. Los tests de aceptación calculan `DateTime.UtcNow.Date` (y +1 día) en ejecución; los unitarios fijan `todayUtc = 2026-10-12`. Límites fijos: 1800-01-01 (aceptado), 1799-12-31 (rechazado).
+## Ciclo 5 (BUILDER) - detalle (paso 05)
 
 ### Diseño
 
 | Pieza | Fichero | Detalle |
 | --- | --- | --- |
-| Regla de texto compartida (refactor) | `Domain/DomainValidationException.cs` | `DomainValidationErrors.RequireText(field, value, maxLength)`: null → `is required.`; vacío/espacios → `must not be empty or contain only whitespace.`; largo → `must be at most N characters long.` Mismos textos que `Player`, que ahora la usa en `CheckName`. |
-| `Address` | `Domain/Facility.cs` | `Address.Create(...)` valida; `CheckFields` (interno) añade `Address.Street/StreetNumber/PostalCode/City/Region/Country` (100/20/20/100/100/100). Constructor primario sin validar (rehidratación, Q16). |
-| `Facility` | `Domain/Facility.cs` | `Facility.Create(..., Address? address, stands, DateTime? todayUtc = null)`: `Name` 1-100; `BuildDate` (`default` → requerido; < 1800-01-01; > hoy UTC); `Type` definido; `Capacity` ≥ 0; `Address` requerida y sus campos; todo acumulado (Q18 a)). Después llama al constructor, que mantiene sus guardas (`Address is required`, `Stands cannot exceed 4` con `FacilityValidationException`, paso 03b). |
-| Handlers | `CreateFacilityCommandHandler.cs`, `UpdateFacilityCommandHandler.cs` | Usan `Facility.Create`; `DomainValidationException` → `ValidationFailedException("Cannot create facility" / "Cannot update facility", Error.Facilities.Create/Update.Validation)`. Update construye dentro del lock (404 antes que 400, Q21 a)); el error dentro del callback deshace la transacción. `Address` del comando pasa a anulable. |
-| Claves | `Shared/Exceptions/ValidationFailedException.cs` | `ValidationErrorKeys.FacilitiesCreate/FacilitiesUpdate`. El converter de `ValidationFailedException` (paso 02) no cambia. |
-| Model binding (Q19 a)) | `Startups/ValidationStartup.cs` | `FacilitiesController.Create/Update` registrados con su título y clave. |
-| Controlador (Q23) | `Controllers/FacilitiesController.cs` | Solo `request.Address is null ? null : new ...AddressCommand(...)` en `Create` y `Update`. Sin atributos, rutas ni DTO nuevos; `[Required]`/`[MaxLength(4)]` intactos (Q20 a)). |
-| DI | `Startup.cs`, `TestFixture.cs` | Sin cambios: no hay handlers nuevos y `ConfigureValidationResponses` ya estaba en ambos. Nada cambiado por la divergencia (OPT-035). |
+| Motivo del proveedor | `Startups/DatabaseStartup.cs` | `enum DatabaseProviderReason { Sql, DummyByConfiguration, DummyByFallback }` y `record DatabaseProviderSelection(Reason)`, singleton registrado en cada rama. El proveedor elegido no cambia. En la rama Sql se registra además `IDatabaseProbe` = `SqlDatabaseProbe(connectionString)`. |
+| Registro de la comprobación | `Startups/DatabaseStartup.cs` | `AddHealthChecks().Add(HealthCheckRegistration("database", factoría, tags: ["ready"]))`; la factoría resuelve la selección y la sonda opcional. Sin paquete nuevo (framework compartido de ASP.NET Core). |
+| Comprobación | `Infrastructure/DatabaseHealthCheck.cs` (nuevo) | `DummyByConfiguration` → `Degraded`; `DummyByFallback` → `Unhealthy` sin sondear (Q12); `Sql` → sonda con token enlazado al de la petición + `CancelAfter(5 s)` + `WaitAsync` (acota aunque la sonda ignore el token): `true` → `Healthy`; `false`, excepción o tiempo agotado → `Unhealthy`; token de la petición cancelado → `OperationCanceledException`. Resultados sin `Exception`, sin `Data` y con descripciones fijas. |
+| Sonda | `Infrastructure/DatabaseHealthCheck.cs` + `Shared/ConnectionProviders/SqlConnectionProvider.cs` | `SqlDatabaseProbe` crea un `SqlConnectionProvider` por comprobación y llama a la sobrecarga nueva `TestConnection(CancellationToken)` (`OpenAsync`/`ExecuteScalarAsync` con token; token ya cancelado → excepción sin tocar la conexión). `TestConnection()` delega con `default`; la interfaz no cambia. |
+| Rutas | `Startup.cs` | `MapHealthChecks("/health/live", Predicate = _ => false)` y `MapHealthChecks("/health/ready", Predicate = etiqueta "ready")`; escritor y códigos por defecto del framework (texto `Healthy`/`Degraded`/`Unhealthy`; 200/200/503). Registro MVC sin tocar (OPT-035). |
+| `TestFixture.cs` | `Gaffer.Api.Tests/TestFixture.cs` | Registra `DatabaseProviderSelection(Sql)` junto al `SqlConnectionProvider` que ya registra (mismo estado que producción con BD alcanzable). Su `TestStartup` no mapea `/health`: la aceptación usa `StartupTestServer`. `TestServerDependenciesShould` en verde sin cambios. |
+| `StartupTestServer` | `TestShared/StartupTestServer.cs` | Sobrecarga `StartAsync(bool enabled, string? connectionString)` y propiedad `Services`; `StartAsync(string)` delega (7 usos intactos). |
 
-### Tests adaptados
+### Tests nuevos por criterio (reparto OPT-037)
 
-| Test | Antes | Después |
+| AC | Capa | Tests |
 | --- | --- | --- |
-| `Acceptance/FacilityFeaturesShould.RejectCreatingAFacilityWithMissingAddress` (L118) | 400 o 422 | 400 + `Error.Facilities.Create.Validation` + campo `Address` |
-| `Unit/Commands/CreateFacilityCommandHandlerShould.ThrowExceptionWhenAddressIsMissing` | `NullReferenceException` (comando con `null!`) | `ValidationFailedException` `FacilitiesCreate`, `Errors` = `Address`, sin `Save` |
-| `Unit/Commands/UpdateFacilityCommandHandlerShould` L76, L228 | `command.Address.Street` | `command.Address!.Street` (solo nulabilidad; mismas aserciones) |
+| AC5.1 | Aceptación (`StartupTestServer`) | `HealthCheckShould.ReportLiveAndReadyAsHealthyWhenTheDatabaseIsReachable` |
+| AC5.2 + AC5.5 | Aceptación | `ReportReadinessAsUnhealthyWhenTheApiFellBackToTheDummyProviderWithoutExposingTheConnection` (proveedor resuelto `DummyConnectionProvider`, su `TestConnection()` = `true`, `/health/live` 200, `/health/ready` 503 `Unhealthy`; cuerpo sin `Server`/`Uid`/`Pwd`/`Database`/`Exception`/`MySql`) |
+| AC5.3 | Aceptación | `ReportReadinessAsDegradedWhenTheDatabaseIsDisabled`, `ReportReadinessAsDegradedWhenThereIsNoConnectionString` (live 200 `Healthy`, ready 200 `Degraded`) |
+| AC5.4 + AC5.5 | Unitario | `DatabaseHealthCheckShould.ReportTheStatusOfTheChosenProvider`: matriz motivo × sonda (correcta, fallida, excepción con datos sensibles, bloqueada, cancelada): 10 casos Dummy (sonda nunca llamada) + 4 Sql; sin `Exception`/`Data`/datos sensibles. Además: fallback con BD que responde → `Unhealthy`; Sql sin sonda → `Unhealthy`; cancelación de la petición durante la sonda → `OperationCanceledException` en 102 ms y token de la sonda cancelado; sonda bloqueada con el timeout por defecto (5 s) → `Unhealthy` en 5009 ms y token de la sonda cancelado |
+| AC5.7 | Integración | `DatabaseStartupShould` (+4: `Sql`, `DummyByFallback`, `DummyByConfiguration` × 2 configuraciones); las aserciones existentes (L75, L86, L110) sin cambios |
+| AC5.5 (sonda) | Integración (BD) | `SqlConnectionProviderShould` (+2: token ya cancelado → `OperationCanceledException` con la conexión cerrada; token vivo → `true`) |
 
-### Tests nuevos por criterio
+### AC5.6 (OPT-032 + OPT-034)
 
-| AC | Tests |
-| --- | --- |
-| AC3a.1 | `FacilityFeaturesShould.RejectTheCreationOfAnInvalidFacilityWithoutSavingIt` (34 casos: `Name` vacío/espacios/101/ausente; `BuildDate` 1799-12-31/mañana/ausente; `Type` 99; `Capacity` -1; `Address` ausente; cada campo de dirección vacío/espacios/máx+1/ausente); filas de `Facilities` y `Addresses` iguales |
-| AC3a.2 | `RejectTheUpdateOfAFacilityWithAnInvalidBodyAndChangeNothing` (los mismos 34, clave de update, `GET` con gradas idéntico); `ReturnNotFoundWhenUpdatingAnUnknownFacilityWithAnInvalidBody`; fusión (TECHDEBT-003) y lock (TECHDEBT-004) en verde en la suite |
-| AC3a.4 | `CreateAFacilityWhoseValuesAreAtTheLimits`, `UpdateAFacilityWithValuesAtTheLimits` (100/20 exactos, `Capacity` 0, 1800-01-01, hoy UTC) |
-| AC3a.5 | `ReportEveryInvalidFieldOfTheFacilityAndItsAddressWithoutEchoingTheRejectedValues` (POST y PUT; 5 campos), `ReturnTheValidationFormatForBodiesThatCannotBeBound` (JSON mal formado y `type` de texto desconocido, POST/PUT; sin eco) |
-| AC3a.11 | `FacilityValidationInTheProductionPipelineShould` (en `FacilityFeaturesShould.cs`, `StartupTestServer`): 16 casos × POST/PUT (`Address` ausente/null, `Name` ausente/null, cada campo de dirección ausente/null) → 400, clave y campo, sin escritura (filas / `GET` idéntico). Rojo: los 32 daban 500 |
-| AC3a.7 | `Unit/Domain/FacilityShould` (34 inválidos, límites, hoy, `todayUtc` por defecto, todos a la vez sin eco, > 4 gradas sigue en `FacilityValidationException`, rehidratación sin validar, `Address.Create`); `CreateFacilityCommandHandlerShould.RejectAnInvalidFacilityWithEveryInvalidFieldAndNotSaveIt`; `UpdateFacilityCommandHandlerShould.RejectAnInvalidBodyWithEveryInvalidFieldInsideTheLockWithoutUpdating`, `RejectAnAbsentAddressWithTheUpdateKeyWithoutUpdating`, `ReturnNotFoundBeforeValidatingAnInvalidBody`, `UpdateAStoredFacilityThatBreaksTheRulesWhenTheBodyIsValid`; `ExceptionToHttpResponseConvertersShould` (+2 casos de facility, `NameTheFacilityValidationKeysByOperation`) |
-| AC3a.10 | `FacilityFeaturesShould.KeepReadingAndUpdatingAStoredFacilityThatBreaksTheRules` (INSERT SQL: `Name` 150, `Capacity` -5, `BuildDate` 1700-01-01, `PostalCode` 30, `Street` vacío; `GET` por id, `GET` lista y `PUT` válido); `SqlFacilityRepositoryShould.ReadAStoredFacilityThatBreaksTheCreationRulesWithoutValidatingIt`. Verdes antes y después |
-
-### AC3a.8 (OPT-032 + OPT-034)
-
-Rama aplicada: **comparación con el ayudante**, porque el diff toca `FacilitiesController.cs` y `Startups/ValidationStartup.cs`. Antes y después: 21617 bytes, sha256 `be49f0abd26c4c6fe3bd95a16691c6734012310127dd1521fddb98092a5a6bfe`, `cmp` exit 0. Sin acción de Q10. `FacilitiesControllerContractShould` sin cambios y en verde. Cliente generado sin tocar.
+Rama aplicada: **comparación con el ayudante**, porque el diff toca `Startup.cs` y `Startups/DatabaseStartup.cs`. Antes y después: 21617 bytes, sha256 `be49f0ab...a5a6bfe`, `cmp` exit 0, 0 apariciones de `/health`. Contratos 15/15. Cliente generado sin tocar; sin build Release.
 
 ### Observaciones
 
 | # | Observación |
 | --- | --- |
-| 1 | AC3a.11, mensaje por host: en producción los casos divergentes llegan al dominio (`Address is required.`, `Name is required.`, `Address.Street is required.`; `... must not be empty ...` si el campo falta y el DTO pone `""`). En el host de `TestFixture` el model binding los rechaza antes (`[Required]` / required implícito) con `The value is not valid.` (factoría de `ValidationStartup`). Clave y campo coinciden (lo comprueban los tests); el mensaje difiere (deducido del código, no aserto). |
-| 2 | "Manteniendo el Detail actual de dirección ausente": `FacilityValidationException("Address is required")` sigue en el constructor (solo alcanzable fuera de `Create`). En `POST`/`PUT` la dirección ausente sale como `ValidationFailedException` (Q4): `Detail` = `One or more fields are not valid.` y `Errors.Address` = `Address is required.`. Antes ese caso no llegaba a un `Detail` propio (producción 500; tests 400 de ASP.NET). A confirmar por REVIEWER. |
-| 3 | El `PUT` correcto devuelve **200** (contrato actual, `UpdateAFacilityFieldsAndAddressKeepingItsFourStands`), no 204 como dicen AC3a.4/AC3a.10; los tests exigen 200. |
-| 4 | Gradas (anidadas y `/stands`) sin cambios (03b). Con campos inválidos y > 4 gradas a la vez solo se informa de los campos (el límite se comprueba después, en el constructor). |
-| 5 | El plan cita `Integration/SqlFacilityRepositoryShould.cs`; el fichero real es `Unit/Repositories/SqlFacilityRepositoryShould.cs` (usa la BD de Docker). |
-| 6 | Sin sondas temporales; el ayudante es permanente. Documentarlo en `test-stack.md` queda para DOCUMENTER/operador (fuera de la matriz de BUILDER). |
+| 1 | AC5.5 "≤ 5 s": el timeout es exactamente 5 s; la medida con sonda bloqueada fue 5009 ms (5 s + 9 ms de planificación) y el test admite < 5,5 s. Si REVIEWER interpreta "≤ 5 s" como cota estricta del total, habría que bajar el timeout interno; decisión no tomada por BUILDER. |
+| 2 | Ficheros fuera de la tabla "Alcance de ficheros" de 05, necesarios para el diseño: `Shared/ConnectionProviders/SqlConnectionProvider.cs` (sobrecarga con token para respetar la cancelación; la interfaz no cambia), `Unit/ConnectionProviders/SqlConnectionProviderShould.cs` (sus tests), `TestShared/StartupTestServer.cs` (hosts deshabilitado/sin cadena/inalcanzable para AC5.2-AC5.3) y `Unit/HealthChecks/DatabaseHealthCheckShould.cs` (el plan pide `Unit/` sin fichero concreto). |
+| 3 | Con el motivo `Sql`, `/health/ready` abre una conexión nueva por petición (sin caché); el endpoint es anónimo. No se añadió limitación de frecuencia (fuera del plan). |
+| 4 | Una excepción de la sonda se resuelve como `Unhealthy` sin registrar la excepción (el resultado no la lleva para no exponerla). |
+| 5 | Refactor: la comprobación está separada del registro desde el verde (fichero propio; `AddDatabaseHealthCheck` privado en `DatabaseStartup`); no hubo cambios adicionales tras el verde. Cambios ajenos (MEMORIES.md, HARNESS-001, ficheros de plan) sin tocar. |
 
 ## Documentación cambiada
 
