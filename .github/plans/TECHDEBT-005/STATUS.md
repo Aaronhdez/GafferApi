@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
+| Estado | DONE |
 | Ciclo | 5 |
 | Aprobación del plan | Aprobado por el operador el 2026-10-11 (transmitido por ORCHESTRATOR): "vamos con el 2" |
 | Pasos completados | 01 (APPROVED en ciclo 1); 02 (APPROVED en ciclo 2); 03a (APPROVED en ciclo 3); 03b (APPROVED en ciclo 4); 05 (APPROVED en ciclo 5) |
 | Pasos bloqueados | Ninguno (Q23 respondida 2026-10-12; Q18-Q21 con valor por defecto a)) |
-| Siguiente | OPTIMIZER ciclo 5; checkpoint humano (todos los pasos APPROVED: DOCUMENTER con aprobación explícita) |
+| Siguiente | Ninguno: plan cerrado (DOCUMENTER, 2026-10-12; aprobación del operador: "aplica la veriosnes permanentes y lanza el documenter") |
 | Bloqueos | Ninguno |
 
 ## Índice resumido de ciclos APPROVED
@@ -119,4 +119,23 @@ Rama aplicada: **comparación con el ayudante**, porque el diff toca `Startup.cs
 
 ## Documentación cambiada
 
-Ninguna todavía.
+DOCUMENTER, 2026-10-12. Base: código aprobado, `STATUS.md`/`STATUS-archive.md` y `REVIEW.md`. Sin paquetes nuevos (no cambia ninguna referencia de paquete).
+
+| Tipo | Documento | Contenido |
+| --- | --- | --- |
+| Creado | `doc/features/input-validation.md` | Funcional: reglas por campo, formato 400 (`ErrorTranslationKey` por operación, `Errors` por campo), errores de model binding, rehidratación sin validar (Q16), orden 404/400, límites |
+| Creado | `doc/features/technical/input-validation.md` | Técnico: `DomainValidationErrors`, `ValidationFailedException`, `ValidationStartup`, `Create`/`Set*`, handlers, diagrama, tabla, pruebas |
+| Creado | `doc/features/health-checks.md` | Funcional: `/health/live`, `/health/ready`, estados, códigos, 5 s, límites |
+| Creado | `doc/features/technical/health-checks.md` | Técnico: `DatabaseProviderSelection`, `DatabaseHealthCheck`, `IDatabaseProbe`, `SqlConnectionProvider.TestConnection(CancellationToken)`, rutas, diagrama |
+| Directa | `doc/features/player-update.md` | Q17: `secondLastName` ausente/null no cambia, `""` → 400; ya no se puede borrar; validación de lo enviado |
+| Directa | `doc/features/technical/player-update.md` | Q17: resumen, diagrama, tabla, ejemplos, tests |
+| Directa | `doc/features/facility-update.md` | Más de 4 gradas enviadas → 400 (confirmado: "confirmo el 400"); clave `Error.Facilities.Update.Validation`; validación; 404 antes que 400 |
+| Directa | `doc/features/technical/facility-update.md` | Resumen, diagrama, tabla, dependencias, ejemplo del 400; `Update(Facility)` ya no forma parte del contrato (paso 01) |
+| Directa | `doc/features/facility-stands.md` | 400 de validación de `/stands` y sustitución de la limitación "sin validar" |
+| Directa | `doc/features/technical/facility-stands.md` | `StandValidation`/`Stand.Create`, clave `Error.Facilities.Stands.Validation`, ejemplo |
+| Indirecta | `doc/features/error-handling.md`, `doc/features/technical/error-handling.md` | Entrada del convertidor `ValidationFailedException`; 14 → 18 entradas de `PlayerConverters` |
+| Indirecta | `doc/features/technical/api-client-versioning.md` | Nota histórica de `secondLastName`; validación y health sin cambio de OpenAPI (sin regenerar el cliente) |
+| Indirecta | `doc/features/database-connection-reliability.md`, `doc/features/technical/database-connection-lifecycle.md` | Readiness visible sobre el fallback; `DatabaseProviderSelection`, sonda y sobrecarga `TestConnection(CancellationToken)` |
+| Indirecta (pila) | `.github/doc/common/test-stack.md` | Ayudante `ServedOpenApiDocumentDump` (`[Explicit]`, `GAFFER_SWAGGER_DUMP_PATH`) y sobrecarga de `StartupTestServer` |
+
+Fuera de la matriz de DOCUMENTER (acción del operador): `.github/doc/features/facility-crud.md` (L39 y L73) aún describe `Update(Facility)` en `IFacilityRepository`, retirado del contrato en el paso 01.
