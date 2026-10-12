@@ -2,12 +2,12 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
+| Estado | DONE |
 | Ciclo | 3 |
 | Aprobación del plan | Aprobado por el operador ("Apruebo el plan, espera a que cree la rama"); rama `TECHDEBT-006` creada por el operador |
 | Pasos completados | 01 APPROVED (ciclo 1, REVIEWER); 02 APPROVED (ciclo 2, REVIEWER); 03 APPROVED (ciclo 3, REVIEWER) |
 | Pasos bloqueados | Ninguno. Q8, Q10, Q14 y Q17 respondidas por el operador (2026-10-12); ninguna pregunta abierta bloquea un ciclo. El push tras el ciclo 2 requiere la acción del operador de Q14 (`00`, "Acciones del operador") |
-| Siguiente | OPTIMIZER (ciclo 3) y checkpoint humano: decidir DOCUMENTER. En el checkpoint, mencionar los renombrados `CriteriaList`/`TablesToDelete` (REVIEW.md, ciclo 3, punto 1). Run real del paso nuevo del CI: acción del operador tras el push |
+| Siguiente | Acciones pendientes del operador (ver "Documentación modificada al cierre") |
 | Bloqueos | Ninguno |
 
 ## Índice resumido de ciclos APPROVED
@@ -186,6 +186,33 @@ Lo aplicado por `dotnet format` (no manual): K&R, whitespace, LF, newline final,
 
 Para AC3.12 (REVIEWER): copiar `.editorconfig` y aplicar los renombrados de las dos tablas anteriores; el resto lo produce el comando de aplicar (dos pasadas).
 
-## Documentación modificada al cierre
+## Documentación modificada al cierre (DOCUMENTER, 2026-10-12)
 
-Pendiente (DOCUMENTER). Notas del ciclo 1 para después de APPROVED: Q4 a) solo documentación en `doc/features/technical/hosting-environment.md`; log `Warning` del health check (Q5 a)); `null` en `stands` → 400 (Q9 a)); borrado de facility apoyado en FK en cascada + trigger.
+Base: código aprobado, `STATUS.md`, `STATUS-archive.md` y `REVIEW.md` (ciclos 1-3). Sin documentos creados: todo se hizo actualizando los existentes. Sin paquetes nuevos (`dotnet format` viene con el SDK).
+
+| Tipo | Documento | Cambio |
+| --- | --- | --- |
+| Directa | `doc/features/technical/hosting-environment.md` | Q4 a): el entorno por defecto es `Development` (aviso al operador, sin código); `ConfigurationBuilderExtensions`/`SetConfigurationProviders` eliminados; test `ReadTheAppSettingsFilesFromTheContentRoot` |
+| Directa | `doc/features/health-checks.md`, `doc/features/technical/health-checks.md` | Log `Warning` del health check (con/sin excepción), constructor con `timeout` y `logger` inyectables, matriz de tests, `DefaultTimeout` sin esperar |
+| Directa | `doc/features/technical/facility-stands.md`, `doc/features/facility-stands.md` | `Delete` de facility = una transacción + `DELETE FROM Facilities` apoyado en FK en cascada (M0002) y trigger (M0003) |
+| Directa | `doc/features/technical/player-search-and-persistence.md` | Fuera `CriteriaType.NONE` y `Features_Refactor/` (sustituida por `SearchPlayersEndpointShould`); `CriteriaList`; ejemplos 400/404 en RFC 7807 |
+| Directa | `doc/features/error-handling.md`, `doc/features/technical/error-handling.md` | Nuevo formato RFC 7807 (`Serialize`, camelCase, `errorTranslationKey`/`errors` en la raíz, sin `extensions`), ejemplos de 400/404/500 |
+| Directa | `doc/features/input-validation.md`, `doc/features/technical/input-validation.md` | Formato de respuesta, claves de `errors` en camelCase por segmento (`stands[1].standName`), mensajes en PascalCase (observación del REVIEWER), `null` en `stands` → 400 con `stands[i]`, firma de `CheckRequestedStands` |
+| Directa | `doc/features/technical/api-client-versioning.md` | Cambio incompatible del formato de error (MAJOR; 3.0.0 planeado, Q14); no publicado, acciones pendientes del operador |
+| Directa | `doc/features/technical/ci-github-actions.md` | Paso `dotnet format --verify-no-changes`, sección "Code style (.editorconfig)" (Q15, Q16, Q18, Q19, camelCase sin `_`), límites |
+| Indirecta | `doc/features/player-search.md`, `player-update.md`, `facility-update.md`, `api-contract-and-access.md` | Nombres de miembros del cuerpo de error (`errorTranslationKey`, `errors`) en vez de `Extensions.*`; 404 desnudo con `type`/`title`/`detail` en `null` |
+| Indirecta | `doc/features/technical/facility-update.md`, `player-update.md` | Mismos nombres en el cuerpo de error |
+| Indirecta | `.github/doc/common/dev-stack.md`, `.github/doc/common/test-stack.md` | `dotnet format` como paso de CI (herramienta del SDK), `.editorconfig`, formato de error RFC 7807, entorno `Development` por defecto |
+
+Revisado sin cambios: `doc/features/database-connection-reliability.md`, `technical/database-connection-lifecycle.md` (cubren `DatabaseStartup`, no el health check), `technical/api-contract-and-access.md`, `database-configuration*.md`. `.github/doc/features/facility-crud.md` (fuera del alcance de DOCUMENTER) sigue describiendo el borrado con `DELETE Stands/Address` en el diagrama; pendiente de revisión por el operador.
+
+Acciones pendientes del operador:
+
+| # | Acción |
+| --- | --- |
+| 1 | `GlobalPackageVersion` e `infoVersion` de `Gaffer.Api/nswag.json` a 3.0.0 (Q14, MAJOR por el formato de error) |
+| 2 | Regenerar y versionar `Gaffer.Api.Client` y publicarlo (el OpenAPI no cambia, solo la versión) |
+| 3 | Commit del reformateo del paso 03 por separado (opcional: `.git-blame-ignore-revs`) |
+| 4 | Push y primer run real del CI con el paso `dotnet format` (AC3.11 solo demostrado por el diff) |
+| 5 | Verificar `quionis-bff-api` (no verificable en este equipo) frente al nuevo formato de error |
+| 6 | Revisar `.github/doc/features/facility-crud.md` (borrado de facility) |

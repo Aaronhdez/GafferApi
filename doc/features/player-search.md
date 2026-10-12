@@ -22,9 +22,9 @@ This document covers how clients search for players and how the API reports erro
 ### Behaviour
 
 - **Allowed filter fields**: only `Id`, `FirstName`, `LastName` are accepted, matched case-insensitively. Any other filter field name (including an empty/blank one) is rejected before any SQL is executed.
-- **Rejected filter field**: the API responds `400 Bad Request` with a `ProblemDetails` body (`Title`, `Detail`, and an `Extensions.ErrorTranslationKey` of `Error.Search.FilterNotPermitted`). No query runs against the database for that request.
+- **Rejected filter field**: the API responds `400 Bad Request` with a `ProblemDetails` body (`title`, `detail`, and an `errorTranslationKey` member of `Error.Search.FilterNotPermitted`, in camelCase at the root of the body). No query runs against the database for that request.
 - **Values with special characters** (e.g. an apostrophe) are matched safely; they no longer need any special handling by the caller.
-- **Unknown player** (`GET /players/{id}` for an id with no match): the API responds a bare `404 Not Found` — only the `Status` (and the request `Instance` path) are set; there is no `Title`, `Detail`, or `ErrorTranslationKey`. Callers should treat any 404 from this endpoint as "not found" without parsing a body for details.
+- **Unknown player** (`GET /players/{id}` for an id with no match): the API responds a bare `404 Not Found` — only `status` (and the request `instance` path) are set; `title`, `detail` and `type` are `null` and there is no `errorTranslationKey`. Callers should treat any 404 from this endpoint as "not found" without parsing a body for details.
 
 ### Limitations
 

@@ -2,7 +2,9 @@
 
 ## Overview
 
-Validation lives in the domain (no DataAnnotations were added to the DTOs). `Player.Create`, `Facility.Create`, `Address.Create`, `Stand.Create` and the validating `Player.Set*` methods collect every rule violation in a `DomainValidationErrors` and throw one `DomainValidationException` (field → messages). The command handlers catch it and rethrow `ValidationFailedException(title, key, errors)`, which `ExceptionToHttpResponseConverters.BuildValidationProblemDetails` turns into the `400` `ProblemDetails` (`Extensions.ErrorTranslationKey`, `Extensions.Errors`) through `ExceptionHandlingMiddleware`. Errors raised by model binding never reach the domain: `ValidationStartup.ConfigureValidationResponses` wraps `ApiBehaviorOptions.InvalidModelStateResponseFactory` so that the six operations in its `Operations` map answer the same format with generic messages; every other action keeps the default factory.
+Validation lives in the domain (no DataAnnotations were added to the DTOs). `Player.Create`, `Facility.Create`, `Address.Create`, `Stand.Create` and the validating `Player.Set*` methods collect every rule violation in a `DomainValidationErrors` and throw one `DomainValidationException` (field → messages). The command handlers catch it and rethrow `ValidationFailedException(title, key, errors)`, which `ExceptionToHttpResponseConverters.BuildValidationProblemDetails` turns into the `400` `ProblemDetails` (`errorTranslationKey`, `errors`) through `ExceptionHandlingMiddleware`. Errors raised by model binding never reach the domain: `ValidationStartup.ConfigureValidationResponses` wraps `ApiBehaviorOptions.InvalidModelStateResponseFactory` so that the six operations in its `Operations` map answer the same format with generic messages; every other action keeps the default factory.
+
+Wire format (TECHDEBT-006): `ExceptionToHttpResponseConverters.Serialize` writes the `400` as an RFC 7807 body with `errorTranslationKey` and `errors` at the root (no `extensions`), `errors` keys in camelCase per segment (`stands[1].standName`) and messages unchanged (they keep the PascalCase field name). A `null` element in `stands` is reported as `Stands[i]` with `Stands[i] is required.` (create and update, instead of the former `500`); it also counts toward the 4-stand cap. `CreateFacilityCommand.Stands` and `UpdateFacilityCommand.Stands` are `IReadOnlyList<T?>?`, and the handlers filter the `null`s with `OfType<T>()` before building domain objects.
 
 The primary constructors of `Player`, `Address`, `Stand` and `Facility` are used to rehydrate stored rows (Dapper in `SqlPlayerRepository`, `new` in `SqlFacilityRepository`) and do **not** validate, so old data still reads (Q16). `Facility`'s constructor keeps only its structural guards (address present, at most 4 stands, `FacilityValidationException`).
 
@@ -45,7 +47,7 @@ sequenceDiagram
 | `Player` | `Create` | `static Player Create(Guid, string?, string?, string?, Gender, DateTime, DateTime? todayUtc = null)` | Checks names (100), optional second last name (if non-null: same rule), birth date (>= 1900-01-01, not future, `AddYears(16) <= today`) and defined `Gender`. |
 | `Player` | `SetFirstName`, `SetLastName`, `SetSecondLastName`, `SetBirthDate(DateTime, DateTime?)`, `SetGender(Gender)` | `void Set*(...)` | Each validates its own field before assigning. `SetSecondLastName` rejects `""`/whitespace. |
 | `Facility` | `Create` | `static Facility Create(Guid, string?, bool, DateTime, FacilityType, int, Address?, List<Stand>?, DateTime? todayUtc = null)` | Name (100), `BuildDate` (>= 1800-01-01, not future), defined `Type`, `Capacity >= 0`, address present and valid (`Address.*`), at most 4 stands (`Stands`). Does not check the fields of the stands it receives. |
-| `Facility` | `CheckRequestedStands` | `static void CheckRequestedStands(DomainValidationErrors, IReadOnlyList<(string? StandName, int StandCapacity)>)` | Count (> 4 → `Stands`: `Stands cannot exceed 4.`) and each stand named by index (`Stands[i].StandName`). |
+| `Facility` | `CheckRequestedStands` | `static void CheckRequestedStands(DomainValidationErrors, IReadOnlyList<(string? StandName, int StandCapacity)?>)` | Count (> 4 → `Stands`: `Stands cannot exceed 4.`) and each stand named by index (`Stands[i].StandName`). |
 | `Address` | `Create`, `CheckFields` | `static Address Create(Guid, string?, ...)` | Street/City/Region/Country 100, StreetNumber/PostalCode 20; fields named `Address.<Field>`. |
 | `Stand` | `Create`, `CheckFields` | `static Stand Create(Guid, string?, int)`, `static void CheckFields(DomainValidationErrors, string fieldPrefix, string?, int)` | `StandName` 1-100, `StandCapacity >= 0`. |
 | `CreatePlayerCommandHandler` / `UpdatePlayerCommandHandler` | `Handle` | — | Create calls `Player.Create`. Update reads the player (404 first), then applies every sent field through `Collect(Set*)` and throws once; `null` fields are skipped (including `SecondLastName`). |
@@ -72,7 +74,7 @@ Content-Type: application/json
   "stands": [ { "standName": "North", "standCapacity": 100 }, { "standName": " ", "standCapacity": 10 } ] }
 ```
 
-`400`, `Error.Facilities.Create.Validation`, `Errors` with `Name`, `Capacity` and `Stands[1].StandName`.
+`400`, `Error.Facilities.Create.Validation`, `errors` with `name`, `capacity` and `stands[1].standName`.
 
 ```http
 PUT /api/v1/players/75d5... HTTP/1.1

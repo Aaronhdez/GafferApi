@@ -18,7 +18,7 @@ The create and update operations for players, facilities (with their address and
 
 ### Operations covered
 
-| Operation | Translation key (`Extensions.ErrorTranslationKey`) | `Title` |
+| Operation | Translation key (`errorTranslationKey`) | `title` |
 |---|---|---|
 | `POST /players` | `Error.Players.Create.Validation` | Cannot create player |
 | `PUT /players/{id}` | `Error.Players.Update.Validation` | Cannot update player |
@@ -28,25 +28,31 @@ The create and update operations for players, facilities (with their address and
 
 ### Response format
 
-- `Status` `400`, `Detail` = `One or more fields are not valid.`
-- `Extensions.ErrorTranslationKey`: the key of the table above.
-- `Extensions.Errors`: an object whose property names are the invalid fields (named as in the request, PascalCase: `FirstName`, `Address.Street`, `Stands[1].StandName`) and whose values are lists of messages.
+- RFC 7807 body (TECHDEBT-006): `type`, `title`, `status`, `detail` and `instance` in camelCase, with `errorTranslationKey` and `errors` at the root. There is no `extensions` object.
+- `status` `400`, `detail` = `One or more fields are not valid.`
+- `errorTranslationKey`: the key of the table above.
+- `errors`: an object whose property names are the invalid fields in camelCase per path segment (`firstName`, `address.street`, `stands[1].standName`) and whose values are lists of messages.
+- The messages keep naming the field in PascalCase (`LastName must be at most 100 characters long.`, `Stands[1].StandName must not be empty ...`), so the key and the text differ in capitalisation; that is intended (messages are unchanged).
 - The messages never repeat the value that was received.
 
 ```json
 {
-  "Status": 400,
-  "Title": "Cannot create player",
-  "Detail": "One or more fields are not valid.",
-  "Extensions": {
-    "ErrorTranslationKey": "Error.Players.Create.Validation",
-    "Errors": {
-      "LastName": ["LastName must be at most 100 characters long."],
-      "BirthDate": ["BirthDate must not be in the future."]
-    }
+  "type": "",
+  "title": "Cannot create player",
+  "status": 400,
+  "detail": "One or more fields are not valid.",
+  "instance": "/api/v1.0/players",
+  "errorTranslationKey": "Error.Players.Create.Validation",
+  "errors": {
+    "lastName": ["LastName must be at most 100 characters long."],
+    "birthDate": ["BirthDate must not be in the future."]
   }
 }
 ```
+
+Before TECHDEBT-006 the same body was PascalCase with `Extensions.ErrorTranslationKey` and `Extensions.Errors`; consumers of the old shape must be updated ([`error-handling.md`](./error-handling.md)).
+
+A `null` element in the `stands` list of a facility create or update (for example `"stands": [null]`) answers this same `400`, with the error under `errors["stands[0]"]` (index of the element) and the message `Stands[0] is required.`, together with the other field errors; previously it answered `500`. A `null` element counts toward the maximum of 4.
 
 ### Rules per field
 
@@ -69,12 +75,12 @@ Text fields are never trimmed: a value made only of spaces is rejected, and the 
 | Stand | `StandName` | Required, not empty or only whitespace, at most 100 characters |
 | Stand | `StandCapacity` | 0 or more |
 
-- In a facility request the stand fields are named by their position in the list: `Stands[0].StandName`, `Stands[1].StandCapacity`. In the stands sub-resource they are `StandName` and `StandCapacity`.
+- In a facility request the stand fields are named by their position in the list: `Stands[0].StandName`, `Stands[1].StandCapacity`. In the stands sub-resource they are `StandName` and `StandCapacity`. The rule tables name fields as in the request model (PascalCase); in the response `errors` the keys are camelCase (`stands[0].standName`).
 - `PUT /players/{id}` checks only the fields that were sent (see [`player-update.md`](./player-update.md)). `PUT /facilities/{id}` replaces the facility fields and address, so those are always checked; only the stands that are sent are checked (see [`facility-update.md`](./facility-update.md)).
 
 ### Malformed requests
 
-For the six operations above, errors raised before the rules are evaluated (malformed JSON, an unknown enum text, a value of the wrong type) answer the same `400` format and key. Each affected field is listed with the generic message `The value is not valid.` (the received value is never echoed); a body that cannot be read at all is reported under `Body`. Any other endpoint keeps the default ASP.NET `400`.
+For the six operations above, errors raised before the rules are evaluated (malformed JSON, an unknown enum text, a value of the wrong type) answer the same `400` format and key. Each affected field is listed with the generic message `The value is not valid.` (the received value is never echoed); a body that cannot be read at all is reported under `body`. Any other endpoint keeps the default ASP.NET `400`.
 
 ### Limitations
 

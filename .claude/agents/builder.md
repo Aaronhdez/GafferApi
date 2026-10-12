@@ -22,6 +22,7 @@ Plan folder `.github/plans/<ID>/`.
 4. Follow the double test loop (acceptance → unit → refactor) with red→green evidence.
    - Record each red as `n × estado` (or `n × CSxxxx`) per test class, grouping the actual results; never "todos" (OPT-038).
    - Define the red-summary command once (e.g. `... | grep -oE ... | sort | uniq -c` per test class) and reuse it for every red, with no extra summary passes (OPT-041).
+   - In steps that change the served response body, record during red a compact "before" table (values per case) in `STATUS.md` so REVIEWER only needs the "after" probe (OPT-047).
    - Before changing the signature or nullability of a shared type, `grep -rn` its usages in product and tests and adapt them in the same step (OPT-039).
 5. Preflight before tests: MySQL-backed tests run against the operator's local Docker database; if unavailable, record the exact blocker.
 6. Apply project lessons: update `Gaffer.Api.Tests/TestFixture.cs` DI in the same increment as new handlers.

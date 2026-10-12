@@ -104,7 +104,7 @@ Content-Type: application/json
 { "firstName": "", "secondLastName": "" }
 ```
 
-Returns `400`, `Extensions.ErrorTranslationKey = "Error.Players.Update.Validation"`, `Extensions.Errors` with `FirstName` and `SecondLastName`; nothing is saved. Sending only `{ "firstName": "X" }` leaves `secondLastName` as it was.
+Returns `400`, `errorTranslationKey = "Error.Players.Update.Validation"`, `errors` with `firstName` and `secondLastName`; nothing is saved. Sending only `{ "firstName": "X" }` leaves `secondLastName` as it was.
 
 ### Unknown id
 
@@ -115,7 +115,7 @@ Content-Type: application/json
 { "firstName": "X" }
 ```
 
-Returns `404 Not Found` with `Extensions.ErrorTranslationKey = "Error.Players.Update.PlayerNotFound"`.
+Returns `404 Not Found` with `errorTranslationKey = "Error.Players.Update.PlayerNotFound"`.
 
 ## How to test
 

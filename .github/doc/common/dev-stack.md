@@ -25,7 +25,9 @@
 - MySQL/MariaDB connectivity: `Gaffer.Api` and `Gaffer.Api.Migrations` use `MySqlConnector` 2.6.1 (`Gaffer.Api` migrated from `MySql.Data` in TECHDEBT-004 step 03). The local and CI database is MariaDB (`mariadb:latest`).
   - Driver note: `MySqlConnection.DisposeAsync()` closes the connection and raises `Component.Disposed`, so `SqlConnectionProvider` disposes asynchronously. Cancelling a token aborts a query already running on the server (`KILL QUERY`). The earlier `MySql.Data` 26.7.0 limitations (OPT-016, TECHDEBT-003 AC3.4) no longer apply.
 - Build: `TreatWarningsAsErrors` is `true` for `Gaffer.Api` (TECHDEBT-004 step 01); `.gitattributes` fixes `*.cs` to LF.
-- Hosting environment: read from `ASPNETCORE_ENVIRONMENT`, `Development` when absent or blank (step 02).
+- Hosting environment: read from `ASPNETCORE_ENVIRONMENT`, `Development` when absent or blank (step 02). A deployment that forgets the variable runs as `Development` (documented in [`hosting-environment.md`](../../../doc/features/technical/hosting-environment.md)).
+- Code style: root `.editorconfig` (C# style and naming, decided per block by the operator) enforced in CI with `dotnet format gaffer-api.sln --verify-no-changes --severity info --exclude Gaffer.Api.Client/`. `dotnet format` ships with the .NET SDK, so no package was added; private fields are camelCase without `_`. See [`ci-github-actions.md`](../../../doc/features/technical/ci-github-actions.md).
+- Error bodies are RFC 7807 camelCase, serialized by `ExceptionToHttpResponseConverters.Serialize` with Newtonsoft.Json (`errorTranslationKey` and `errors` at the root; see [`error-handling.md`](../../../doc/features/technical/error-handling.md)). No new package.
 - CI: `.github/workflows/ci.yml` (step 05); see [`doc/features/technical/ci-github-actions.md`](../../../doc/features/technical/ci-github-actions.md).
 - Database migrations with FluentMigrator
 

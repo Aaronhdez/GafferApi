@@ -24,7 +24,7 @@ This document covers three related changes to how `Gaffer.Api` responds to and a
 ### Limitations
 
 - This is a breaking change for any client written against the previous contract: code that only accepts `200 OK` on create, or that parses `gender`/`type` as an integer, must be updated. The generated `Gaffer.Api.Client` must be regenerated to reflect it.
-- Error response bodies (`ProblemDetails`, e.g. `Status`, `Title`, `Extensions`) are unchanged; only success responses from create endpoints and enum-bearing fields changed.
+- Error response bodies (`ProblemDetails`) were unchanged by this contract change (only success responses from create endpoints and enum-bearing fields changed). A later plan (TECHDEBT-006) changed the error body to RFC 7807 camelCase; see [`error-handling.md`](./error-handling.md).
 - There is no authentication or authorization on any endpoint. This is a deliberate, temporary state; a real authentication scheme needs its own plan and is not covered here.
 
 ## See also

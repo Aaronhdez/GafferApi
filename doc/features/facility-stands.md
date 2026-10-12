@@ -34,7 +34,7 @@ Each facility has up to 4 stands. Besides the merge done by `PUT /api/v{version}
 
 ### Limitations
 
-- `Delete(facilityId)` of a whole facility does not take that lock (backlog item R4-1 of TECHDEBT-004), so deleting a facility while its stands are being changed is not serialized.
+- `Delete(facilityId)` of a whole facility does not take that lock (backlog item R4-1 of TECHDEBT-004), so deleting a facility while its stands are being changed is not serialized. Deleting a facility removes its address, stands and links in the database itself (cascading foreign keys and the `TRG_Facilities_BeforeDelete` trigger): the repository now runs one transaction with a single `DELETE FROM Facilities` (TECHDEBT-006), with no orphan rows and no effect on other facilities.
 - `standName` must be 1-100 characters and not only whitespace, and `standCapacity` must be 0 or more; both operations (create and replace) check the body before looking up the facility, so an invalid body answers `400` even for an unknown facility. Errors list the fields `StandName` and `StandCapacity`; format and rules: [`input-validation.md`](./input-validation.md). Stands already stored are not revalidated. There is no uniqueness of names and no rule on the sum of capacities.
 - Replace and delete return an empty body.
 

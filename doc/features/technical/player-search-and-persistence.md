@@ -59,13 +59,14 @@ sequenceDiagram
 | `SqlPlayerRepository` | `BuildFilters` (private) | `(string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria)` | tuple | For each filter: rejects an unmapped/blank field name with `PlayerSearchFilterNotPermittedException` (no query is executed); otherwise appends `` `Column` = @pN `` using the canonical column name and binds the raw value as a Dapper parameter (never interpolated). |
 | `PlayerSearchFilterNotPermittedException` | constructor | `PlayerSearchFilterNotPermittedException(string fieldName)` | — | Message `"FilterNotPermitted"`; carries the rejected `FieldName`. Declared in `Gaffer.Api/Shared/Repositories/IPlayerRepository.cs`. |
 | `PlayerNotFoundException` | constructor | `PlayerNotFoundException(string message, Guid id)` | — | Thrown by `PlayerController.GetBy` when the search returns no row for the requested id. |
-| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerSearchFilterNotPermittedException]` | `Func<Exception, ProblemDetails>` | `ProblemDetails` | Maps to `400 Bad Request`, `Title = "Error.Search.FilterNotPermitted"`, `Detail = "FilterNotPermitted"`, `Extensions["ErrorTranslationKey"] = "Error.Search.FilterNotPermitted"`, via the shared private helper `BuildSearchFilterNotPermittedProblemDetails()`. `SqlFacilityRepository` now throws the analogous `FacilitySearchFilterNotPermittedException` (instead of a plain `ArgumentException`) for the same reason, mapped through the same helper — see [`error-handling.md`](./error-handling.md) for the Facility side and the logging behaviour that now runs for both. |
-| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerNotFoundException]` / `BuildNotFoundProblemDetails` | `Func<Exception, ProblemDetails>` / `ProblemDetails BuildNotFoundProblemDetails()` | `ProblemDetails` | Maps to a bare `404 Not Found`: only `Status` is set (`Title`, `Detail`, `Type` remain `null`; no `Extensions` entry). `ExceptionHandlingMiddleware` still sets `Instance` to the request path afterward. |
+| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerSearchFilterNotPermittedException]` | `Func<Exception, ProblemDetails>` | `ProblemDetails` | Maps to `400 Bad Request`, `Title = "Error.Search.FilterNotPermitted"`, `Detail = "FilterNotPermitted"`, `Extensions["ErrorTranslationKey"] = "Error.Search.FilterNotPermitted"` in memory (`errorTranslationKey` on the wire), via the shared private helper `BuildSearchFilterNotPermittedProblemDetails()`. `SqlFacilityRepository` now throws the analogous `FacilitySearchFilterNotPermittedException` (instead of a plain `ArgumentException`) for the same reason, mapped through the same helper — see [`error-handling.md`](./error-handling.md) for the Facility side and the logging behaviour that now runs for both. |
+| `ExceptionToHttpResponseConverters` | `PlayerConverters[PlayerNotFoundException]` / `BuildNotFoundProblemDetails` | `Func<Exception, ProblemDetails>` / `ProblemDetails BuildNotFoundProblemDetails()` | `ProblemDetails` | Maps to a bare `404 Not Found`: only `Status` is set (`Title`, `Detail`, `Type` remain `null`; no `Extensions` entry; on the wire `type`, `title` and `detail` are `null` and `instance` is set, with no `extensions` object). `ExceptionHandlingMiddleware` still sets `Instance` to the request path afterward. |
 
 ## Dependencies
 
 - `IPlayerRepository` / `SqlPlayerRepository` (Dapper-based, via `IDatabaseConnectionProvider`; see [`database-connection-lifecycle.md`](./database-connection-lifecycle.md)).
-- `ExceptionToHttpResponseConverters.PlayerConverters` and `ExceptionHandlingMiddleware`, which serialize `ProblemDetails` with Newtonsoft.Json (PascalCase keys, `Extensions` nested object).
+- TECHDEBT-006 cleanup: `CriteriaType.NONE` was removed from the search criteria (the default connector is `AND`, used only from the second criterion, so the generated SQL did not change); the obsolete `Acceptance/Features_Refactor/` tests were replaced by `SearchPlayersEndpointShould` (`POST /players/search`, no contract change); `FacilitySearchCriteria`/`PlayerSearchCriteria.criteriaList` is now `CriteriaList` (internal repository type, not in the OpenAPI document).
+- `ExceptionToHttpResponseConverters.PlayerConverters` and `ExceptionHandlingMiddleware`, which serialize `ProblemDetails` with Newtonsoft.Json (RFC 7807 camelCase members through `ExceptionToHttpResponseConverters.Serialize`; extensions such as `errorTranslationKey` sit at the root, no `extensions` object; see [`error-handling.md`](./error-handling.md)).
 - `SearchPlayersQueryHandler` / `IQueryHandler<TQuery, TResult>` (CQRS pipeline), used by both `Search` and `GetBy`.
 - Partial update of a `Player` via `PUT /{id}`, which reuses this same `Id`-filtered `Get` to load the player before applying changes: [`player-update.md`](./player-update.md).
 - Infrastructure-failure and logging behaviour shared with every other Delete/Update endpoint: [`error-handling.md`](./error-handling.md).
@@ -104,11 +105,12 @@ Returns `400 Bad Request`:
 
 ```json
 {
-  "Title": "Error.Search.FilterNotPermitted",
-  "Detail": "FilterNotPermitted",
-  "Status": 400,
-  "Instance": "/api/v1/players/search",
-  "Extensions": { "ErrorTranslationKey": "Error.Search.FilterNotPermitted" }
+  "type": "",
+  "title": "Error.Search.FilterNotPermitted",
+  "status": 400,
+  "detail": "FilterNotPermitted",
+  "instance": "/api/v1/players/search",
+  "errorTranslationKey": "Error.Search.FilterNotPermitted"
 }
 ```
 
@@ -122,8 +124,11 @@ Returns `404 Not Found`:
 
 ```json
 {
-  "Status": 404,
-  "Instance": "/api/v1/players/00000000-0000-0000-0000-000000000000"
+  "type": null,
+  "title": null,
+  "status": 404,
+  "detail": null,
+  "instance": "/api/v1/players/00000000-0000-0000-0000-000000000000"
 }
 ```
 
@@ -132,7 +137,7 @@ Returns `404 Not Found`:
 ```csharp
 var criteria = new PlayerSearchCriteria
 {
-    criteriaList = [new SearchCriteria { Name = "FirstName", Value = "O'Neill" }]
+    CriteriaList = [new SearchCriteria { Name = "FirstName", Value = "O'Neill" }]
 };
 List<Player> players = await playerRepository.Get(criteria, cancellationToken);
 ```
