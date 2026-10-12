@@ -41,11 +41,11 @@ public class ExceptionHandlingMiddlewareShould
         context.Response.StatusCode.Should().Be(400);
         context.Response.ContentType.Should().Be("application/json");
         var body = await ReadBody(context);
-        body["Status"]!.Value<int>().Should().Be(400);
-        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
-        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["status"]!.Value<int>().Should().Be(400);
+        body["title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
+        ProblemJson.TranslationKeyOf(body).Should().Be(FilterNotPermittedKey);
     }
 
     [Test]
@@ -70,9 +70,29 @@ public class ExceptionHandlingMiddlewareShould
         context.Response.StatusCode.Should().Be(500);
         context.Response.ContentType.Should().Be("application/json");
         var body = await ReadBody(context);
-        body["Status"]!.Value<int>().Should().Be(500);
-        body["Title"]!.Value<string>().Should().Be("Unknown error");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+        body["status"]!.Value<int>().Should().Be(500);
+        body["title"]!.Value<string>().Should().Be("Unknown error");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
+        body.ContainsKey(ProblemJson.ErrorTranslationKey).Should().BeFalse();
+        body.ContainsKey(ProblemJson.Errors).Should().BeFalse();
+    }
+
+    // TECHDEBT-006 AC2.4: a converted validation failure keeps its values and writes errorTranslationKey and errors at the root.
+    [Test]
+    public async Task WriteAConvertedValidationFailureWithItsKeyAndErrorsAtTheRoot()
+    {
+        var middleware = CreateMiddleware(new ValidationFailedException("Cannot create facility", "Error.Facilities.Create.Validation",
+            new Dictionary<string, string[]> { ["Address.Street"] = ["Address.Street is required."] }));
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        context.Response.ContentType.Should().Be("application/json");
+        var body = await ReadBody(context);
+        body["title"]!.Value<string>().Should().Be("Cannot create facility");
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Facilities.Create.Validation");
+        ProblemJson.ErrorsOf(body)["address.street"]!.Values<string>().Should().Equal("Address.Street is required.");
     }
 
     [Test]
@@ -99,9 +119,9 @@ public class ExceptionHandlingMiddlewareShould
 
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadBody(context);
-        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
-        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+        body["title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
         var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
         entries.Should().ContainSingle();
         entries[0].Level.Should().Be(LogLevel.Error);
@@ -184,6 +204,6 @@ public class ExceptionHandlingMiddlewareShould
     {
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body);
-        return JObject.Parse(await reader.ReadToEndAsync());
+        return ProblemJson.Parse(await reader.ReadToEndAsync());
     }
 }

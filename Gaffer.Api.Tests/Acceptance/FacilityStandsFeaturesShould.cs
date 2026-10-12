@@ -211,7 +211,7 @@ public class FacilityStandsFeaturesShould
 
         var response = await Send(new HttpMethod(method), uri, new { StandName = "East", StandCapacity = -1 });
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandCapacity");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standCapacity");
     }
 
     [Test]
@@ -222,7 +222,7 @@ public class FacilityStandsFeaturesShould
 
         var response = await Send(HttpMethod.Post, Uris.FacilityStands($"{facilityId}"), new { StandName = new string('x', 300), StandCapacity = 1000 });
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandName");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standName");
         (await GetStands(facilityId)).Should().BeEquivalentTo(before);
     }
 
@@ -246,9 +246,9 @@ public class FacilityStandsFeaturesShould
     }
 
     [TestCase("POST", """{"standName":"East",""", null)]
-    [TestCase("POST", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "StandCapacity")]
+    [TestCase("POST", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "standCapacity")]
     [TestCase("PUT", """{"standName":"East",""", null)]
-    [TestCase("PUT", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "StandCapacity")]
+    [TestCase("PUT", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "standCapacity")]
     public async Task ReturnTheValidationFormatForStandBodiesThatCannotBeBound(string method, string json, string? field)
     {
         var facilityId = await CreateFacilityWithStands("North");
@@ -264,7 +264,7 @@ public class FacilityStandsFeaturesShould
         var response = await _client.SendAsync(request);
 
         var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, field is null ? [] : [field]);
-        ((JObject)problem["Extensions"]!["Errors"]!).Properties().Should().NotBeEmpty();
+        ProblemJson.ErrorsOf(problem).Properties().Should().NotBeEmpty();
         problem.ToString().Should().NotContain("ZZZ_NOT_A_NUMBER");
         (await GetStands(facilityId)).Should().BeEquivalentTo(stands);
     }
@@ -330,7 +330,7 @@ public class FacilityStandsFeaturesShould
     {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(status, raw);
-        JObject.Parse(raw)["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(translationKey);
+        ProblemJson.TranslationKeyOf(ProblemJson.Parse(raw)).Should().Be(translationKey);
     }
 
     private async Task<HttpResponseMessage> Send(HttpMethod method, Uri uri, object? body = null)
@@ -373,7 +373,7 @@ public class FacilityStandValidationInTheProductionPipelineShould
 
         var response = await Send(new HttpMethod(method), path, json);
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandName");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standName");
         (await _server.Client.GetStringAsync(standsPath)).Should().Be(before);
     }
 
@@ -405,11 +405,11 @@ public static class StandValidationCases
     {
         foreach (var method in new[] { "POST", "PUT" })
         {
-            yield return new TestCaseData(method, "StandName", new { StandName = "   ", StandCapacity = 10 })
+            yield return new TestCaseData(method, "standName", new { StandName = "   ", StandCapacity = 10 })
                 .SetArgDisplayNames(method, "StandName whitespace");
-            yield return new TestCaseData(method, "StandName", new { StandName = FacilityValidationCases.TooLongText, StandCapacity = 10 })
+            yield return new TestCaseData(method, "standName", new { StandName = FacilityValidationCases.TooLongText, StandCapacity = 10 })
                 .SetArgDisplayNames(method, "StandName 101 chars");
-            yield return new TestCaseData(method, "StandCapacity", new { StandName = "East", StandCapacity = -1 })
+            yield return new TestCaseData(method, "standCapacity", new { StandName = "East", StandCapacity = -1 })
                 .SetArgDisplayNames(method, "StandCapacity -1");
         }
     }

@@ -4,6 +4,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Shared.Exceptions;
 
@@ -146,8 +147,40 @@ public static class ExceptionToHttpResponseConverters
         return problemDetails;
     }
 
-    /// <summary>The JSON body of every error response (exception middleware and model binding).</summary>
-    public static string Serialize(ProblemDetails problemDetails) => JsonConvert.SerializeObject(problemDetails);
+    /// <summary>
+    /// The JSON body of every error response (exception middleware and model binding), RFC 7807 style: the standard
+    /// members in camelCase (kept as <c>null</c> when empty), each extension flattened at the root with a camelCase
+    /// name (<c>errorTranslationKey</c>, <c>errors</c>) and the <c>errors</c> keys in camelCase per segment
+    /// (<c>Stands[1].StandName</c> → <c>stands[1].standName</c>). The <see cref="ProblemDetails"/> is not modified.
+    /// </summary>
+    public static string Serialize(ProblemDetails problemDetails)
+    {
+        var body = new JObject
+        {
+            ["type"] = problemDetails.Type,
+            ["title"] = problemDetails.Title,
+            ["status"] = problemDetails.Status,
+            ["detail"] = problemDetails.Detail,
+            ["instance"] = problemDetails.Instance,
+        };
+        foreach (var (name, value) in problemDetails.Extensions)
+        {
+            body[CamelCase(name)] = value switch
+            {
+                null => JValue.CreateNull(),
+                IReadOnlyDictionary<string, string[]> errors => new JObject(
+                    errors.Select(error => new JProperty(CamelCasePerSegment(error.Key), new JArray(error.Value)))),
+                _ => JToken.FromObject(value),
+            };
+        }
+
+        return body.ToString(Formatting.None);
+    }
+
+    private static string CamelCasePerSegment(string key) => string.Join('.', key.Split('.').Select(CamelCase));
+
+    private static string CamelCase(string segment) =>
+        segment.Length == 0 ? segment : char.ToLowerInvariant(segment[0]) + segment[1..];
 
     // Helper methods to build ProblemDetails
     private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails()

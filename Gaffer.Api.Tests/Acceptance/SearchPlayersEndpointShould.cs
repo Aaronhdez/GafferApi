@@ -52,12 +52,12 @@ public class SearchPlayersEndpointShould
         var response = await SendSearch(fieldName, "x");
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Status"]!.Value<int>().Should().Be(400);
-        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
-        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
-        body["Instance"]!.Value<string>().Should().Be(Uris.SearchPlayers().AbsolutePath);
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        var body = await ProblemJson.Read(response);
+        body["status"]!.Value<int>().Should().Be(400);
+        body["title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["instance"]!.Value<string>().Should().Be(Uris.SearchPlayers().AbsolutePath);
+        ProblemJson.TranslationKeyOf(body).Should().Be(FilterNotPermittedKey);
     }
 
     [Test]

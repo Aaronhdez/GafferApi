@@ -76,12 +76,13 @@ public class PlayerFeaturesShould
         var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Status"]!.Value<int>().Should().Be(404);
-        body["Instance"]!.Value<string>().Should().Be(uri.AbsolutePath);
-        body["Title"]?.Value<string>().Should().BeNull();
-        body["Detail"]?.Value<string>().Should().BeNull();
-        (body["Extensions"] as JObject)?.ContainsKey("ErrorTranslationKey").Should().BeFalse();
+        var body = await ProblemJson.Read(response);
+        body["status"]!.Value<int>().Should().Be(404);
+        body["instance"]!.Value<string>().Should().Be(uri.AbsolutePath);
+        body["title"]!.Value<string>().Should().BeNull();
+        body["detail"]!.Value<string>().Should().BeNull();
+        body.ContainsKey(ProblemJson.ErrorTranslationKey).Should().BeFalse();
+        body.ContainsKey(ProblemJson.Errors).Should().BeFalse();
     }
 
     [Test]
@@ -172,8 +173,8 @@ public class PlayerFeaturesShould
         var response = await PutRawJson(Guid.NewGuid(), """{"firstName":"X"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Update.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Update.PlayerNotFound");
     }
 
     [Test]
@@ -182,8 +183,8 @@ public class PlayerFeaturesShould
         var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, Uris.DeletePlayer(Guid.NewGuid().ToString())));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Delete.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Delete.PlayerNotFound");
     }
 
     private const string CreateValidationKey = "Error.Players.Create.Validation";
@@ -196,21 +197,21 @@ public class PlayerFeaturesShould
         TestCaseData Case(string name, string field, Action<JObject> change) =>
             new TestCaseData(field, change).SetName($"RejectTheCreationOfAPlayerWith({name})");
 
-        yield return Case("FirstName empty", "FirstName", body => body["firstName"] = "");
-        yield return Case("FirstName whitespace", "FirstName", body => body["firstName"] = "   ");
-        yield return Case("FirstName 101 chars", "FirstName", body => body["firstName"] = TooLongText);
-        yield return Case("FirstName absent", "FirstName", body => body.Remove("firstName"));
-        yield return Case("LastName empty", "LastName", body => body["lastName"] = "");
-        yield return Case("LastName whitespace", "LastName", body => body["lastName"] = "   ");
-        yield return Case("LastName 101 chars", "LastName", body => body["lastName"] = TooLongText);
-        yield return Case("SecondLastName empty", "SecondLastName", body => body["secondLastName"] = "");
-        yield return Case("SecondLastName whitespace", "SecondLastName", body => body["secondLastName"] = "   ");
-        yield return Case("SecondLastName 101 chars", "SecondLastName", body => body["secondLastName"] = TooLongText);
-        yield return Case("BirthDate 1899-12-31", "BirthDate", body => body["birthDate"] = IsoDate(new DateTime(1899, 12, 31)));
-        yield return Case("BirthDate tomorrow", "BirthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddDays(1)));
-        yield return Case("BirthDate one day under 16", "BirthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddYears(-16).AddDays(1)));
-        yield return Case("BirthDate absent", "BirthDate", body => body.Remove("birthDate"));
-        yield return Case("Gender 99", "Gender", body => body["gender"] = 99);
+        yield return Case("FirstName empty", "firstName", body => body["firstName"] = "");
+        yield return Case("FirstName whitespace", "firstName", body => body["firstName"] = "   ");
+        yield return Case("FirstName 101 chars", "firstName", body => body["firstName"] = TooLongText);
+        yield return Case("FirstName absent", "firstName", body => body.Remove("firstName"));
+        yield return Case("LastName empty", "lastName", body => body["lastName"] = "");
+        yield return Case("LastName whitespace", "lastName", body => body["lastName"] = "   ");
+        yield return Case("LastName 101 chars", "lastName", body => body["lastName"] = TooLongText);
+        yield return Case("SecondLastName empty", "secondLastName", body => body["secondLastName"] = "");
+        yield return Case("SecondLastName whitespace", "secondLastName", body => body["secondLastName"] = "   ");
+        yield return Case("SecondLastName 101 chars", "secondLastName", body => body["secondLastName"] = TooLongText);
+        yield return Case("BirthDate 1899-12-31", "birthDate", body => body["birthDate"] = IsoDate(new DateTime(1899, 12, 31)));
+        yield return Case("BirthDate tomorrow", "birthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddDays(1)));
+        yield return Case("BirthDate one day under 16", "birthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddYears(-16).AddDays(1)));
+        yield return Case("BirthDate absent", "birthDate", body => body.Remove("birthDate"));
+        yield return Case("Gender 99", "gender", body => body["gender"] = 99);
     }
 
     [TestCaseSource(nameof(InvalidCreateBodies))]
@@ -262,13 +263,13 @@ public class PlayerFeaturesShould
         TestCaseData Case(string name, string field, string body) =>
             new TestCaseData(field, body).SetName($"RejectAPartialUpdateWith({name})");
 
-        yield return Case("FirstName empty", "FirstName", """{"firstName":"","lastName":"Valido"}""");
-        yield return Case("LastName whitespace", "LastName", """{"lastName":"   ","firstName":"Valido"}""");
-        yield return Case("BirthDate under 16", "BirthDate",
+        yield return Case("FirstName empty", "firstName", """{"firstName":"","lastName":"Valido"}""");
+        yield return Case("LastName whitespace", "lastName", """{"lastName":"   ","firstName":"Valido"}""");
+        yield return Case("BirthDate under 16", "birthDate",
             $$"""{"birthDate":"{{IsoDate(TodayUtc.AddYears(-15))}}","firstName":"Valido"}""");
-        yield return Case("Gender 99", "Gender", """{"gender":99,"firstName":"Valido"}""");
-        yield return Case("SecondLastName empty", "SecondLastName", """{"secondLastName":"","firstName":"Valido"}""");
-        yield return Case("SecondLastName whitespace", "SecondLastName", """{"secondLastName":"   "}""");
+        yield return Case("Gender 99", "gender", """{"gender":99,"firstName":"Valido"}""");
+        yield return Case("SecondLastName empty", "secondLastName", """{"secondLastName":"","firstName":"Valido"}""");
+        yield return Case("SecondLastName whitespace", "secondLastName", """{"secondLastName":"   "}""");
     }
 
     [TestCaseSource(nameof(InvalidPartialUpdateBodies))]
@@ -303,8 +304,8 @@ public class PlayerFeaturesShould
         var response = await PutRawJson(Guid.NewGuid(), """{"firstName":""}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound, await response.Content.ReadAsStringAsync());
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Update.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Update.PlayerNotFound");
     }
 
     [Test]
@@ -318,7 +319,7 @@ public class PlayerFeaturesShould
             body["gender"] = 99;
         }));
 
-        var problem = await ShouldBeAValidationProblem(response, CreateValidationKey, "FirstName", "LastName", "BirthDate", "Gender");
+        var problem = await ShouldBeAValidationProblem(response, CreateValidationKey, "firstName", "lastName", "birthDate", "gender");
         problem.ToString().Should().NotContain(TooLongText);
     }
 
@@ -329,14 +330,14 @@ public class PlayerFeaturesShould
 
         var response = await PutRawJson(created, $$"""{"firstName":"{{TooLongText}}","secondLastName":"","gender":99}""");
 
-        var problem = await ShouldBeAValidationProblem(response, UpdateValidationKey, "FirstName", "SecondLastName", "Gender");
+        var problem = await ShouldBeAValidationProblem(response, UpdateValidationKey, "firstName", "secondLastName", "gender");
         problem.ToString().Should().NotContain(TooLongText);
     }
 
     [TestCase("POST", """{"firstName":"Ana",""", null)]
-    [TestCase("POST", """{"firstName":"Ana","lastName":"Lopez","birthDate":"1990-01-01T00:00:00Z","gender":"ZZZ_UNKNOWN"}""", "Gender")]
+    [TestCase("POST", """{"firstName":"Ana","lastName":"Lopez","birthDate":"1990-01-01T00:00:00Z","gender":"ZZZ_UNKNOWN"}""", "gender")]
     [TestCase("PUT", """{"firstName":"Ana",""", null)]
-    [TestCase("PUT", """{"gender":"ZZZ_UNKNOWN"}""", "Gender")]
+    [TestCase("PUT", """{"gender":"ZZZ_UNKNOWN"}""", "gender")]
     public async Task ReturnTheValidationFormatForBodiesThatCannotBeBound(string method, string body, string? field)
     {
         var response = method == "POST"
@@ -345,7 +346,7 @@ public class PlayerFeaturesShould
 
         var key = method == "POST" ? CreateValidationKey : UpdateValidationKey;
         var problem = await ShouldBeAValidationProblem(response, key, field is null ? [] : [field]);
-        var errors = (JObject)problem["Extensions"]!["Errors"]!;
+        var errors = ProblemJson.ErrorsOf(problem);
         errors.Properties().Should().NotBeEmpty();
         problem.ToString().Should().NotContain("ZZZ_UNKNOWN");
     }
@@ -410,11 +411,11 @@ public class PlayerFeaturesShould
     {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
-        var body = JObject.Parse(raw);
-        var translationKey = body["Extensions"]?["ErrorTranslationKey"]?.Value<string>();
+        var body = ProblemJson.Parse(raw);
+        var translationKey = ProblemJson.TranslationKeyOf(body);
         translationKey.Should().Be(key, raw);
-        (body["Extensions"]?["Errors"] as JObject).Should().NotBeNull(raw);
-        var errorFields = ((JObject)body["Extensions"]!["Errors"]!).Properties().Select(p => p.Name);
+        (body[ProblemJson.Errors] as JObject).Should().NotBeNull(raw);
+        var errorFields = ProblemJson.ErrorsOf(body).Properties().Select(p => p.Name);
         if (fields.Length > 0) errorFields.Should().Contain(fields, raw);
         return body;
     }

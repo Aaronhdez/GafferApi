@@ -115,7 +115,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "Address");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "address");
     }
 
     [Test]
@@ -149,7 +149,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "Stands");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "stands");
     }
 
     [Test]
@@ -316,7 +316,7 @@ public class FacilityFeaturesShould
 
         var response = await SendUpdateFacilityRequest(createdId, updateRequestBody);
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "stands");
     }
 
     [Test]
@@ -527,8 +527,8 @@ public class FacilityFeaturesShould
     {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
-        var body = JObject.Parse(raw);
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(translationKey);
+        var body = ProblemJson.Parse(raw);
+        ProblemJson.TranslationKeyOf(body).Should().Be(translationKey);
         (await GetFacility(facilityId)).Should().BeEquivalentTo(before);
     }
 
@@ -704,9 +704,9 @@ public class FacilityFeaturesShould
     }
 
     [TestCase("POST", """{"name":"Arena",""", null)]
-    [TestCase("POST", "UNKNOWN_TYPE", "Type")]
+    [TestCase("POST", "UNKNOWN_TYPE", "type")]
     [TestCase("PUT", """{"name":"Arena",""", null)]
-    [TestCase("PUT", "UNKNOWN_TYPE", "Type")]
+    [TestCase("PUT", "UNKNOWN_TYPE", "type")]
     public async Task ReturnTheValidationFormatForBodiesThatCannotBeBound(string method, string body, string? field)
     {
         var json = body == "UNKNOWN_TYPE"
@@ -718,7 +718,7 @@ public class FacilityFeaturesShould
 
         var key = method == "POST" ? FacilityValidationCases.CreateValidationKey : FacilityValidationCases.UpdateValidationKey;
         var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, key, field is null ? [] : [field]);
-        ((JObject)problem["Extensions"]!["Errors"]!).Properties().Should().NotBeEmpty();
+        ProblemJson.ErrorsOf(problem).Properties().Should().NotBeEmpty();
         problem.ToString().Should().NotContain(FacilityValidationCases.UnknownTypeText);
     }
 
@@ -802,7 +802,7 @@ public class FacilityFeaturesShould
             FacilityValidationCases.SeveralInvalidFields(body);
             FacilityValidationCases.SetStands(body, (FacilityValidationCases.TooLongText, 10), ("Valid", -1));
         });
-        string[] fields = [.. FacilityValidationCases.SeveralInvalidFieldNames, "Stands[0].StandName", "Stands[1].StandCapacity"];
+        string[] fields = [.. FacilityValidationCases.SeveralInvalidFieldNames, "stands[0].standName", "stands[1].standCapacity"];
 
         var created = await PostRawJson(invalid);
         var updated = await PutRawJson(createdId, invalid);
@@ -828,7 +828,7 @@ public class FacilityFeaturesShould
         var response = await PutRawJson(id, FacilityValidationCases.ValidBody(body =>
             FacilityValidationCases.SetStands(body, FacilityValidationCases.FiveSentStands)));
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "stands");
         (await GetFacility(id)).Should().BeEquivalentTo(before);
     }
 
@@ -910,8 +910,21 @@ public class FacilityValidationInTheProductionPipelineShould
         var response = await Send(HttpMethod.Put, $"{FacilitiesPath}{id}", FacilityValidationCases.ValidBody(body =>
             FacilityValidationCases.SetStands(body, FacilityValidationCases.FiveSentStands)));
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "stands");
         (await _server.Client.GetStringAsync($"{FacilitiesPath}{id}")).Should().Be(before);
+    }
+
+    /// <summary>TECHDEBT-006 AC2.2: the model binding 400 (malformed JSON) of the production pipeline has the RFC 7807 shape.</summary>
+    [Test]
+    public async Task AnswerAMalformedBodyWithTheRfc7807ValidationProblem()
+    {
+        var response = await Send(HttpMethod.Post, FacilitiesPath, """{"name":"Arena",""");
+
+        var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey);
+        problem["title"]!.Value<string>().Should().Be(Gaffer.Api.Commands.CreateFacilityCommandHandler.CannotCreateFacilityTitle);
+        problem["status"]!.Value<int>().Should().Be(400);
+        problem["instance"]!.Value<string>().Should().Be(FacilitiesPath);
+        ProblemJson.ErrorsOf(problem).Properties().Should().NotBeEmpty();
     }
 
     private async Task<HttpResponseMessage> Send(HttpMethod method, string path, string json) =>
@@ -962,16 +975,16 @@ public static class FacilityValidationCases
         TestCaseData Case(string name, string field, Action<JObject> change) =>
             new TestCaseData(field, change).SetArgDisplayNames(name);
 
-        yield return Case("Name empty", "Name", body => body["name"] = "");
-        yield return Case("Name whitespace", "Name", body => body["name"] = "   ");
-        yield return Case("Name 101 chars", "Name", body => body["name"] = TooLongText);
-        yield return Case("Name absent", "Name", body => body.Remove("name"));
-        yield return Case("BuildDate 1799-12-31", "BuildDate", body => body["buildDate"] = IsoDate(new DateTime(1799, 12, 31)));
-        yield return Case("BuildDate tomorrow", "BuildDate", body => body["buildDate"] = IsoDate(TodayUtc.AddDays(1)));
-        yield return Case("BuildDate absent", "BuildDate", body => body.Remove("buildDate"));
-        yield return Case("Type 99", "Type", body => body["type"] = 99);
-        yield return Case("Capacity -1", "Capacity", body => body["capacity"] = -1);
-        yield return Case("Address absent", "Address", body => body.Remove("address"));
+        yield return Case("Name empty", "name", body => body["name"] = "");
+        yield return Case("Name whitespace", "name", body => body["name"] = "   ");
+        yield return Case("Name 101 chars", "name", body => body["name"] = TooLongText);
+        yield return Case("Name absent", "name", body => body.Remove("name"));
+        yield return Case("BuildDate 1799-12-31", "buildDate", body => body["buildDate"] = IsoDate(new DateTime(1799, 12, 31)));
+        yield return Case("BuildDate tomorrow", "buildDate", body => body["buildDate"] = IsoDate(TodayUtc.AddDays(1)));
+        yield return Case("BuildDate absent", "buildDate", body => body.Remove("buildDate"));
+        yield return Case("Type 99", "type", body => body["type"] = 99);
+        yield return Case("Capacity -1", "capacity", body => body["capacity"] = -1);
+        yield return Case("Address absent", "address", body => body.Remove("address"));
         foreach (var field in LongTextAddressFields)
         {
             foreach (var testCase in AddressTextCases(field, TooLongText)) yield return testCase;
@@ -984,11 +997,12 @@ public static class FacilityValidationCases
 
         IEnumerable<TestCaseData> AddressTextCases(string field, string tooLong)
         {
-            var errorField = $"Address.{Pascal(field)}";
-            yield return Case($"{errorField} empty", errorField, body => body["address"]![field] = "");
-            yield return Case($"{errorField} whitespace", errorField, body => body["address"]![field] = "   ");
-            yield return Case($"{errorField} {tooLong.Length} chars", errorField, body => body["address"]![field] = tooLong);
-            yield return Case($"{errorField} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
+            var display = $"Address.{Pascal(field)}";
+            var errorField = $"address.{field}";
+            yield return Case($"{display} empty", errorField, body => body["address"]![field] = "");
+            yield return Case($"{display} whitespace", errorField, body => body["address"]![field] = "   ");
+            yield return Case($"{display} {tooLong.Length} chars", errorField, body => body["address"]![field] = tooLong);
+            yield return Case($"{display} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
         }
     }
 
@@ -1001,15 +1015,16 @@ public static class FacilityValidationCases
         TestCaseData Case(string name, string field, Action<JObject> change) =>
             new TestCaseData(field, change).SetArgDisplayNames(name);
 
-        yield return Case("Address absent", "Address", body => body.Remove("address"));
-        yield return Case("Address null", "Address", body => body["address"] = null);
-        yield return Case("Name absent", "Name", body => body.Remove("name"));
-        yield return Case("Name null", "Name", body => body["name"] = null);
+        yield return Case("Address absent", "address", body => body.Remove("address"));
+        yield return Case("Address null", "address", body => body["address"] = null);
+        yield return Case("Name absent", "name", body => body.Remove("name"));
+        yield return Case("Name null", "name", body => body["name"] = null);
         foreach (var field in LongTextAddressFields.Concat(ShortTextAddressFields))
         {
-            var errorField = $"Address.{Pascal(field)}";
-            yield return Case($"{errorField} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
-            yield return Case($"{errorField} null", errorField, body => body["address"]![field] = null);
+            var display = $"Address.{Pascal(field)}";
+            var errorField = $"address.{field}";
+            yield return Case($"{display} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
+            yield return Case($"{display} null", errorField, body => body["address"]![field] = null);
         }
     }
 
@@ -1019,14 +1034,14 @@ public static class FacilityValidationCases
         TestCaseData Case(string name, string field, (string? Name, int Capacity) invalid) =>
             new TestCaseData(field, (Action<JObject>)(body => SetStands(body, ("Valid", 100), invalid))).SetArgDisplayNames(name);
 
-        yield return Case("Stands[1].StandName whitespace", "Stands[1].StandName", ("   ", 100));
-        yield return Case("Stands[1].StandName 101 chars", "Stands[1].StandName", (TooLongText, 100));
-        yield return Case("Stands[1].StandCapacity -1", "Stands[1].StandCapacity", ("Valid", -1));
+        yield return Case("Stands[1].StandName whitespace", "stands[1].standName", ("   ", 100));
+        yield return Case("Stands[1].StandName 101 chars", "stands[1].standName", (TooLongText, 100));
+        yield return Case("Stands[1].StandCapacity -1", "stands[1].standCapacity", ("Valid", -1));
     }
 
     public static IEnumerable<TestCaseData> TooManyStands()
     {
-        yield return new TestCaseData("Stands", (Action<JObject>)(body =>
+        yield return new TestCaseData("stands", (Action<JObject>)(body =>
             SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)))).SetArgDisplayNames("5 stands");
     }
 
@@ -1039,10 +1054,10 @@ public static class FacilityValidationCases
         TestCaseData Case(string name, string field, Action<JObject> change) =>
             new TestCaseData(field, change).SetArgDisplayNames(name);
 
-        yield return Case("5 stands", "Stands", body => SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)));
-        yield return Case("Stands[0].StandName absent", "Stands[0].StandName",
+        yield return Case("5 stands", "stands", body => SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)));
+        yield return Case("Stands[0].StandName absent", "stands[0].standName",
             body => body["stands"] = new JArray(new JObject { ["standCapacity"] = 10 }));
-        yield return Case("Stands[0].StandName null", "Stands[0].StandName", body => SetStands(body, (null, 10)));
+        yield return Case("Stands[0].StandName null", "stands[0].standName", body => SetStands(body, (null, 10)));
     }
 
 
@@ -1052,14 +1067,14 @@ public static class FacilityValidationCases
     /// </summary>
     public static IEnumerable<TestCaseData> NullStands()
     {
-        yield return new TestCaseData("Stands[0]", (Action<JObject>)(body => body["stands"] = new JArray(JValue.CreateNull())))
+        yield return new TestCaseData("stands[0]", (Action<JObject>)(body => body["stands"] = new JArray(JValue.CreateNull())))
             .SetArgDisplayNames("stands [null]");
         foreach (var testCase in NullStandRepresentative()) yield return testCase;
     }
 
     public static IEnumerable<TestCaseData> NullStandRepresentative()
     {
-        yield return new TestCaseData("Stands[1]", (Action<JObject>)(body =>
+        yield return new TestCaseData("stands[1]", (Action<JObject>)(body =>
         {
             SetStands(body, ("North", 100), ("South", 100));
             ((JArray)body["stands"]!).Insert(1, JValue.CreateNull());
@@ -1102,7 +1117,7 @@ public static class FacilityValidationCases
         body["address"]!["postalCode"] = "";
     }
 
-    public static readonly string[] SeveralInvalidFieldNames = ["Name", "Capacity", "BuildDate", "Address.Street", "Address.PostalCode"];
+    public static readonly string[] SeveralInvalidFieldNames = ["name", "capacity", "buildDate", "address.street", "address.postalCode"];
 
     public static void ShouldMatchTheSentBody(SearchFacilityResult facility, string json, string because)
     {
@@ -1123,11 +1138,11 @@ public static class FacilityValidationCases
     {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
-        var body = JObject.Parse(raw);
-        var translationKey = body["Extensions"]?["ErrorTranslationKey"]?.Value<string>();
+        var body = ProblemJson.Parse(raw);
+        var translationKey = ProblemJson.TranslationKeyOf(body);
         translationKey.Should().Be(key, raw);
-        (body["Extensions"]?["Errors"] as JObject).Should().NotBeNull(raw);
-        var errorFields = ((JObject)body["Extensions"]!["Errors"]!).Properties().Select(property => property.Name);
+        (body[ProblemJson.Errors] as JObject).Should().NotBeNull(raw);
+        var errorFields = ProblemJson.ErrorsOf(body).Properties().Select(property => property.Name);
         if (fields.Length > 0) errorFields.Should().Contain(fields, raw);
         return body;
     }

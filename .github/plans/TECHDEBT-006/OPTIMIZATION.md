@@ -6,7 +6,8 @@ El detalle completo se conserva solo para los 2 ciclos más recientes (OPT-013);
 
 | Ciclo | Paso | Veredicto | ID(s) de propuesta | Ahorro esperado | Estado de aprobación |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 01 Limpieza, operación, CI, observabilidad, `null` en `stands` (10 puntos, antes 01+02) | APPROVED | P1-1, P1-2 (provisionales) | P1-1: 1 llamada colgada por incidente; P1-2: ~9 k tokens de contexto por llamada de BUILDER (estimación) | Pendiente de decisión del operador |
+| 1 | 01 Limpieza, operación, CI, observabilidad, `null` en `stands` (10 puntos, antes 01+02) | APPROVED | P1-1, P1-2 (provisionales) | P1-1: 1 llamada colgada por incidente; P1-2: ~9 k tokens de contexto por llamada de BUILDER (estimación) | Aprobadas y aplicadas 2026-10-12: P1-1 = OPT-045, P1-2 = OPT-046 |
+| 2 | 02 Forma RFC 7807 del error de validación | APPROVED | P2-1, P2-2 (provisionales) | P2-1: ~2-3 llamadas y ~5 k tokens por paso; P2-2: ~1-2 llamadas por ciclo (estimaciones) | Pendiente de decisión |
 
 ## Ciclo 1 - Paso 01 (BUILDER APPROVED por REVIEWER)
 
@@ -50,15 +51,64 @@ Comparativa con TECHDEBT-005 (`medido:agent-result`, mismo origen):
 | OPT-043 | Sin volcados de `MEMORIES.md` en las salidas grandes de BUILDER | Sin regresión; sin datos de tokens |
 | OPT-042 | El filtro se usó con éxito en los builds (`0 Advertencia(s), 0 Errores`) | Sin fallo observado; efecto sin datos |
 
-### Propuestas (provisionales, no registradas; requieren aprobación)
+### Propuestas (aprobadas por el operador: "aplica p1-1 y 2 y pasa al siguiente paso", 2026-10-12)
 
 | ID | Propuesta | Dónde | Ahorro esperado | Origen |
 | --- | --- | --- | --- | --- |
-| P1-1 | Al escribir en el scratchpad desde Bash, definir la ruta en la misma llamada y protegerla (`S="<ruta>"; : "${S:?}"` antes de cualquier redirección) o crear el fichero con `Write`; nunca depender de una variable de una llamada anterior (cada llamada reinicia el shell). | `.claude/agents/builder.md` y nota en `CLAUDE.md` "Minimal Reading" (lo aplica el operador) | Evita un comando colgado y su recuperación (~2-3 llamadas por incidente, estimación) | S3 |
-| P1-2 | En planes con `00-*.md` extenso, BUILDER no hace `cat` de `00` + `01` + `STATUS.md`; lee `01-*` entero y de `00` solo las decisiones aplicables (`grep -n "^## \|Q[0-9]"` y rangos) y de `STATUS.md` solo el resumen y el último ciclo. | `.claude/agents/builder.md` (lo aplica el operador) | Hasta ~9 k tokens de contexto retransmitido por llamada en ciclos grandes (estimación); ~0,9 M tokens de caché de lectura en un ciclo de 100 llamadas, solo orientativo | S4 |
+| P1-1 (OPT-045, aprobada y aplicada 2026-10-12) | Al escribir en el scratchpad desde Bash, definir la ruta en la misma llamada y protegerla (`S="<ruta>"; : "${S:?}"` antes de cualquier redirección) o crear el fichero con `Write`; nunca depender de una variable de una llamada anterior (cada llamada reinicia el shell). | `.claude/agents/builder.md` y nota en `CLAUDE.md` "Minimal Reading" (lo aplica el operador) | Evita un comando colgado y su recuperación (~2-3 llamadas por incidente, estimación) | S3 |
+| P1-2 (OPT-046, aprobada y aplicada 2026-10-12) | En planes con `00-*.md` extenso, BUILDER no hace `cat` de `00` + `01` + `STATUS.md`; lee `01-*` entero y de `00` solo las decisiones aplicables (`grep -n "^## \|Q[0-9]"` y rangos) y de `STATUS.md` solo el resumen y el último ciclo. | `.claude/agents/builder.md` (lo aplica el operador) | Hasta ~9 k tokens de contexto retransmitido por llamada en ciclos grandes (estimación); ~0,9 M tokens de caché de lectura en un ciclo de 100 llamadas, solo orientativo | S4 |
 
 Observación sin propuesta: agrupar cambios en un ciclo (petición del operador) ha resultado neutro en tokens totales y favorable frente a ciclos separados (S1). Condición a vigilar: el máximo de llamadas por ciclo sube; si un ciclo supera ~120 llamadas conviene partirlo, porque cada llamada adicional re-lee un contexto mayor. Sin datos para fijar el umbral con rigor.
 
 ### Compactación
 
 `MEMORIES.md`: no se compacta nada en este ciclo. OPT-027, 029, 030 y 031 siguen con `sin datos` y OPT-044 define "final" solo si se declara no medible; hace falta que el operador lo declare. Pendiente de decisión.
+
+## Ciclo 2 - Paso 02 (BUILDER APPROVED por REVIEWER)
+
+### Datos
+
+`usage-slice` no se ejecuta: los ciclos 0 y 1 de este plan y el anterior ya devolvieron "sin datos" (OPT-031). Se citan `agent-result` (cota inferior, OPT-023) y `usage/*.md` (`estimado`). Ventanas de `STATUS.md`: BUILDER 12:52:12Z-13:01:32Z, REVIEWER 13:03:04Z-13:07:43Z. Sin `token-consumer` no se separa entrada nueva de caché.
+
+| Rol | Tokens (`medido:agent-result`) | Llamadas | Duración | Tokens/llamada | Autoinforme (`estimado`) | Desvío |
+| --- | --- | --- | --- | --- | --- | --- |
+| BUILDER | 144 036 | 64 | 643 s | ~2 251 | ~130 000 (110 k + 20 k), ~45 llamadas | tokens -10 %; llamadas subestimadas en 19 (-30 %) |
+| REVIEWER | 67 496 | 27 | 302 s | ~2 500 | ~97 000 (85 k + 12 k), ~24 llamadas | tokens +44 % sobre el total real; llamadas -3 |
+
+| Ciclo | BUILDER tokens / llamadas / por llamada | REVIEWER tokens / llamadas / por llamada |
+| --- | --- | --- |
+| TD-006 c1 (10 puntos) | 177 602 / 102 / ~1 741 | 70 291 / 22 / ~3 195 |
+| TD-006 c2 (paso 02, 9 tests nuevos, 197 rojos) | 144 036 / 64 / ~2 251 | 67 496 / 27 / ~2 500 |
+
+### Hallazgos
+
+| ID | Hallazgo | Evidencia | Causa probable |
+| --- | --- | --- | --- |
+| S1 | BUILDER: -19 % tokens y -37 % llamadas frente a c1 (144 036 / 64 frente a 177 602 / 102). Los tokens/llamada suben (+29 %): menos llamadas, cada una con contexto base similar. | Tabla anterior | Alcance distinto (un solo cambio transversal de forma de error frente a 10 puntos), así que no se atribuye todo a OPT-045/046. |
+| S2 | REVIEWER: 27 llamadas (+5 frente a c1) con tokens totales casi iguales (-4 %); tokens/llamada -22 %. Sube el número de llamadas, no el contexto. | `usage/REVIEWER.md`; `REVIEW.md` L79-82 | Sonda de producción HEAD frente a árbol de trabajo (ver S3) más un heredoc fallido. |
+| S3 | Coste de la sonda de REVIEWER: fichero temporal `ReviewerProbe.cs` solo en el worktree, `StartupTestServer` con BD real y con BD inalcanzable, 8 peticiones, ejecutada dos veces (diff y `HEAD`). `usage/REVIEWER.md` la cuenta como 2 de las 3 salidas grandes con 8 cuerpos JSON. | `REVIEW.md` L80; `usage/REVIEWER.md` ciclo 2 | Estimación sin medir: ~5-7 llamadas (crear sonda, 2 ejecuciones, lectura de cuerpos, limpieza) y ~10-15 k tokens de entrada que se retransmiten como caché; es la causa más probable de las +5 llamadas. El valor de la sonda fue real: confirmó "valores idénticos salvo la forma", base de AC2.5. Lo evitable es la mitad "antes" (HEAD), que BUILDER ya podía haber dejado registrada al caracterizar el rojo. |
+| S4 | Heredoc de `REVIEW.md` falló por comillas (`bash: unexpected EOF`) y se rehízo con `Edit`. | `usage/REVIEWER.md` ciclo 2 | Texto con comillas dentro de heredoc; 1-2 llamadas perdidas y un bloque grande retransmitido dos veces. |
+| S5 | Un `sed` por número de línea dañó un bloque en BUILDER (`{` sustituido), corregido con `Edit`. | `usage/BUILDER.md` ciclo 2 | Edición mecánica por línea sin anclaje estable; OPT-018 ya cubre el caso (`Edit` con ancla). ~2 llamadas, sin propuesta nueva. |
+
+### Efecto de reglas ya aplicadas
+
+| ID | Evidencia en este ciclo | Conclusión |
+| --- | --- | --- |
+| OPT-045 | Cero comandos colgados ni variables vacías en `usage/BUILDER.md` ciclo 2 (c1: 1 comando matado + `.tmp` borrado). Un solo ciclo, sin incidente. | Sin regresión; ausencia de incidente, no prueba de eficacia. Efecto en tokens: sin datos |
+| OPT-046 | BUILDER leyó `02-*` entero, `00` por `grep`/`sed -n 36,48p` y `STATUS.md` por rangos; sin lecturas de 37 KB (c1: 1 salida de 37 KB). Llamadas 102 -> 64 y tokens 177 602 -> 144 036 (alcance distinto). | Cumplida. El ahorro de ~9 k tokens por llamada de c1 era una estimación; no aislable del cambio de alcance. Indicio favorable, sin datos de caché |
+| OPT-043 | Sin volcados de `MEMORIES.md` en las salidas grandes de BUILDER ni REVIEWER | Sin regresión; sin datos de tokens |
+| OPT-033 | Worktree en `HEAD`, diff de tests, 197 × Con error reproducido por REVIEWER, `worktree remove --force` | Seguida; mismo recuento que BUILDER |
+| OPT-038 | Rojo `n × estado` por clase (187 + 5 + 4 + 1) reproducido por REVIEWER | Eficaz |
+
+### Propuestas (pendientes de aprobación del operador)
+
+| ID | Propuesta | Dónde | Ahorro esperado | Origen |
+| --- | --- | --- | --- | --- |
+| P2-1 | En pasos que cambian el cuerpo servido por producción, el AC pide a BUILDER registrar en `STATUS.md` el "antes" (valores por caso, tabla compacta de los N casos) durante el rojo. REVIEWER ejecuta solo la sonda del "después" y compara con esa tabla; la ejecución en `HEAD` solo se repite si la tabla no cubre un caso. | Plan (PLANNER lo incorpora a pasos de este tipo) y nota en `.github/doc/work-guidelines.md` ("Reproducing red during review") | ~2-3 llamadas y ~5 k tokens de entrada retransmitida por paso (estimación; el coste de la sonda no está medido) | S3 |
+| P2-2 | REVIEWER escribe `REVIEW.md` con `Edit`/`Write`, nunca con heredoc cuando el texto lleva comillas o backticks. | `.claude/agents/reviewer.md` | ~1-2 llamadas por ciclo (estimación) | S4 |
+
+Observación sin propuesta: S5 está cubierto por OPT-018.
+
+### Compactación
+
+`MEMORIES.md`: OPT-045 y OPT-046 siguen `aplicada` con efecto `sin datos` no declarado final (OPT-044), así que no se archivan. Se actualiza `Efecto observado`. Las filas `sin datos` de OPT-027, 029-031 siguen pendientes de decisión del operador.

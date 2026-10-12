@@ -3,6 +3,8 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Unit.Exceptions;
 
@@ -195,6 +197,85 @@ public class ExceptionToHttpResponseConvertersShould
         problemDetails.Title.Should().Be(title);
         problemDetails.Extensions["ErrorTranslationKey"].Should().Be(key);
         problemDetails.Extensions["Errors"].Should().BeEquivalentTo(errors);
+    }
+
+    // --- TECHDEBT-006 step 02 (AC2.3): the single serialization point of every error body (RFC 7807, camelCase) ---
+
+    [Test]
+    public void SerializeEveryStandardMemberInCamelCaseWithItsValue()
+    {
+        var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails
+        {
+            Type = "about:blank", Title = "Cannot create player", Status = 400, Detail = "Detail text", Instance = "/api/v1.0/players",
+        });
+
+        json.Should().Be("""{"type":"about:blank","title":"Cannot create player","status":400,"detail":"Detail text","instance":"/api/v1.0/players"}""");
+    }
+
+    [Test]
+    public void KeepTheStandardMembersWithoutValueAsNull()
+    {
+        var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails());
+
+        json.Should().Be("""{"type":null,"title":null,"status":null,"detail":null,"instance":null}""");
+    }
+
+    [Test]
+    public void WriteNoExtraMemberNorExtensionsObjectWhenThereAreNoExtensions()
+    {
+        var json = ExceptionToHttpResponseConverters.Serialize(new ProblemDetails { Title = "Unknown error", Status = 500, Instance = "/x" });
+
+        JObject.Parse(json).Properties().Select(property => property.Name).Should()
+            .Equal("type", "title", "status", "detail", "instance");
+    }
+
+    [Test]
+    public void WriteTheTranslationKeyAloneAtTheRootWithItsValueUnchanged()
+    {
+        var problemDetails = ExceptionToHttpResponseConverters.PlayerConverters[typeof(PlayerSearchFilterNotPermittedException)](
+            new PlayerSearchFilterNotPermittedException("Gender"));
+
+        var body = JObject.Parse(ExceptionToHttpResponseConverters.Serialize(problemDetails));
+
+        body.Properties().Select(property => property.Name).Should()
+            .Equal("type", "title", "status", "detail", "instance", "errorTranslationKey");
+        body["errorTranslationKey"]!.Value<string>().Should().Be("Error.Search.FilterNotPermitted");
+    }
+
+    [Test]
+    public void WriteTheErrorsAtTheRootWithEveryKeyInCamelCasePerSegmentAndTheMessagesUnchanged()
+    {
+        var problemDetails = ExceptionToHttpResponseConverters.BuildValidationProblemDetails("Cannot create facility",
+            "Error.Facilities.Create.Validation", new Dictionary<string, string[]>
+            {
+                ["FirstName"] = ["FirstName is required."],
+                ["Address.Street"] = ["Address.Street must be at most 100 characters."],
+                ["Stands[1].StandName"] = ["Stands[1].StandName is required."],
+                ["Stands[0]"] = ["Stands[0] is required."],
+            });
+
+        var body = JObject.Parse(ExceptionToHttpResponseConverters.Serialize(problemDetails));
+
+        body.Properties().Select(property => property.Name).Should()
+            .Equal("type", "title", "status", "detail", "instance", "errorTranslationKey", "errors");
+        body["errorTranslationKey"]!.Value<string>().Should().Be("Error.Facilities.Create.Validation");
+        var errors = (JObject)body["errors"]!;
+        errors.Properties().Select(property => property.Name).Should()
+            .Equal("firstName", "address.street", "stands[1].standName", "stands[0]");
+        errors["address.street"]!.Values<string>().Should().Equal("Address.Street must be at most 100 characters.");
+        errors["stands[1].standName"]!.Values<string>().Should().Equal("Stands[1].StandName is required.");
+    }
+
+    [Test]
+    public void LeaveTheProblemDetailsInMemoryUnchangedWhenSerializing()
+    {
+        var errors = new Dictionary<string, string[]> { ["Address.Street"] = ["Address.Street is required."] };
+        var problemDetails = ExceptionToHttpResponseConverters.BuildValidationProblemDetails("t", "Error.K", errors);
+
+        ExceptionToHttpResponseConverters.Serialize(problemDetails);
+
+        problemDetails.Extensions.Keys.Should().Equal("ErrorTranslationKey", "Errors");
+        problemDetails.Extensions["Errors"].Should().BeSameAs(errors);
     }
 
     [Test]

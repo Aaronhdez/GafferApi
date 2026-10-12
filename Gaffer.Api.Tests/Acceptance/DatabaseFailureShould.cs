@@ -55,8 +55,10 @@ public class DatabaseFailureShould
         var response = await _client.GetAsync(Uris.GetPlayer(Guid.NewGuid().ToString()));
 
         response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Title"]!.Value<string>().Should().Be("Unknown error");
+        var body = await ProblemJson.Read(response);
+        body["title"]!.Value<string>().Should().Be("Unknown error");
+        body["status"]!.Value<int>().Should().Be(500);
+        body.ContainsKey(ProblemJson.ErrorTranslationKey).Should().BeFalse();
         var newLogs = _logs.EntriesFor<ExceptionHandlingMiddleware>().Skip(logsBefore).ToList();
         newLogs.Should().ContainSingle();
         newLogs[0].Level.Should().Be(LogLevel.Error);

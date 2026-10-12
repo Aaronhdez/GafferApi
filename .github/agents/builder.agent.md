@@ -13,7 +13,8 @@ Implement only the approved plan. Read [AGENTS.md](../../AGENTS.md), the plan, a
 
 ## Work
 
-- Address outstanding `CHANGES_REQUESTED` findings first; otherwise implement the next approved step.
+- Address outstanding `CHANGES_REQUESTED` findings first; otherwise implement the next approved step. Read that step file whole, but from `00-*.md` only the applicable decisions and rules, and `STATUS.md` by range; never dump the plan files together.
+- Shell state does not persist between terminal calls: define scratchpad variables in the same call that uses them and guard them (`: "${S:?}"`), or create files with the edit tool.
 - At cycle start, check that `STATUS.md` keeps full detail only for the current and previous cycle; collapse older `APPROVED` cycles into the summary index first and move their detail verbatim to `STATUS-archive.md` in the plan folder instead of deleting it by hand (OPT-026, OPT-029).
 - Record each red as `n × estado` (or `n × CSxxxx`) per test class, never "todos" (OPT-038); define the red-summary command once and reuse it (OPT-041).
 - Before changing the signature or nullability of a shared type, `grep -rn` its usages in product and tests and adapt them in the same step (OPT-039).
