@@ -1,19 +1,17 @@
-﻿using AwesomeAssertions;
+using System.Globalization;
+using AwesomeAssertions;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Tests.TestShared;
-using System.Globalization;
 
 namespace Gaffer.Api.Tests.Unit.Domain;
 
-public class PlayerShould
-{
-    private Player _player;
+public class PlayerShould {
+    private Player player;
 
     [SetUp]
-    public void Setup()
-    {
-        _player = new Player(TestDefaultValues.EmptyPlayerId,
+    public void Setup() {
+        player = new Player(TestDefaultValues.EmptyPlayerId,
             TestDefaultValues.DefaultFirstName,
             TestDefaultValues.DefaultLastName,
             TestDefaultValues.DefaultSecondLastName,
@@ -22,75 +20,55 @@ public class PlayerShould
     }
 
     [Test]
-    public void ReturnFirstName()
-    {
-        _player.GetFirstName().Should().Be(TestDefaultValues.DefaultFirstName);
-    }    
-    
+    public void ReturnFirstName() => player.GetFirstName().Should().Be(TestDefaultValues.DefaultFirstName);
+
     [Test]
-    public void ReturnLastName()
-    {
-        _player.GetLastName().Should().Be(TestDefaultValues.DefaultLastName);
+    public void ReturnLastName() => player.GetLastName().Should().Be(TestDefaultValues.DefaultLastName);
+
+    [Test]
+    public void ReturnSecondLastName() => player.GetSecondLastName().Should().Be(TestDefaultValues.DefaultSecondLastName);
+
+    [Test]
+    public void ReturnBirthDate() => player.GetBirthDate().Should().Be(TestDefaultValues.DefaultBirthDate.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+    [Test]
+    public void ReturnGenderName() => player.GetGenderName().Should().Be(TestDefaultValues.DefaultGender.ToString());
+
+    [Test]
+    public void SetFirstName() {
+        player.SetFirstName("Marcos");
+
+        player.FirstName.Should().Be("Marcos");
     }
 
     [Test]
-    public void ReturnSecondLastName()
-    {
-        _player.GetSecondLastName().Should().Be(TestDefaultValues.DefaultSecondLastName);
+    public void SetLastName() {
+        player.SetLastName("Sanchez");
+
+        player.LastName.Should().Be("Sanchez");
     }
 
     [Test]
-    public void ReturnBirthDate()
-    {
-        _player.GetBirthDate().Should().Be(TestDefaultValues.DefaultBirthDate.ToString(System.Globalization.CultureInfo.InvariantCulture));
+    public void SetSecondLastName() {
+        player.SetSecondLastName("Lopez");
+
+        player.SecondLastName.Should().Be("Lopez");
     }
 
     [Test]
-    public void ReturnGenderName()
-    {
-        _player.GetGenderName().Should().Be(TestDefaultValues.DefaultGender.ToString());
-    }
-
-    [Test]
-    public void SetFirstName()
-    {
-        _player.SetFirstName("Marcos");
-
-        _player.FirstName.Should().Be("Marcos");
-    }
-
-    [Test]
-    public void SetLastName()
-    {
-        _player.SetLastName("Sanchez");
-
-        _player.LastName.Should().Be("Sanchez");
-    }
-
-    [Test]
-    public void SetSecondLastName()
-    {
-        _player.SetSecondLastName("Lopez");
-
-        _player.SecondLastName.Should().Be("Lopez");
-    }
-
-    [Test]
-    public void SetBirthDate()
-    {
+    public void SetBirthDate() {
         var birthDate = new DateTime(1995, 5, 23);
 
-        _player.SetBirthDate(birthDate.ToString(CultureInfo.InvariantCulture));
+        player.SetBirthDate(birthDate.ToString(CultureInfo.InvariantCulture));
 
-        _player.Birthdate.Should().Be(birthDate);
+        player.Birthdate.Should().Be(birthDate);
     }
 
     [Test]
-    public void SetGender()
-    {
-        _player.SetGender("Female");
+    public void SetGender() {
+        player.SetGender("Female");
 
-        _player.Gender.Should().Be(Gaffer.Api.Shared.Gender.FEMALE);
+        player.Gender.Should().Be(Gaffer.Api.Shared.Gender.FEMALE);
     }
 
     private static readonly DateTime Today = new(2026, 3, 15);
@@ -104,8 +82,7 @@ public class PlayerShould
     private static TestCaseData Creation(string name, Func<Player> create, string field) =>
         new TestCaseData(create, field).SetName($"RejectTheCreation({name})");
 
-    public static IEnumerable<TestCaseData> InvalidCreations()
-    {
+    public static IEnumerable<TestCaseData> InvalidCreations() {
         yield return Creation("FirstName null", () => CreateWith(firstName: null), "FirstName");
         yield return Creation("FirstName empty", () => CreateWith(firstName: ""), "FirstName");
         yield return Creation("FirstName whitespace", () => CreateWith(firstName: "  "), "FirstName");
@@ -124,16 +101,14 @@ public class PlayerShould
     }
 
     [TestCaseSource(nameof(InvalidCreations))]
-    public void RejectACreationThatBreaksARule(Func<Player> create, string field)
-    {
+    public void RejectACreationThatBreaksARule(Func<Player> create, string field) {
         var act = () => create();
 
         act.Should().Throw<DomainValidationException>().Which.Errors.Keys.Should().Equal(field);
     }
 
     [Test]
-    public void ReportEveryInvalidFieldOfACreationAtOnceWithoutTheRejectedValues()
-    {
+    public void ReportEveryInvalidFieldOfACreationAtOnceWithoutTheRejectedValues() {
         var act = () => CreateWith(firstName: Text101, lastName: "", secondLastName: " ", gender: (Gender)7,
             birthDate: Today.AddDays(1));
 
@@ -143,8 +118,7 @@ public class PlayerShould
     }
 
     [Test]
-    public void CreateAPlayerWhoseValuesAreAtTheLimits()
-    {
+    public void CreateAPlayerWhoseValuesAreAtTheLimits() {
         var player = CreateWith(firstName: Text100, lastName: Text100, secondLastName: Text100, birthDate: new DateTime(1900, 1, 1));
 
         player.FirstName.Should().Be(Text100);
@@ -154,28 +128,20 @@ public class PlayerShould
     }
 
     [Test]
-    public void CreateAPlayerWhoTurnsSixteenToday()
-    {
-        CreateWith(birthDate: Today.AddYears(-16)).Birthdate.Should().Be(Today.AddYears(-16));
-    }
+    public void CreateAPlayerWhoTurnsSixteenToday() => CreateWith(birthDate: Today.AddYears(-16)).Birthdate.Should().Be(Today.AddYears(-16));
 
     [Test]
-    public void ReportAnAbsentBirthDateAsRequired()
-    {
+    public void ReportAnAbsentBirthDateAsRequired() {
         var act = () => CreateWith(birthDate: default(DateTime));
 
         act.Should().Throw<DomainValidationException>().Which.Errors["BirthDate"].Should().Equal("BirthDate is required.");
     }
 
     [Test]
-    public void CreateAPlayerWithoutSecondLastName()
-    {
-        CreateWith(secondLastName: null).SecondLastName.Should().BeNull();
-    }
+    public void CreateAPlayerWithoutSecondLastName() => CreateWith(secondLastName: null).SecondLastName.Should().BeNull();
 
     [Test]
-    public void TreatAPlayerBornOnTheTwentyNinthOfFebruaryAsSixteenOnTheTwentyEighth()
-    {
+    public void TreatAPlayerBornOnTheTwentyNinthOfFebruaryAsSixteenOnTheTwentyEighth() {
         // +16 years from a 29 February lands on a leap year except across a non-leap century (2100).
         var act = () => Player.Create(Guid.NewGuid(), "Ana", "Lopez", null, Gender.FEMALE, new DateTime(2084, 2, 29),
             new DateTime(2100, 2, 28));
@@ -184,8 +150,7 @@ public class PlayerShould
     }
 
     [Test]
-    public void NotValidateWhenRehydratedThroughTheConstructor()
-    {
+    public void NotValidateWhenRehydratedThroughTheConstructor() {
         var act = () => new Player(Guid.NewGuid(), Text101, "", "", (Gender)99, Today.AddDays(1));
 
         act.Should().NotThrow();
@@ -194,8 +159,7 @@ public class PlayerShould
     private static TestCaseData Setter(string name, Action<Player> set, string field) =>
         new TestCaseData(set, field).SetName($"RejectTheSetter({name})");
 
-    public static IEnumerable<TestCaseData> InvalidSetterCalls()
-    {
+    public static IEnumerable<TestCaseData> InvalidSetterCalls() {
         yield return Setter("FirstName empty", p => p.SetFirstName(""), "FirstName");
         yield return Setter("FirstName whitespace", p => p.SetFirstName("   "), "FirstName");
         yield return Setter("FirstName 101", p => p.SetFirstName(Text101), "FirstName");
@@ -211,52 +175,48 @@ public class PlayerShould
     }
 
     [TestCaseSource(nameof(InvalidSetterCalls))]
-    public void RejectAnInvalidValueInASetterAndKeepTheCurrentOne(Action<Player> set, string field)
-    {
-        var before = (_player.FirstName, _player.LastName, _player.SecondLastName, _player.Birthdate, _player.Gender);
+    public void RejectAnInvalidValueInASetterAndKeepTheCurrentOne(Action<Player> set, string field) {
+        var before = (player.FirstName, player.LastName, player.SecondLastName, player.Birthdate, player.Gender);
 
-        var act = () => set(_player);
+        var act = () => set(player);
 
         act.Should().Throw<DomainValidationException>().Which.Errors.Keys.Should().Equal(field);
-        (_player.FirstName, _player.LastName, _player.SecondLastName, _player.Birthdate, _player.Gender).Should().Be(before);
+        (player.FirstName, player.LastName, player.SecondLastName, player.Birthdate, player.Gender).Should().Be(before);
     }
 
     [Test]
-    public void AcceptSetterValuesAtTheLimits()
-    {
-        _player.SetFirstName(Text100);
-        _player.SetLastName(Text100);
-        _player.SetSecondLastName(Text100);
-        _player.SetBirthDate(new DateTime(1900, 1, 1), Today);
-        _player.SetBirthDate(Today.AddYears(-16), Today);
-        _player.SetGender(Gender.OTHER);
+    public void AcceptSetterValuesAtTheLimits() {
+        player.SetFirstName(Text100);
+        player.SetLastName(Text100);
+        player.SetSecondLastName(Text100);
+        player.SetBirthDate(new DateTime(1900, 1, 1), Today);
+        player.SetBirthDate(Today.AddYears(-16), Today);
+        player.SetGender(Gender.OTHER);
 
-        _player.FirstName.Should().Be(Text100);
-        _player.LastName.Should().Be(Text100);
-        _player.SecondLastName.Should().Be(Text100);
-        _player.Birthdate.Should().Be(Today.AddYears(-16));
-        _player.Gender.Should().Be(Gender.OTHER);
+        player.FirstName.Should().Be(Text100);
+        player.LastName.Should().Be(Text100);
+        player.SecondLastName.Should().Be(Text100);
+        player.Birthdate.Should().Be(Today.AddYears(-16));
+        player.Gender.Should().Be(Gender.OTHER);
     }
 
     [Test]
-    public void CollectTheErrorsOfSeveralSettersBeforeFailing()
-    {
+    public void CollectTheErrorsOfSeveralSettersBeforeFailing() {
         var errors = new DomainValidationErrors();
 
-        errors.Collect(() => _player.SetFirstName(""));
-        errors.Collect(() => _player.SetLastName("Valido"));
-        errors.Collect(() => _player.SetGender((Gender)99));
+        errors.Collect(() => player.SetFirstName(""));
+        errors.Collect(() => player.SetLastName("Valido"));
+        errors.Collect(() => player.SetGender((Gender)99));
         var act = () => errors.ThrowIfAny();
 
         act.Should().Throw<DomainValidationException>().Which.Errors.Keys.Should().BeEquivalentTo("FirstName", "Gender");
     }
 
     [Test]
-    public void NotFailWhenNoErrorWasCollected()
-    {
+    public void NotFailWhenNoErrorWasCollected() {
         var errors = new DomainValidationErrors();
 
-        errors.Collect(() => _player.SetFirstName("Valido"));
+        errors.Collect(() => player.SetFirstName("Valido"));
 
         errors.Invoking(e => e.ThrowIfAny()).Should().NotThrow();
     }

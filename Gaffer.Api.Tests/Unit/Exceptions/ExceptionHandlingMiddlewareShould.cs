@@ -11,8 +11,7 @@ using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Exceptions;
 
-public class ExceptionHandlingMiddlewareShould
-{
+public class ExceptionHandlingMiddlewareShould {
     private const string FilterNotPermittedKey = "Error.Search.FilterNotPermitted";
     private const string RequestPath = "/facilities";
     private RecordingLoggerProvider logs;
@@ -26,13 +25,11 @@ public class ExceptionHandlingMiddlewareShould
     // No HTTP route sends arbitrary Facility filters, so the chain repository -> middleware is closed here:
     // the request pipeline runs the real SqlFacilityRepository with a filter field that is not permitted.
     [Test]
-    public async Task ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted()
-    {
+    public async Task ReturnABadRequestWhenAFacilitySearchUsesAFilterThatIsNotPermitted() {
         var connectionProvider = Substitute.For<IDatabaseConnectionProvider>();
         var repository = new SqlFacilityRepository(connectionProvider);
-        var middleware = new ExceptionHandlingMiddleware(async _ => await repository.Get(new FacilitySearchCriteria
-        {
-            criteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
+        var middleware = new ExceptionHandlingMiddleware(async _ => await repository.Get(new FacilitySearchCriteria {
+            CriteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
         }, CancellationToken.None), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
@@ -41,16 +38,15 @@ public class ExceptionHandlingMiddlewareShould
         context.Response.StatusCode.Should().Be(400);
         context.Response.ContentType.Should().Be("application/json");
         var body = await ReadBody(context);
-        body["Status"]!.Value<int>().Should().Be(400);
-        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
-        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["status"]!.Value<int>().Should().Be(400);
+        body["title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
+        ProblemJson.TranslationKeyOf(body).Should().Be(FilterNotPermittedKey);
     }
 
     [Test]
-    public async Task KeepReturningAnUnknownErrorForAGenericArgumentException()
-    {
+    public async Task KeepReturningAnUnknownErrorForAGenericArgumentException() {
         var middleware = new ExceptionHandlingMiddleware(_ => throw new ArgumentException("boom"), logs.CreateLogger<ExceptionHandlingMiddleware>());
         var context = CreateContext();
 
@@ -60,8 +56,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task ReturnAnUnknownErrorForAnUnmappedException()
-    {
+    public async Task ReturnAnUnknownErrorForAnUnmappedException() {
         var middleware = CreateMiddleware(new InvalidOperationException("boom"));
         var context = CreateContext();
 
@@ -70,14 +65,32 @@ public class ExceptionHandlingMiddlewareShould
         context.Response.StatusCode.Should().Be(500);
         context.Response.ContentType.Should().Be("application/json");
         var body = await ReadBody(context);
-        body["Status"]!.Value<int>().Should().Be(500);
-        body["Title"]!.Value<string>().Should().Be("Unknown error");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+        body["status"]!.Value<int>().Should().Be(500);
+        body["title"]!.Value<string>().Should().Be("Unknown error");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
+        body.ContainsKey(ProblemJson.ErrorTranslationKey).Should().BeFalse();
+        body.ContainsKey(ProblemJson.Errors).Should().BeFalse();
+    }
+
+    // TECHDEBT-006 AC2.4: a converted validation failure keeps its values and writes errorTranslationKey and errors at the root.
+    [Test]
+    public async Task WriteAConvertedValidationFailureWithItsKeyAndErrorsAtTheRoot() {
+        var middleware = CreateMiddleware(new ValidationFailedException("Cannot create facility", "Error.Facilities.Create.Validation",
+            new Dictionary<string, string[]> { ["Address.Street"] = ["Address.Street is required."] }));
+        var context = CreateContext();
+
+        await middleware.Invoke(context);
+
+        context.Response.StatusCode.Should().Be(400);
+        context.Response.ContentType.Should().Be("application/json");
+        var body = await ReadBody(context);
+        body["title"]!.Value<string>().Should().Be("Cannot create facility");
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Facilities.Create.Validation");
+        ProblemJson.ErrorsOf(body)["address.street"]!.Values<string>().Should().Equal("Address.Street is required.");
     }
 
     [Test]
-    public async Task LogAnUnmappedExceptionOnceAsAnErrorWithTheException()
-    {
+    public async Task LogAnUnmappedExceptionOnceAsAnErrorWithTheException() {
         var exception = new InvalidOperationException("boom");
         var middleware = CreateMiddleware(exception);
 
@@ -90,8 +103,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task LogAnExceptionMappedToBadRequestOnceAsAnError()
-    {
+    public async Task LogAnExceptionMappedToBadRequestOnceAsAnError() {
         var middleware = CreateMiddleware(new PlayerSearchFilterNotPermittedException("Street"));
         var context = CreateContext();
 
@@ -99,17 +111,16 @@ public class ExceptionHandlingMiddlewareShould
 
         context.Response.StatusCode.Should().Be(400);
         var body = await ReadBody(context);
-        body["Title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
-        body["Detail"]!.Value<string>().Should().Be("FilterNotPermitted");
-        body["Instance"]!.Value<string>().Should().Be(RequestPath);
+        body["title"]!.Value<string>().Should().Be(FilterNotPermittedKey);
+        body["detail"]!.Value<string>().Should().Be("FilterNotPermitted");
+        body["instance"]!.Value<string>().Should().Be(RequestPath);
         var entries = logs.EntriesFor<ExceptionHandlingMiddleware>();
         entries.Should().ContainSingle();
         entries[0].Level.Should().Be(LogLevel.Error);
     }
 
     [Test]
-    public async Task NotLogAnExceptionMappedToNotFound()
-    {
+    public async Task NotLogAnExceptionMappedToNotFound() {
         var middleware = CreateMiddleware(new PlayerNotFoundException("not found", Guid.NewGuid()));
         var context = CreateContext();
 
@@ -120,8 +131,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient()
-    {
+    public async Task ReturnClientClosedRequestWhenTheRequestIsAbortedByTheClient() {
         var middleware = CreateMiddleware(new OperationCanceledException());
         var context = CreateAbortedContext();
 
@@ -132,8 +142,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task LogAnAbortedRequestOnceAsInformationWithoutError()
-    {
+    public async Task LogAnAbortedRequestOnceAsInformationWithoutError() {
         var middleware = CreateMiddleware(new TaskCanceledException());
 
         await middleware.Invoke(CreateAbortedContext());
@@ -144,8 +153,7 @@ public class ExceptionHandlingMiddlewareShould
     }
 
     [Test]
-    public async Task KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted()
-    {
+    public async Task KeepReturningAnUnknownErrorForACancellationWhenTheRequestIsNotAborted() {
         var exception = new OperationCanceledException();
         var middleware = CreateMiddleware(exception);
         var context = CreateContext();
@@ -160,8 +168,7 @@ public class ExceptionHandlingMiddlewareShould
 
     private const int ClientClosedRequest = 499;
 
-    private static DefaultHttpContext CreateAbortedContext()
-    {
+    private static DefaultHttpContext CreateAbortedContext() {
         var context = CreateContext();
         var aborted = new CancellationTokenSource();
         aborted.Cancel();
@@ -172,18 +179,16 @@ public class ExceptionHandlingMiddlewareShould
     private ExceptionHandlingMiddleware CreateMiddleware(Exception exception) =>
         new(_ => throw exception, logs.CreateLogger<ExceptionHandlingMiddleware>());
 
-    private static DefaultHttpContext CreateContext()
-    {
+    private static DefaultHttpContext CreateContext() {
         var context = new DefaultHttpContext();
         context.Request.Path = RequestPath;
         context.Response.Body = new MemoryStream();
         return context;
     }
 
-    private static async Task<JObject> ReadBody(HttpContext context)
-    {
+    private static async Task<JObject> ReadBody(HttpContext context) {
         context.Response.Body.Position = 0;
         using var reader = new StreamReader(context.Response.Body);
-        return JObject.Parse(await reader.ReadToEndAsync());
+        return ProblemJson.Parse(await reader.ReadToEndAsync());
     }
 }

@@ -13,8 +13,7 @@ public class FacilityStandsController(
     ICommandHandler<AddFacilityStandCommand, AddFacilityStandResponse> addStandCommandHandler,
     ICommandHandler<ReplaceFacilityStandCommand> replaceStandCommandHandler,
     ICommandHandler<RemoveFacilityStandCommand> removeStandCommandHandler)
-    : ControllerBase
-{
+    : ControllerBase {
     [HttpGet("")]
     public async Task<List<SearchFacilityStandResult>> GetAll([FromRoute] Guid facilityId, CancellationToken cancellationToken = default)
         => await searchStandsQueryHandler.Handle(new SearchFacilityStandsQuery(facilityId), cancellationToken);
@@ -25,8 +24,7 @@ public class FacilityStandsController(
 
     [HttpPost("")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
-    public async Task<ActionResult<Guid>> Create([FromRoute] Guid facilityId, [FromBody] FacilityStandRequest request, CancellationToken cancellationToken = default)
-    {
+    public async Task<ActionResult<Guid>> Create([FromRoute] Guid facilityId, [FromBody] FacilityStandRequest request, CancellationToken cancellationToken = default) {
         var result = await addStandCommandHandler.Handle(
             new AddFacilityStandCommand(facilityId, request.StandName, request.StandCapacity), cancellationToken);
         return CreatedAtAction(nameof(GetBy), new { facilityId, standId = result.Id }, result.Id);
@@ -34,8 +32,7 @@ public class FacilityStandsController(
 
     [HttpPut("{standId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Update([FromRoute] Guid facilityId, [FromRoute] Guid standId, [FromBody] FacilityStandRequest request, CancellationToken cancellationToken = default)
-    {
+    public async Task<IActionResult> Update([FromRoute] Guid facilityId, [FromRoute] Guid standId, [FromBody] FacilityStandRequest request, CancellationToken cancellationToken = default) {
         await replaceStandCommandHandler.Handle(
             new ReplaceFacilityStandCommand(facilityId, standId, request.StandName, request.StandCapacity), cancellationToken);
         return NoContent();
@@ -43,15 +40,13 @@ public class FacilityStandsController(
 
     [HttpDelete("{standId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    public async Task<IActionResult> Delete([FromRoute] Guid facilityId, [FromRoute] Guid standId, CancellationToken cancellationToken = default)
-    {
+    public async Task<IActionResult> Delete([FromRoute] Guid facilityId, [FromRoute] Guid standId, CancellationToken cancellationToken = default) {
         await removeStandCommandHandler.Handle(new RemoveFacilityStandCommand(facilityId, standId), cancellationToken);
         return NoContent();
     }
 }
 
-public class FacilityStandRequest
-{
+public class FacilityStandRequest {
     public string StandName { get; set; } = string.Empty;
     public int StandCapacity { get; set; }
 }

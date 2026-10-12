@@ -16,11 +16,9 @@ public class FacilitiesController(
     IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>> searchFacilitiesQueryHandler,
     ICommandHandler<DeleteFacilityCommand> deleteFacilityCommandHandler,
     ICommandHandler<UpdateFacilityCommand> updateFacilityCommandHandler)
-    : ControllerBase
-{
+    : ControllerBase {
     [HttpGet("{id}")]
-    public async Task<SearchFacilityResult> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    {
+    public async Task<SearchFacilityResult> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default) {
         var query = new SearchFacilitiesQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
         var queryResult = await searchFacilitiesQueryHandler.Handle(query, cancellationToken);
@@ -29,16 +27,14 @@ public class FacilitiesController(
     }
 
     [HttpGet("")]
-    public async Task<List<SearchFacilityResult>> GetAll(CancellationToken cancellationToken = default)
-    {
+    public async Task<List<SearchFacilityResult>> GetAll(CancellationToken cancellationToken = default) {
         var query = new SearchFacilitiesQuery();
         return await searchFacilitiesQueryHandler.Handle(query, cancellationToken);
     }
 
     [HttpPost("")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
-    public async Task<ActionResult<Guid>> Create([FromBody] CreateFacilityRequest request, CancellationToken cancellationToken = default)
-    {
+    public async Task<ActionResult<Guid>> Create([FromBody] CreateFacilityRequest request, CancellationToken cancellationToken = default) {
         var command = new CreateFacilityCommand(
             request.Name,
             request.Active,
@@ -52,23 +48,18 @@ public class FacilitiesController(
                 request.Address.City,
                 request.Address.Region,
                 request.Address.Country),
-            request.Stands?.Select(stand => new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
+            request.Stands?.Select(stand => stand is null ? null : new CreateFacilityStandCommand(stand.StandName, stand.StandCapacity)).ToList());
 
         var result = await createFacilityCommandHandler.Handle(command, cancellationToken);
         return CreatedAtAction(nameof(GetBy), new { id = result.Id }, result.Id);
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    {
-        await deleteFacilityCommandHandler.Handle(new DeleteFacilityCommand(id), cancellationToken);
-    }
+    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default) => await deleteFacilityCommandHandler.Handle(new DeleteFacilityCommand(id), cancellationToken);
 
     [HttpPut("{id}")]
-    public async Task Update([FromRoute] Guid id, [FromBody] UpdateFacilityRequest request, CancellationToken cancellationToken = default)
-    {
-        await updateFacilityCommandHandler.Handle(new UpdateFacilityCommand
-        {
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdateFacilityRequest request, CancellationToken cancellationToken = default) {
+        await updateFacilityCommandHandler.Handle(new UpdateFacilityCommand {
             Id = id,
             Name = request.Name,
             Active = request.Active,
@@ -82,13 +73,12 @@ public class FacilitiesController(
                 request.Address.City,
                 request.Address.Region,
                 request.Address.Country),
-            Stands = request.Stands?.Select(stand => new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
+            Stands = request.Stands?.Select(stand => stand is null ? null : new UpdateFacilityStandCommand(stand.StandName, stand.StandCapacity, stand.Id)).ToList(),
         }, cancellationToken);
     }
 }
 
-public class CreateFacilityRequest
-{
+public class CreateFacilityRequest {
     public string Name { get; set; } = string.Empty;
     public bool Active { get; set; }
     public DateTime BuildDate { get; set; }
@@ -102,8 +92,7 @@ public class CreateFacilityRequest
     public List<CreateFacilityStandRequest>? Stands { get; set; }
 }
 
-public class CreateFacilityAddressRequest
-{
+public class CreateFacilityAddressRequest {
     public string Street { get; set; } = string.Empty;
     public string StreetNumber { get; set; } = string.Empty;
     public string PostalCode { get; set; } = string.Empty;
@@ -112,14 +101,12 @@ public class CreateFacilityAddressRequest
     public string Country { get; set; } = string.Empty;
 }
 
-public class CreateFacilityStandRequest
-{
+public class CreateFacilityStandRequest {
     public string StandName { get; set; } = string.Empty;
     public int StandCapacity { get; set; }
 }
 
-public class UpdateFacilityRequest
-{
+public class UpdateFacilityRequest {
     public string Name { get; set; } = string.Empty;
     public bool Active { get; set; }
     public DateTime BuildDate { get; set; }
@@ -133,8 +120,7 @@ public class UpdateFacilityRequest
     public List<UpdateFacilityStandRequest>? Stands { get; set; }
 }
 
-public class UpdateFacilityAddressRequest
-{
+public class UpdateFacilityAddressRequest {
     public string Street { get; set; } = string.Empty;
     public string StreetNumber { get; set; } = string.Empty;
     public string PostalCode { get; set; } = string.Empty;
@@ -143,8 +129,7 @@ public class UpdateFacilityAddressRequest
     public string Country { get; set; } = string.Empty;
 }
 
-public class UpdateFacilityStandRequest
-{
+public class UpdateFacilityStandRequest {
     /// <summary>Id of an existing stand of the facility; omit it (or send null) to add a new stand.</summary>
     public Guid? Id { get; set; }
     public string StandName { get; set; } = string.Empty;

@@ -7,8 +7,7 @@ namespace Gaffer.Api.Tests;
 /// Single source of the test configuration, including the MySQL connection string.
 /// Precedence (last wins): testSettings.json, User Secrets of Gaffer.Api.Tests, environment variables.
 /// </summary>
-public static class TestConfiguration
-{
+public static class TestConfiguration {
     public const string DatabaseKey = "ConnectionStrings:Database";
 
     private static readonly Lazy<IConfigurationRoot> Root = new(Build);
@@ -29,11 +28,9 @@ public static class TestConfiguration
     /// Returns the MySQL test connection string, or fails (never skips) explaining how to configure it.
     /// The configured value is never included in the message.
     /// </summary>
-    public static string RequireDatabaseConnectionString(IConfiguration configuration)
-    {
+    public static string RequireDatabaseConnectionString(IConfiguration configuration) {
         var connectionString = configuration[DatabaseKey];
-        if (!HasPassword(connectionString))
-        {
+        if (!HasPassword(connectionString)) {
             throw new InvalidOperationException(
                 $"The MySQL test connection string '{DatabaseKey}' has no password. MySQL-backed tests are not skipped: " +
                 "configure it once per machine with " +
@@ -49,8 +46,7 @@ public static class TestConfiguration
         new DbConnectionStringBuilder { ConnectionString = connectionString, ["Port"] = "1", ["Connection Timeout"] = "2" }
             .ConnectionString;
 
-    private static bool HasPassword(string? connectionString)
-    {
+    private static bool HasPassword(string? connectionString) {
         if (string.IsNullOrWhiteSpace(connectionString)) return false;
         var builder = new DbConnectionStringBuilder { ConnectionString = connectionString };
         return new[] { "Pwd", "Password" }

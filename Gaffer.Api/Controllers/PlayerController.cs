@@ -1,4 +1,4 @@
-﻿using Gaffer.Api.Commands;
+using Gaffer.Api.Commands;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
@@ -13,11 +13,9 @@ public class PlayerController(
     ICommandHandler<CreatePlayerCommand, CreatePlayerResponse> createPlayerCommandHandler,
     IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> searchPlayersQueryHandler,
     ICommandHandler<DeletePlayerCommand> deletePlayerCommandHandler,
-    ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler) : ControllerBase
-{
+    ICommandHandler<UpdatePlayerCommand> updatePlayerCommandHandler) : ControllerBase {
     [HttpGet("{id}")]
-    public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    {
+    public async Task<SearchPlayerResponse> GetBy([FromRoute] Guid id, CancellationToken cancellationToken = default) {
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{id}" });
         var queryResult = await searchPlayersQueryHandler.Handle(query, cancellationToken);
@@ -29,8 +27,7 @@ public class PlayerController(
 
     [HttpPost("")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
-    public async Task<ActionResult<Guid>> Create([FromBody] CreatePlayerRequest request, CancellationToken cancellationToken = default)
-    {
+    public async Task<ActionResult<Guid>> Create([FromBody] CreatePlayerRequest request, CancellationToken cancellationToken = default) {
         var createResult = await createPlayerCommandHandler.Handle(
             new CreatePlayerCommand(request.FirstName, request.LastName, request.SecondLastName, request.BirthDate,
                 request.Gender), cancellationToken);
@@ -38,11 +35,9 @@ public class PlayerController(
     }
 
     [HttpPost("search")]
-    public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request, CancellationToken cancellationToken = default)
-    {
+    public async Task<List<SearchPlayerResponse>> Search(SearchPlayersRequest request, CancellationToken cancellationToken = default) {
         var query = new SearchPlayersQuery();
-        foreach (var filter in request.Filters)
-        {
+        foreach (var filter in request.Filters) {
             query.Filters.Add(new QueryFilter { Name = filter.Name, Value = filter.Value });
         }
 
@@ -59,16 +54,11 @@ public class PlayerController(
     }
 
     [HttpDelete("{id}")]
-    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    {
-        await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(id), cancellationToken);
-    }
+    public async Task Delete([FromRoute] Guid id, CancellationToken cancellationToken = default) => await deletePlayerCommandHandler.Handle(new DeletePlayerCommand(id), cancellationToken);
 
     [HttpPut("{id}")]
-    public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request, CancellationToken cancellationToken = default)
-    {
-        await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand
-        {
+    public async Task Update([FromRoute] Guid id, [FromBody] UpdatePlayerRequest request, CancellationToken cancellationToken = default) {
+        await updatePlayerCommandHandler.Handle(new UpdatePlayerCommand {
             Id = id,
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -79,8 +69,7 @@ public class PlayerController(
     }
 }
 
-public class UpdatePlayerRequest
-{
+public class UpdatePlayerRequest {
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
     public string? SecondLastName { get; set; }
@@ -88,13 +77,11 @@ public class UpdatePlayerRequest
     public Gender? Gender { get; set; }
 }
 
-public class SearchPlayersRequest
-{
+public class SearchPlayersRequest {
     public List<SearchPlayersFilter> Filters { get; set; } = [];
 }
 
-public class SearchPlayersFilter
-{
+public class SearchPlayersFilter {
     public string Name { get; set; } = null!;
     public string Value { get; set; } = null!;
 }

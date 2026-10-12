@@ -8,57 +8,52 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Queries;
 
-public class FacilityStandQueryHandlersShould
-{
-    private IFacilityRepository _repository;
-    private readonly Guid _facilityId = Guid.NewGuid();
+public class FacilityStandQueryHandlersShould {
+    private IFacilityRepository repository;
+    private readonly Guid facilityId = Guid.NewGuid();
 
     [SetUp]
-    public void Setup() => _repository = Substitute.For<IFacilityRepository>();
+    public void Setup() => repository = Substitute.For<IFacilityRepository>();
 
     [Test]
-    public async Task ListTheStandsOfAFacility()
-    {
+    public async Task ListTheStandsOfAFacility() {
         var north = new Stand(Guid.NewGuid(), "North", 4500);
-        _repository.GetStands(_facilityId, Arg.Any<CancellationToken>()).Returns([north]);
+        repository.GetStands(facilityId, Arg.Any<CancellationToken>()).Returns([north]);
 
-        var result = await new SearchFacilityStandsQueryHandler(_repository).Handle(new SearchFacilityStandsQuery(_facilityId), CancellationToken.None);
+        var result = await new SearchFacilityStandsQueryHandler(repository).Handle(new SearchFacilityStandsQuery(facilityId), CancellationToken.None);
 
         result.Should().BeEquivalentTo([new SearchFacilityStandResult(north.Id, "North", 4500)]);
     }
 
     [Test]
-    public async Task ReadAStandOfAFacility()
-    {
+    public async Task ReadAStandOfAFacility() {
         var north = new Stand(Guid.NewGuid(), "North", 4500);
-        _repository.GetStand(_facilityId, north.Id, Arg.Any<CancellationToken>()).Returns(north);
+        repository.GetStand(facilityId, north.Id, Arg.Any<CancellationToken>()).Returns(north);
 
-        var result = await new GetFacilityStandQueryHandler(_repository).Handle(new GetFacilityStandQuery(_facilityId, north.Id), CancellationToken.None);
+        var result = await new GetFacilityStandQueryHandler(repository).Handle(new GetFacilityStandQuery(facilityId, north.Id), CancellationToken.None);
 
         result.Should().BeEquivalentTo(new SearchFacilityStandResult(north.Id, "North", 4500));
     }
 
     [Test]
-    public async Task TranslateAMissingFacility()
-    {
-        var missing = new FacilityNotFoundException("not found", _facilityId);
-        _repository.GetStands(default, default).ThrowsAsyncForAnyArgs(missing);
-        _repository.GetStand(default, default, default).ThrowsAsyncForAnyArgs(missing);
+    public async Task TranslateAMissingFacility() {
+        var missing = new FacilityNotFoundException("not found", facilityId);
+        repository.GetStands(default, default).ThrowsAsyncForAnyArgs(missing);
+        repository.GetStand(default, default, default).ThrowsAsyncForAnyArgs(missing);
 
-        var list = async () => await new SearchFacilityStandsQueryHandler(_repository).Handle(new SearchFacilityStandsQuery(_facilityId), CancellationToken.None);
-        var read = async () => await new GetFacilityStandQueryHandler(_repository).Handle(new GetFacilityStandQuery(_facilityId, Guid.NewGuid()), CancellationToken.None);
+        var list = async () => await new SearchFacilityStandsQueryHandler(repository).Handle(new SearchFacilityStandsQuery(facilityId), CancellationToken.None);
+        var read = async () => await new GetFacilityStandQueryHandler(repository).Handle(new GetFacilityStandQuery(facilityId, Guid.NewGuid()), CancellationToken.None);
 
         await list.Should().ThrowExactlyAsync<FacilityStandsFacilityNotFoundException>();
         await read.Should().ThrowExactlyAsync<FacilityStandsFacilityNotFoundException>();
     }
 
     [Test]
-    public async Task LetAMissingStandPropagateUntranslated()
-    {
+    public async Task LetAMissingStandPropagateUntranslated() {
         var standId = Guid.NewGuid();
-        _repository.GetStand(default, default, default).ThrowsAsyncForAnyArgs(new FacilityStandNotFoundException(_facilityId, standId));
+        repository.GetStand(default, default, default).ThrowsAsyncForAnyArgs(new FacilityStandNotFoundException(facilityId, standId));
 
-        var read = async () => await new GetFacilityStandQueryHandler(_repository).Handle(new GetFacilityStandQuery(_facilityId, standId), CancellationToken.None);
+        var read = async () => await new GetFacilityStandQueryHandler(repository).Handle(new GetFacilityStandQuery(facilityId, standId), CancellationToken.None);
 
         await read.Should().ThrowExactlyAsync<FacilityStandNotFoundException>();
     }

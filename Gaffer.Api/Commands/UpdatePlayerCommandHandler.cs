@@ -1,34 +1,26 @@
-﻿using Gaffer.Api.Domain;
+using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
 
-public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<UpdatePlayerCommand>
-{
-    public async Task Handle(UpdatePlayerCommand command, CancellationToken cancellationToken)
-    {
-        try
-        {
+public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<UpdatePlayerCommand> {
+    public async Task Handle(UpdatePlayerCommand command, CancellationToken cancellationToken) {
+        try {
             var player = await GetPlayer(command, cancellationToken);
             UpdatePlayer(player, command);
             await playerRepository.Update(player, cancellationToken);
-        }
-        catch (PlayerNotFoundException ex)
-        {
+        } catch (PlayerNotFoundException ex) {
             throw new CannotUpdatePlayerNotFoundException(ex.Message, command.Id);
         }
     }
 
-    private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken)
-    {
+    private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken) {
         var playerSearchCriteria = new PlayerSearchCriteria();
-        playerSearchCriteria.criteriaList.Add(new SearchCriteria
-        {
+        playerSearchCriteria.CriteriaList.Add(new SearchCriteria {
             Name = "Id",
-            Value = $"{command.Id}",
-            CriteriaType = CriteriaType.NONE
+            Value = $"{command.Id}"
         });
         var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();
@@ -37,8 +29,7 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
 
     // Partial update: an absent or null field is left unchanged (SecondLastName included); every sent field goes
     // through its validating setter, and all the invalid ones are reported together before anything is saved.
-    private static void UpdatePlayer(Player player, UpdatePlayerCommand command)
-    {
+    private static void UpdatePlayer(Player player, UpdatePlayerCommand command) {
         var errors = new DomainValidationErrors();
         if (command.FirstName is not null) errors.Collect(() => player.SetFirstName(command.FirstName));
         if (command.LastName is not null) errors.Collect(() => player.SetLastName(command.LastName));
@@ -46,12 +37,9 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         if (command.BirthDate.HasValue) errors.Collect(() => player.SetBirthDate(command.BirthDate.Value));
         if (command.Gender.HasValue) errors.Collect(() => player.SetGender(command.Gender.Value));
 
-        try
-        {
+        try {
             errors.ThrowIfAny();
-        }
-        catch (DomainValidationException ex)
-        {
+        } catch (DomainValidationException ex) {
             throw new ValidationFailedException(CannotUpdatePlayerTitle, ValidationErrorKeys.PlayersUpdate, ex.Errors);
         }
     }
@@ -59,20 +47,17 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     private const string CannotUpdatePlayerTitle = "Cannot update player";
 }
 
-public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message)
-{
+public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message) {
     public Guid Id { get; set; } = id;
 }
 
-public class CannotUpdatePlayerException(string message, Guid id) : Exception(message)
-{
+public class CannotUpdatePlayerException(string message, Guid id) : Exception(message) {
     public Guid Id { get; set; } = id;
     public const string InternalServerErrorReason = "Internal Server Error";
     public string Reason { get; } = InternalServerErrorReason;
 }
 
-public class UpdatePlayerCommand : ICommand
-{
+public class UpdatePlayerCommand : ICommand {
     public Guid Id { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

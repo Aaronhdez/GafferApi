@@ -8,12 +8,10 @@ namespace Gaffer.Api.Migrations.Migrations;
 /// with the corrected name and recreates the delete trigger, whose body references the table by name.
 /// </summary>
 [Migration(202609261200)]
-public class M0003_RenameAdressesToAddresses : Migration
-{
+public class M0003_RenameAdressesToAddresses : Migration {
     private const string TriggerName = "TRG_Facilities_BeforeDelete";
 
-    public override void Up()
-    {
+    public override void Up() {
         Execute.Sql($"DROP TRIGGER IF EXISTS {TriggerName};");
         Delete.ForeignKey("FK_Facilities_Addresses_Adresses").OnTable("Facilities_Addresses");
 
@@ -26,8 +24,7 @@ public class M0003_RenameAdressesToAddresses : Migration
         Execute.Sql(CreateTriggerSql("Addresses"));
     }
 
-    public override void Down()
-    {
+    public override void Down() {
         Execute.Sql($"DROP TRIGGER IF EXISTS {TriggerName};");
         Delete.ForeignKey("FK_Facilities_Addresses_Addresses").OnTable("Facilities_Addresses");
 

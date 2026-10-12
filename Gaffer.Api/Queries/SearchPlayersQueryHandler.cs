@@ -1,18 +1,15 @@
-﻿using Gaffer.Api.Controllers;
+using Gaffer.Api.Controllers;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Queries;
 
 public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
-    : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>>
-{
-    public virtual async Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken)
-    {
+    : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> {
+    public virtual async Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken) {
         var searchCriteria = new PlayerSearchCriteria();
-        foreach (var queryFilter in query.Filters)
-        {
-            searchCriteria.criteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
+        foreach (var queryFilter in query.Filters) {
+            searchCriteria.CriteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
         }
         var players = await playerRepository.Get(searchCriteria, cancellationToken);
         return players.Select(player
@@ -30,13 +27,11 @@ public record SearchPlayerResult(
     DateTime BirthDate,
     Gender Gender);
 
-public class SearchPlayersQuery : IQuery<List<SearchPlayerResult>>
-{
+public class SearchPlayersQuery : IQuery<List<SearchPlayerResult>> {
     public List<QueryFilter> Filters { get; } = [];
 }
 
-public class QueryFilter
-{
+public class QueryFilter {
     public string Name { get; set; } = null!;
     public string Value { get; set; } = null!;
 }

@@ -1,6 +1,5 @@
-﻿using Asp.Versioning;
+using Asp.Versioning;
 using Asp.Versioning.ApiExplorer;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
@@ -9,6 +8,7 @@ using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Startups;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -21,10 +21,8 @@ using NSwag.AspNetCore;
 
 namespace Gaffer.Api;
 
-public class Startup(IConfiguration configuration)
-{
-    public void ConfigureServices(IServiceCollection services)
-    {
+public class Startup(IConfiguration configuration) {
+    public void ConfigureServices(IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
         services.ConfigureOptions(configuration, Program.ProductContext.StartupSettingsFileName);
         services.AddMemoryCache();
@@ -32,8 +30,7 @@ public class Startup(IConfiguration configuration)
             .AddMvcOptions(options =>
                 options.Filters.Add(new ProducesAttribute("application/json"))
             )
-            .AddNewtonsoftJson(options =>
-            {
+            .AddNewtonsoftJson(options => {
                 options.SerializerSettings.DateTimeZoneHandling = DateTimeZoneHandling.Utc;
                 options.SerializerSettings.Converters.Add(new StringEnumConverter());
             });
@@ -45,40 +42,33 @@ public class Startup(IConfiguration configuration)
         // so a short-lived bootstrap logger reports the startup database check.
         using (var startupLoggerFactory = LoggerFactory.Create(builder => builder
                    .AddConfiguration(configuration.GetSection("Logging"))
-                   .AddConsole()))
-        {
+                   .AddConsole())) {
             services.ConfigureDatabase(configuration, startupLoggerFactory.CreateLogger(typeof(DatabaseStartup)));
         }
         services.ConfigureRepositories(configuration);
         services.ConfigureActions();
     }
 
-    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider)
-    {
-        if (env.IsDevelopment())
-        {
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IApiVersionDescriptionProvider provider) {
+        if (env.IsDevelopment()) {
             app.UseDeveloperExceptionPage();
         }
 
         app
             .UseMiddleware<ExceptionHandlingMiddleware>()
             .UseOpenApi()
-            .UseSwaggerUi(settings =>
-            {
-                foreach (var description in provider.ApiVersionDescriptions.Reverse())
-                {
+            .UseSwaggerUi(settings => {
+                foreach (var description in provider.ApiVersionDescriptions.Reverse()) {
                     settings.SwaggerRoutes.Add(new SwaggerUiRoute(description.GroupName.ToUpperInvariant(),
                         $"/swagger/{description.GroupName}/swagger.json"));
                 }
             })
             .UseRouting()
-            .UseEndpoints(endpoints =>
-            {
+            .UseEndpoints(endpoints => {
                 endpoints.MapControllers();
                 // Plain-text status (Healthy/Degraded/Unhealthy), outside /api and the OpenAPI document.
                 endpoints.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-                endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
-                {
+                endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions {
                     Predicate = registration => registration.Tags.Contains(DatabaseStartup.ReadyTag)
                 });
             });

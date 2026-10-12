@@ -1,4 +1,4 @@
-﻿using System.Linq.Expressions;
+using System.Linq.Expressions;
 using System.Net;
 using AwesomeAssertions;
 using Gaffer.Api.Controllers;
@@ -10,104 +10,97 @@ using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Acceptance;
 
-public class PlayerFeaturesShould
-{
-    private GafferApiClientTest _client;
-    
-    private Guid PlayerId = TestDefaultValues.EmptyPlayerId;
-    private readonly DateTime BirthDate = TestDefaultValues.DefaultBirthDate;
+public class PlayerFeaturesShould {
+    private GafferApiClientTest client;
+
+    private Guid playerId = TestDefaultValues.EmptyPlayerId;
+    private readonly DateTime birthDate = TestDefaultValues.DefaultBirthDate;
     private const Gender Gender = TestDefaultValues.DefaultGender;
-    private Player Player1;
-    private Player Player2;
-    private Player Player3;
+    private Player player1;
+    private Player player2;
+    private Player player3;
 
     [SetUp]
-    public async Task SetUp()
-    {
-        _client = (GafferApiClientTest) TestFixture.GafferApiClientTest;
-        Player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, BirthDate);
-        Player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, BirthDate);
-        Player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, BirthDate);
+    public async Task SetUp() {
+        client = (GafferApiClientTest)TestFixture.GafferApiClientTest;
+        player1 = new Player(Guid.NewGuid(), "Javier", "Martel", "De La Guardia", Gender.MALE, birthDate);
+        player2 = new Player(Guid.NewGuid(), "Paul", "Gascoigne", null, Gender.MALE, birthDate);
+        player3 = new Player(Guid.NewGuid(), "Michael", "Ballack", null, Gender.MALE, birthDate);
     }
 
     [Test]
-    public async Task GetAPlayer()
-    {
-        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
-        
-        var response = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
+    public async Task GetAPlayer() {
+        var createPlayerRequest = new CreatePlayerRequest(player1.FirstName, player1.LastName, player1.SecondLastName, player1.Birthdate, player1.Gender);
+        var result = await client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+
+        var response = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
 
         response.Should().NotBeNull();
         response.Id.Should().Be(result);
-        response.FirstName.Should().Be(Player1.FirstName);
-        response.LastName.Should().Be(Player1.LastName);
-        response.BirthDate.Should().Be(Player1.Birthdate);
-        response.Gender.Should().Be(Player1.Gender);
+        response.FirstName.Should().Be(player1.FirstName);
+        response.LastName.Should().Be(player1.LastName);
+        response.BirthDate.Should().Be(player1.Birthdate);
+        response.Gender.Should().Be(player1.Gender);
     }
-    
+
     [Test]
-    public async Task ReturnCreatedWithTheLocationOfTheCreatedPlayer()
-    {
-        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreatePlayer())
-        {
+    public async Task ReturnCreatedWithTheLocationOfTheCreatedPlayer() {
+        var createPlayerRequest = new CreatePlayerRequest(player1.FirstName, player1.LastName, player1.SecondLastName, player1.Birthdate, player1.Gender);
+        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreatePlayer()) {
             Content = new StringContent(Newtonsoft.Json.JsonConvert.SerializeObject(createPlayerRequest),
                 System.Text.Encoding.UTF8, "application/json")
         };
 
-        var response = await _client.SendAsync(request);
+        var response = await client.SendAsync(request);
 
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var createdId = await response.Content.ReadFromJsonAsync<Guid>();
         createdId.Should().NotBeEmpty();
         response.Headers.Location.Should().NotBeNull();
         response.Headers.Location!.AbsolutePath.Should().Be($"/api/v1.0/players/{createdId}");
-        var player = await _client.GetAsync<SearchPlayerResponse>(response.Headers.Location);
+        var player = await client.GetAsync<SearchPlayerResponse>(response.Headers.Location);
         player!.Id.Should().Be(createdId);
-        player.FirstName.Should().Be(Player1.FirstName);
+        player.FirstName.Should().Be(player1.FirstName);
     }
 
     [Test]
-    public async Task ReturnNotFoundWhenGettingAnUnknownPlayer()
-    {
+    public async Task ReturnNotFoundWhenGettingAnUnknownPlayer() {
         var uri = Uris.GetPlayer(Guid.NewGuid().ToString());
 
-        var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri));
+        var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Get, uri));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Status"]!.Value<int>().Should().Be(404);
-        body["Instance"]!.Value<string>().Should().Be(uri.AbsolutePath);
-        body["Title"]?.Value<string>().Should().BeNull();
-        body["Detail"]?.Value<string>().Should().BeNull();
-        (body["Extensions"] as JObject)?.ContainsKey("ErrorTranslationKey").Should().BeFalse();
+        var body = await ProblemJson.Read(response);
+        body["status"]!.Value<int>().Should().Be(404);
+        body["instance"]!.Value<string>().Should().Be(uri.AbsolutePath);
+        body["title"]!.Value<string>().Should().BeNull();
+        body["detail"]!.Value<string>().Should().BeNull();
+        body.ContainsKey(ProblemJson.ErrorTranslationKey).Should().BeFalse();
+        body.ContainsKey(ProblemJson.Errors).Should().BeFalse();
     }
 
     [Test]
-    public async Task DeleteAPlayer()
-    {
-        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        var result = await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
-        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{PlayerId}" };
+    public async Task DeleteAPlayer() {
+        var createPlayerRequest = new CreatePlayerRequest(player1.FirstName, player1.LastName, player1.SecondLastName, player1.Birthdate, player1.Gender);
+        var result = await client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        var filter = new SearchPlayersFilter { Name = "Id", Value = $"{playerId}" };
         var request = new SearchPlayersRequest();
         request.Filters.Add(filter);
 
-        await _client.DeleteAsync(Uris.DeletePlayer(result.ToString()));
-        
-        var response = async () => await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
+        await client.DeleteAsync(Uris.DeletePlayer(result.ToString()));
+
+        var response = async () => await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(result.ToString()));
         await response.Should().ThrowAsync<Exception>();
     }
-    
+
     [Test]
-    public async Task UpdateAPlayer()
-    {
+    public async Task UpdateAPlayer() {
         var created = await CreatePlayerWithKnownValues();
 
         var response = await PutRawJson(created, """{"firstName":"X"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var player = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var player = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         player!.FirstName.Should().Be("X");
         player.LastName.Should().Be(KnownLastName);
         player.BirthDate.Should().Be(KnownBirthDate);
@@ -116,14 +109,13 @@ public class PlayerFeaturesShould
     }
 
     [Test]
-    public async Task KeepBirthDateAndGenderWhenUpdatedWithExplicitNulls()
-    {
+    public async Task KeepBirthDateAndGenderWhenUpdatedWithExplicitNulls() {
         var created = await CreatePlayerWithKnownValues();
 
         var response = await PutRawJson(created, """{"firstName":"X","birthDate":null,"gender":null}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var player = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var player = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         player!.FirstName.Should().Be("X");
         player.LastName.Should().Be(KnownLastName);
         player.BirthDate.Should().Be(KnownBirthDate);
@@ -131,15 +123,14 @@ public class PlayerFeaturesShould
     }
 
     [Test]
-    public async Task UpdateEveryFieldWhenAllFieldsAreSent()
-    {
+    public async Task UpdateEveryFieldWhenAllFieldsAreSent() {
         var created = await CreatePlayerWithKnownValues();
 
         var response = await PutRawJson(created,
             """{"firstName":"Nuevo","lastName":"Apellido","secondLastName":"Segundo","birthDate":"2001-02-03T00:00:00Z","gender":"OTHER"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var player = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var player = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         player!.FirstName.Should().Be("Nuevo");
         player.LastName.Should().Be("Apellido");
         player.SecondLastName.Should().Be("Segundo");
@@ -151,14 +142,13 @@ public class PlayerFeaturesShould
     [TestCase("""{"secondLastName":null}""", TestDefaultValues.DefaultSecondLastName)]
     [TestCase("""{"firstName":"Alexia"}""", TestDefaultValues.DefaultSecondLastName)]
     [TestCase("""{}""", TestDefaultValues.DefaultSecondLastName)]
-    public async Task ReplaceTheSecondLastNameOnlyWhenAValueIsSent(string body, string? expectedSecondLastName)
-    {
+    public async Task ReplaceTheSecondLastNameOnlyWhenAValueIsSent(string body, string? expectedSecondLastName) {
         var created = await CreatePlayerWithKnownValues();
 
         var response = await PutRawJson(created, body);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var player = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var player = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         player!.SecondLastName.Should().Be(expectedSecondLastName);
         player.FirstName.Should().Be(KnownFirstName);
         player.LastName.Should().Be(KnownLastName);
@@ -167,23 +157,21 @@ public class PlayerFeaturesShould
     }
 
     [Test]
-    public async Task ReturnNotFoundWhenUpdatingAnUnknownPlayer()
-    {
+    public async Task ReturnNotFoundWhenUpdatingAnUnknownPlayer() {
         var response = await PutRawJson(Guid.NewGuid(), """{"firstName":"X"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Update.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Update.PlayerNotFound");
     }
 
     [Test]
-    public async Task ReturnNotFoundWhenDeletingAnUnknownPlayer()
-    {
-        var response = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, Uris.DeletePlayer(Guid.NewGuid().ToString())));
+    public async Task ReturnNotFoundWhenDeletingAnUnknownPlayer() {
+        var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Delete, Uris.DeletePlayer(Guid.NewGuid().ToString())));
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Delete.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Delete.PlayerNotFound");
     }
 
     private const string CreateValidationKey = "Error.Players.Create.Validation";
@@ -191,31 +179,29 @@ public class PlayerFeaturesShould
     private static readonly string TooLongText = new('a', 101);
     private static DateTime TodayUtc => DateTime.UtcNow.Date;
 
-    public static IEnumerable<TestCaseData> InvalidCreateBodies()
-    {
+    public static IEnumerable<TestCaseData> InvalidCreateBodies() {
         TestCaseData Case(string name, string field, Action<JObject> change) =>
             new TestCaseData(field, change).SetName($"RejectTheCreationOfAPlayerWith({name})");
 
-        yield return Case("FirstName empty", "FirstName", body => body["firstName"] = "");
-        yield return Case("FirstName whitespace", "FirstName", body => body["firstName"] = "   ");
-        yield return Case("FirstName 101 chars", "FirstName", body => body["firstName"] = TooLongText);
-        yield return Case("FirstName absent", "FirstName", body => body.Remove("firstName"));
-        yield return Case("LastName empty", "LastName", body => body["lastName"] = "");
-        yield return Case("LastName whitespace", "LastName", body => body["lastName"] = "   ");
-        yield return Case("LastName 101 chars", "LastName", body => body["lastName"] = TooLongText);
-        yield return Case("SecondLastName empty", "SecondLastName", body => body["secondLastName"] = "");
-        yield return Case("SecondLastName whitespace", "SecondLastName", body => body["secondLastName"] = "   ");
-        yield return Case("SecondLastName 101 chars", "SecondLastName", body => body["secondLastName"] = TooLongText);
-        yield return Case("BirthDate 1899-12-31", "BirthDate", body => body["birthDate"] = IsoDate(new DateTime(1899, 12, 31)));
-        yield return Case("BirthDate tomorrow", "BirthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddDays(1)));
-        yield return Case("BirthDate one day under 16", "BirthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddYears(-16).AddDays(1)));
-        yield return Case("BirthDate absent", "BirthDate", body => body.Remove("birthDate"));
-        yield return Case("Gender 99", "Gender", body => body["gender"] = 99);
+        yield return Case("FirstName empty", "firstName", body => body["firstName"] = "");
+        yield return Case("FirstName whitespace", "firstName", body => body["firstName"] = "   ");
+        yield return Case("FirstName 101 chars", "firstName", body => body["firstName"] = TooLongText);
+        yield return Case("FirstName absent", "firstName", body => body.Remove("firstName"));
+        yield return Case("LastName empty", "lastName", body => body["lastName"] = "");
+        yield return Case("LastName whitespace", "lastName", body => body["lastName"] = "   ");
+        yield return Case("LastName 101 chars", "lastName", body => body["lastName"] = TooLongText);
+        yield return Case("SecondLastName empty", "secondLastName", body => body["secondLastName"] = "");
+        yield return Case("SecondLastName whitespace", "secondLastName", body => body["secondLastName"] = "   ");
+        yield return Case("SecondLastName 101 chars", "secondLastName", body => body["secondLastName"] = TooLongText);
+        yield return Case("BirthDate 1899-12-31", "birthDate", body => body["birthDate"] = IsoDate(new DateTime(1899, 12, 31)));
+        yield return Case("BirthDate tomorrow", "birthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddDays(1)));
+        yield return Case("BirthDate one day under 16", "birthDate", body => body["birthDate"] = IsoDate(TodayUtc.AddYears(-16).AddDays(1)));
+        yield return Case("BirthDate absent", "birthDate", body => body.Remove("birthDate"));
+        yield return Case("Gender 99", "gender", body => body["gender"] = 99);
     }
 
     [TestCaseSource(nameof(InvalidCreateBodies))]
-    public async Task RejectTheCreationOfAnInvalidPlayerWithoutSavingIt(string field, Action<JObject> change)
-    {
+    public async Task RejectTheCreationOfAnInvalidPlayerWithoutSavingIt(string field, Action<JObject> change) {
         var playersBefore = await CountPlayers();
 
         var response = await PostRawJson(ValidCreateBody(change));
@@ -224,13 +210,11 @@ public class PlayerFeaturesShould
         (await CountPlayers()).Should().Be(playersBefore);
     }
 
-    public static IEnumerable<TestCaseData> BoundaryCreateBodies()
-    {
+    public static IEnumerable<TestCaseData> BoundaryCreateBodies() {
         TestCaseData Case(string name, Action<JObject> change) =>
             new TestCaseData(change).SetName($"CreateAPlayerAtTheLimit({name})");
 
-        yield return Case("names of 100 chars", body =>
-        {
+        yield return Case("names of 100 chars", body => {
             body["firstName"] = new string('f', 100);
             body["lastName"] = new string('l', 100);
             body["secondLastName"] = new string('s', 100);
@@ -241,15 +225,14 @@ public class PlayerFeaturesShould
     }
 
     [TestCaseSource(nameof(BoundaryCreateBodies))]
-    public async Task CreateAPlayerWhoseValuesAreAtTheLimits(Action<JObject> change)
-    {
+    public async Task CreateAPlayerWhoseValuesAreAtTheLimits(Action<JObject> change) {
         var sent = JObject.Parse(ValidCreateBody(change));
 
         var response = await PostRawJson(sent.ToString(Newtonsoft.Json.Formatting.None));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
         var createdId = await response.Content.ReadFromJsonAsync<Guid>();
-        var player = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(createdId.ToString()));
+        var player = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(createdId.ToString()));
         player!.FirstName.Should().Be(sent["firstName"]!.Value<string>());
         player.LastName.Should().Be(sent["lastName"]!.Value<string>());
         player.SecondLastName.Should().Be(sent["secondLastName"]?.Value<string>());
@@ -257,102 +240,93 @@ public class PlayerFeaturesShould
         player.Gender.Should().Be(Gender.FEMALE);
     }
 
-    public static IEnumerable<TestCaseData> InvalidPartialUpdateBodies()
-    {
+    public static IEnumerable<TestCaseData> InvalidPartialUpdateBodies() {
         TestCaseData Case(string name, string field, string body) =>
             new TestCaseData(field, body).SetName($"RejectAPartialUpdateWith({name})");
 
-        yield return Case("FirstName empty", "FirstName", """{"firstName":"","lastName":"Valido"}""");
-        yield return Case("LastName whitespace", "LastName", """{"lastName":"   ","firstName":"Valido"}""");
-        yield return Case("BirthDate under 16", "BirthDate",
+        yield return Case("FirstName empty", "firstName", """{"firstName":"","lastName":"Valido"}""");
+        yield return Case("LastName whitespace", "lastName", """{"lastName":"   ","firstName":"Valido"}""");
+        yield return Case("BirthDate under 16", "birthDate",
             $$"""{"birthDate":"{{IsoDate(TodayUtc.AddYears(-15))}}","firstName":"Valido"}""");
-        yield return Case("Gender 99", "Gender", """{"gender":99,"firstName":"Valido"}""");
-        yield return Case("SecondLastName empty", "SecondLastName", """{"secondLastName":"","firstName":"Valido"}""");
-        yield return Case("SecondLastName whitespace", "SecondLastName", """{"secondLastName":"   "}""");
+        yield return Case("Gender 99", "gender", """{"gender":99,"firstName":"Valido"}""");
+        yield return Case("SecondLastName empty", "secondLastName", """{"secondLastName":"","firstName":"Valido"}""");
+        yield return Case("SecondLastName whitespace", "secondLastName", """{"secondLastName":"   "}""");
     }
 
     [TestCaseSource(nameof(InvalidPartialUpdateBodies))]
-    public async Task RejectAPartialUpdateWithAnInvalidFieldAndChangeNothing(string field, string body)
-    {
+    public async Task RejectAPartialUpdateWithAnInvalidFieldAndChangeNothing(string field, string body) {
         var created = await CreatePlayerWithKnownValues();
-        var before = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var before = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
 
         var response = await PutRawJson(created, body);
 
         await ShouldBeAValidationProblem(response, UpdateValidationKey, field);
-        var after = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var after = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         after.Should().Be(before);
     }
 
     [Test]
-    public async Task KeepThePlayerIdenticalWhenUpdatedWithAnEmptyBody()
-    {
+    public async Task KeepThePlayerIdenticalWhenUpdatedWithAnEmptyBody() {
         var created = await CreatePlayerWithKnownValues();
-        var before = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var before = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
 
         var response = await PutRawJson(created, "{}");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var after = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
+        var after = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(created.ToString()));
         after.Should().Be(before);
     }
 
     [Test]
-    public async Task ReturnNotFoundWhenUpdatingAnUnknownPlayerWithAnInvalidBody()
-    {
+    public async Task ReturnNotFoundWhenUpdatingAnUnknownPlayerWithAnInvalidBody() {
         var response = await PutRawJson(Guid.NewGuid(), """{"firstName":""}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound, await response.Content.ReadAsStringAsync());
-        var body = JObject.Parse(await response.Content.ReadAsStringAsync());
-        body["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be("Error.Players.Update.PlayerNotFound");
+        var body = await ProblemJson.Read(response);
+        ProblemJson.TranslationKeyOf(body).Should().Be("Error.Players.Update.PlayerNotFound");
     }
 
     [Test]
-    public async Task ReportEveryInvalidFieldOfACreationWithoutEchoingTheRejectedValues()
-    {
-        var response = await PostRawJson(ValidCreateBody(body =>
-        {
+    public async Task ReportEveryInvalidFieldOfACreationWithoutEchoingTheRejectedValues() {
+        var response = await PostRawJson(ValidCreateBody(body => {
             body["firstName"] = TooLongText;
             body["lastName"] = "";
             body["birthDate"] = IsoDate(TodayUtc.AddDays(1));
             body["gender"] = 99;
         }));
 
-        var problem = await ShouldBeAValidationProblem(response, CreateValidationKey, "FirstName", "LastName", "BirthDate", "Gender");
+        var problem = await ShouldBeAValidationProblem(response, CreateValidationKey, "firstName", "lastName", "birthDate", "gender");
         problem.ToString().Should().NotContain(TooLongText);
     }
 
     [Test]
-    public async Task ReportEveryInvalidFieldOfAPartialUpdate()
-    {
+    public async Task ReportEveryInvalidFieldOfAPartialUpdate() {
         var created = await CreatePlayerWithKnownValues();
 
         var response = await PutRawJson(created, $$"""{"firstName":"{{TooLongText}}","secondLastName":"","gender":99}""");
 
-        var problem = await ShouldBeAValidationProblem(response, UpdateValidationKey, "FirstName", "SecondLastName", "Gender");
+        var problem = await ShouldBeAValidationProblem(response, UpdateValidationKey, "firstName", "secondLastName", "gender");
         problem.ToString().Should().NotContain(TooLongText);
     }
 
     [TestCase("POST", """{"firstName":"Ana",""", null)]
-    [TestCase("POST", """{"firstName":"Ana","lastName":"Lopez","birthDate":"1990-01-01T00:00:00Z","gender":"ZZZ_UNKNOWN"}""", "Gender")]
+    [TestCase("POST", """{"firstName":"Ana","lastName":"Lopez","birthDate":"1990-01-01T00:00:00Z","gender":"ZZZ_UNKNOWN"}""", "gender")]
     [TestCase("PUT", """{"firstName":"Ana",""", null)]
-    [TestCase("PUT", """{"gender":"ZZZ_UNKNOWN"}""", "Gender")]
-    public async Task ReturnTheValidationFormatForBodiesThatCannotBeBound(string method, string body, string? field)
-    {
+    [TestCase("PUT", """{"gender":"ZZZ_UNKNOWN"}""", "gender")]
+    public async Task ReturnTheValidationFormatForBodiesThatCannotBeBound(string method, string body, string? field) {
         var response = method == "POST"
             ? await PostRawJson(body)
             : await PutRawJson(await CreatePlayerWithKnownValues(), body);
 
         var key = method == "POST" ? CreateValidationKey : UpdateValidationKey;
         var problem = await ShouldBeAValidationProblem(response, key, field is null ? [] : [field]);
-        var errors = (JObject)problem["Extensions"]!["Errors"]!;
+        var errors = ProblemJson.ErrorsOf(problem);
         errors.Properties().Should().NotBeEmpty();
         problem.ToString().Should().NotContain("ZZZ_UNKNOWN");
     }
 
     [Test]
-    public async Task KeepReadingAndPartiallyUpdatingAStoredPlayerThatBreaksTheRules()
-    {
+    public async Task KeepReadingAndPartiallyUpdatingAStoredPlayerThatBreaksTheRules() {
         var legacyId = Guid.NewGuid();
         var legacyFirstName = new string('x', 150);
         var legacyBirthDate = TodayUtc.AddYears(-10);
@@ -361,29 +335,27 @@ public class PlayerFeaturesShould
             "VALUES (@Id, @FirstName, @LastName, @SecondLastName, @Gender, @BirthDate);",
             new { Id = legacyId, FirstName = legacyFirstName, LastName = "Legacy", SecondLastName = "", Gender = "OTHER", BirthDate = legacyBirthDate });
 
-        var stored = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(legacyId.ToString()));
+        var stored = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(legacyId.ToString()));
         stored!.FirstName.Should().Be(legacyFirstName);
         stored.SecondLastName.Should().BeEmpty();
         stored.BirthDate.Should().Be(legacyBirthDate);
         var searchRequest = new SearchPlayersRequest();
         searchRequest.Filters.Add(new SearchPlayersFilter { Name = "Id", Value = legacyId.ToString() });
-        var found = await _client.PostAsync<SearchPlayersRequest, List<SearchPlayerResponse>>(Uris.SearchPlayers(), searchRequest);
+        var found = await client.PostAsync<SearchPlayersRequest, List<SearchPlayerResponse>>(Uris.SearchPlayers(), searchRequest);
         found!.Should().ContainSingle().Which.Should().Be(stored);
 
         var response = await PutRawJson(legacyId, """{"lastName":"Valido"}""");
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
-        var updated = await _client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(legacyId.ToString()));
+        var updated = await client.GetAsync<SearchPlayerResponse>(Uris.GetPlayer(legacyId.ToString()));
         updated.Should().Be(stored with { LastName = "Valido" });
     }
 
     private static string IsoDate(DateTime date) =>
         date.ToString("yyyy-MM-dd'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string ValidCreateBody(Action<JObject>? change = null)
-    {
-        var body = new JObject
-        {
+    private static string ValidCreateBody(Action<JObject>? change = null) {
+        var body = new JObject {
             ["firstName"] = "Ana",
             ["lastName"] = "Lopez",
             ["secondLastName"] = "Ruiz",
@@ -394,27 +366,24 @@ public class PlayerFeaturesShould
         return body.ToString(Newtonsoft.Json.Formatting.None);
     }
 
-    private async Task<HttpResponseMessage> PostRawJson(string json)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreatePlayer())
-        {
+    private async Task<HttpResponseMessage> PostRawJson(string json) {
+        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreatePlayer()) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         };
-        return await _client.SendAsync(request);
+        return await client.SendAsync(request);
     }
 
     private static async Task<long> CountPlayers() =>
         await TestFixture.SqlConnectionProviderTest.QueryScalarAsync<long>("SELECT COUNT(*) FROM `Players`;");
 
-    private static async Task<JObject> ShouldBeAValidationProblem(HttpResponseMessage response, string key, params string[] fields)
-    {
+    private static async Task<JObject> ShouldBeAValidationProblem(HttpResponseMessage response, string key, params string[] fields) {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
-        var body = JObject.Parse(raw);
-        var translationKey = body["Extensions"]?["ErrorTranslationKey"]?.Value<string>();
+        var body = ProblemJson.Parse(raw);
+        var translationKey = ProblemJson.TranslationKeyOf(body);
         translationKey.Should().Be(key, raw);
-        (body["Extensions"]?["Errors"] as JObject).Should().NotBeNull(raw);
-        var errorFields = ((JObject)body["Extensions"]!["Errors"]!).Properties().Select(p => p.Name);
+        (body[ProblemJson.Errors] as JObject).Should().NotBeNull(raw);
+        var errorFields = ProblemJson.ErrorsOf(body).Properties().Select(p => p.Name);
         if (fields.Length > 0) errorFields.Should().Contain(fields, raw);
         return body;
     }
@@ -424,31 +393,27 @@ public class PlayerFeaturesShould
     private const Gender KnownGender = Gender.FEMALE;
     private static readonly DateTime KnownBirthDate = new(1994, 2, 4);
 
-    private async Task<Guid> CreatePlayerWithKnownValues()
-    {
+    private async Task<Guid> CreatePlayerWithKnownValues() {
         var createPlayerRequest = new CreatePlayerRequest(KnownFirstName, KnownLastName,
             TestDefaultValues.DefaultSecondLastName, KnownBirthDate, KnownGender);
-        return await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        return await client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
     }
 
-    private async Task<HttpResponseMessage> PutRawJson(Guid playerId, string json)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Put, Uris.UpdatePlayer(playerId.ToString()))
-        {
+    private async Task<HttpResponseMessage> PutRawJson(Guid playerId, string json) {
+        var request = new HttpRequestMessage(HttpMethod.Put, Uris.UpdatePlayer(playerId.ToString())) {
             Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
         };
-        return await _client.SendAsync(request);
+        return await client.SendAsync(request);
     }
-    
+
     [Test]
-    public async Task ThrowExceptionIfPlayerIsNotFound()
-    {
+    public async Task ThrowExceptionIfPlayerIsNotFound() {
         var newFirstName = "AnotherFirstName";
-        var createPlayerRequest = new CreatePlayerRequest(Player1.FirstName, Player1.LastName, Player1.SecondLastName, Player1.Birthdate, Player1.Gender);
-        await _client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
+        var createPlayerRequest = new CreatePlayerRequest(player1.FirstName, player1.LastName, player1.SecondLastName, player1.Birthdate, player1.Gender);
+        await client.PostAsync<CreatePlayerRequest, Guid>(Uris.CreatePlayer(), createPlayerRequest);
         var updatePlayerRequest = new UpdatePlayerRequest { FirstName = newFirstName };
-        
-        var actionResult = async () => await _client.UpdateAsync(Uris.UpdatePlayer(Guid.NewGuid().ToString()), updatePlayerRequest);
+
+        var actionResult = async () => await client.UpdateAsync(Uris.UpdatePlayer(Guid.NewGuid().ToString()), updatePlayerRequest);
 
         actionResult.Should().ThrowAsync<Exception>().Result.And.Message.Should().Contain("NotFound");
     }

@@ -4,6 +4,10 @@
 
 `ExceptionHandlingMiddleware.Invoke` wraps `next(context)` in `try { await next(context); } catch (OperationCanceledException ex) when (context.RequestAborted.IsCancellationRequested) { HandleAbortedRequest(...); } catch (Exception ex) { await HandleExceptionAsync(...); }`. The first `catch` (TECHDEBT-003) intercepts only a cancellation that came from the client aborting the request (`HttpContext.RequestAborted`, itself derived from the request's `CancellationToken` which every controller action, command/query handler, and repository call now receives and forwards down to `IDatabaseConnectionProvider`); any other `OperationCanceledException` falls through to the generic handler and is treated as an unknown failure. `HandleExceptionAsync` looks up `exception.GetType()` in `ExceptionToHttpResponseConverters.PlayerConverters` (a `Type → Func<Exception, ProblemDetails>` dictionary shared by Player and Facility exceptions, 18 entries). A hit produces the mapped `ProblemDetails` (with `Instance` set to the request path); a miss falls back to `UnknownError` (`500`, `Title = "Unknown error"`). `LogException` then runs for every response except a `404`: `logger.LogError(exception, "Request failed with status {Status}: {Title}", problemDetails.Status, problemDetails.Title)`. Other producers of exceptions were changed to reach this pipeline correctly: the four Delete/Update command handlers (Player and Facility) catch only the specific `*NotFoundException` for their operation, letting every other exception — including a repository/infrastructure failure — propagate to the middleware unwrapped (so it lands in the `UnknownError`/`500` path, not in the generic `Cannot*Exception`/`400` path); `SqlFacilityRepository.BuildFilters` throws `FacilitySearchFilterNotPermittedException` instead of a plain `ArgumentException` for a non-permitted filter field, recognized by the same converter entry Player search already used (`BuildSearchFilterNotPermittedProblemDetails`); and facility update's `UpdateFacilityCommandHandler.MergeStands` throws `CannotUpdateFacilityDuplicatedStandException` for a repeated existing-stand `Id`, mapped to its own `400` entry (see [`facility-update.md`](./facility-update.md)).
 
+### Wire format (TECHDEBT-006, contract change)
+
+Every error body is written by `ExceptionToHttpResponseConverters.Serialize` as an RFC 7807 problem document: `type`, `title`, `status`, `detail`, `instance` in camelCase (always present, `null` when unset), plus `errorTranslationKey` and `errors` as root members when the error has them, and no `extensions` object. The `Content-Type` stays `application/json` and the OpenAPI document is unchanged (same sha256 before and after). Before this change the bodies were PascalCase (`Type`, `Title`, ..., `Extensions: { ErrorTranslationKey, Errors }`). This is incompatible for any consumer that parses the error body; see [`api-client-versioning.md`](./api-client-versioning.md). Values (status, title, detail, instance, `Error.*` keys, messages) are unchanged.
+
 ## Sequence Diagram
 
 ```mermaid
@@ -61,13 +65,14 @@ sequenceDiagram
 | `DeletePlayerCommandHandler` / `DeleteFacilityCommandHandler` / `UpdatePlayerCommandHandler` / `UpdateFacilityCommandHandler` | `Handle` | `Task Handle(TCommand, CancellationToken)` | `Task` | `catch (PlayerNotFoundException)`/`catch (FacilityNotFoundException)` only, rethrown as the matching `CannotDelete*/CannotUpdate*NotFoundException`; every other exception (including a repository failure) is not caught here, so it reaches the middleware unwrapped. |
 | `IFacilityRepository.cs` | `FacilitySearchFilterNotPermittedException` | `FacilitySearchFilterNotPermittedException(string fieldName)` | — | `Exception("FilterNotPermitted")` with `FieldName`; analogous to the pre-existing `PlayerSearchFilterNotPermittedException` in `IPlayerRepository.cs`. |
 | `SqlFacilityRepository` | `BuildFilters` (private, static) | `(string whereClause, DynamicParameters parameters) BuildFilters(FacilitySearchCriteria)` | tuple | Throws `FacilitySearchFilterNotPermittedException` for a filter field outside the allow-list, before any `IDatabaseConnectionProvider` call — no SQL runs for a rejected filter. |
+| `ExceptionToHttpResponseConverters` | `Serialize` | `static string Serialize(ProblemDetails)` | JSON `string` | TECHDEBT-006: the single point that writes every error body (`ExceptionHandlingMiddleware` and `ValidationStartup`; no other `JsonConvert.SerializeObject` in `Gaffer.Api`). Builds a Newtonsoft `JObject` in RFC 7807 shape: `type`, `title`, `status`, `detail`, `instance` always present (`null` when unset), then every `Extensions` entry as a root member with a camelCase name (`errorTranslationKey`, `errors`); there is no `extensions` object. A `IReadOnlyDictionary<string, string[]>` value (`errors`) has each key lower-cased on the first letter of every `.`-separated segment (`Stands[1].StandName` → `stands[1].standName`); the messages keep the PascalCase field name. The in-memory `ProblemDetails` is not modified. Any other extension value goes through `JToken.FromObject` (only `string` exists today). |
 | `ExceptionToHttpResponseConverters` | `PlayerConverters` | `IReadOnlyDictionary<Type, Func<Exception, ProblemDetails>>` | — | 18 entries; both `PlayerSearchFilterNotPermittedException` and `FacilitySearchFilterNotPermittedException` map through the shared private helper `BuildSearchFilterNotPermittedProblemDetails()`. |
 | `ExceptionToHttpResponseConverters` | `CannotDeletePlayerException` / `CannotUpdatePlayerException` / `CannotDeleteFacilityException` / `CannotUpdateFacilityException` | `Reason { get; } = "Internal Server Error"` (const `InternalServerErrorReason`) | — | Still mapped to `400` with key `Error.<Resource>.<Operation>.Internal Server Error`; kept for backward compatibility, but no handler constructs these anymore (verified by `grep -rn "new Cannot(Delete\|Update)(Player\|Facility)Exception"` = 0 matches in `Gaffer.Api`). An infrastructure failure on Delete/Update now always reaches the `UnknownError`/`500` path instead. |
 | `ExceptionToHttpResponseConverters` | `CannotUpdateFacilityDuplicatedStandException` | `ex => BuildBadRequestProblemDetailsWithExtension("Cannot update facility", ex.Message, "Error.Facilities.Update.DuplicatedStand")` | `ProblemDetails` (`400`) | New entry (TECHDEBT-003); see [`facility-update.md`](./facility-update.md) for when it is thrown. |
 | `ExceptionToHttpResponseConverters` | `FacilityStandsFacilityNotFoundException` | `BuildNotFoundProblemDetailsWithExtension("Facility not found", ex.Message, "Error.Facilities.Stands.FacilityNotFound")` | `ProblemDetails` (`404`) | TECHDEBT-004; see [`facility-stands.md`](./facility-stands.md). |
 | `ExceptionToHttpResponseConverters` | `FacilityStandNotFoundException` | `BuildNotFoundProblemDetailsWithExtension("Stand not found", ex.Message, "Error.Facilities.Stands.StandNotFound")` | `ProblemDetails` (`404`) | Missing stand or stand of another facility. |
 | `ExceptionToHttpResponseConverters` | `FacilityMaxStandsExceededException` | `BuildBadRequestProblemDetailsWithExtension("Cannot create stand", ex.Message, "Error.Facilities.Stands.Create.MaxStandsExceeded")` | `ProblemDetails` (`400`) | Creating a fifth stand. |
-| `ExceptionToHttpResponseConverters` | `ValidationFailedException` | `BuildValidationProblemDetails(ex.Title, ex.ErrorTranslationKey, ex.Errors)` | `ProblemDetails` (`400`) | TECHDEBT-005. `Detail` = `One or more fields are not valid.`, `Extensions.ErrorTranslationKey` per operation (`Error.Players.Create/Update.Validation`, `Error.Facilities.Create/Update.Validation`, `Error.Facilities.Stands.Validation`) and `Extensions.Errors` (field → messages). `ValidationStartup` builds the same body (through `BuildValidationProblemDetails` and `Serialize`) for model binding errors on those operations. See [`input-validation.md`](./input-validation.md). |
+| `ExceptionToHttpResponseConverters` | `ValidationFailedException` | `BuildValidationProblemDetails(ex.Title, ex.ErrorTranslationKey, ex.Errors)` | `ProblemDetails` (`400`) | TECHDEBT-005. `Detail` = `One or more fields are not valid.`, `Extensions["ErrorTranslationKey"]` per operation (`Error.Players.Create/Update.Validation`, `Error.Facilities.Create/Update.Validation`, `Error.Facilities.Stands.Validation`) and `Extensions["Errors"]` (field → messages), in memory; on the wire they are `errorTranslationKey` and `errors` at the root (see `Serialize`). `ValidationStartup` builds the same body (through `BuildValidationProblemDetails` and `Serialize`) for model binding errors on those operations. See [`input-validation.md`](./input-validation.md). |
 
 ## Dependencies
 
@@ -95,20 +100,21 @@ With the database unreachable, returns `500 Internal Server Error`, `Title = "Un
 ```csharp
 var criteria = new FacilitySearchCriteria
 {
-    criteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
+    CriteriaList = [new SearchCriteria { Name = "Street", Value = "Main Avenue" }]
 };
 await facilityRepository.Get(criteria, cancellationToken); // throws FacilitySearchFilterNotPermittedException, no query executed
 ```
 
-Through the middleware this becomes:
+Through the middleware this becomes (RFC 7807 shape, camelCase members, `errorTranslationKey` at the root, no `extensions`; `Content-Type: application/json`):
 
 ```json
 {
-  "Title": "Error.Search.FilterNotPermitted",
-  "Detail": "FilterNotPermitted",
-  "Status": 400,
-  "Instance": "/facilities",
-  "Extensions": { "ErrorTranslationKey": "Error.Search.FilterNotPermitted" }
+  "type": "",
+  "title": "Error.Search.FilterNotPermitted",
+  "status": 400,
+  "detail": "FilterNotPermitted",
+  "instance": "/facilities",
+  "errorTranslationKey": "Error.Search.FilterNotPermitted"
 }
 ```
 

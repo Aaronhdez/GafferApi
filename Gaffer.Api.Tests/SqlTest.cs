@@ -1,22 +1,17 @@
-﻿using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Shared.ConnectionProviders;
 
 
 namespace Gaffer.Api.Tests;
 
-public abstract class BaseSqlTest
-{
-   private readonly IDatabaseConnectionProvider _connectionProvider;
-   private string? _dbConnection;
-   protected List<string> _tablesToDelete = [];
+public abstract class BaseSqlTest {
+    private readonly IDatabaseConnectionProvider connectionProvider;
+    private string? dbConnection;
+    protected List<string> TablesToDelete = [];
 
-   protected BaseSqlTest()
-   {
-      _dbConnection = TestConfiguration.DatabaseConnectionString;
-      _connectionProvider = new SqlConnectionProvider(_dbConnection);
-   }
-   
-   public async Task ClearDatabase(List<string> tablesToDelete)
-   {
-      await _connectionProvider.ClearAsync(tablesToDelete);
-   }
+    protected BaseSqlTest() {
+        dbConnection = TestConfiguration.DatabaseConnectionString;
+        connectionProvider = new SqlConnectionProvider(dbConnection);
+    }
+
+    public async Task ClearDatabase(List<string> tablesToDelete) => await connectionProvider.ClearAsync(tablesToDelete);
 }

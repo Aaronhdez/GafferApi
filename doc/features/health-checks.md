@@ -26,13 +26,14 @@ Both answer with a plain-text body: `Healthy`, `Degraded` or `Unhealthy`.
 
 | State of the database at startup | `/health/ready` |
 |---|---|
-| Enabled, reachable: real provider | Checks the database on every request: `200` `Healthy` if it answers, `503` `Unhealthy` if it does not answer, fails, or does not answer within 5 seconds |
+| Enabled, reachable: real provider | Checks the database on every request: `200` `Healthy` if it answers, `503` `Unhealthy` if it does not answer, fails, or does not answer within 5 seconds (each failure is also logged as a warning) |
 | Enabled but unreachable at startup: fallback to the no-op provider | `503` `Unhealthy` (even if the database answers later: the API keeps the fallback until it restarts) |
 | Disabled (`DatabaseConfig:Enabled` false) or no connection string: no-op provider on purpose | `200` `Degraded` |
 
 - `Healthy` and `Degraded` answer `200`; `Unhealthy` answers `503`.
 - The response carries no exception text, connection string, user or server name.
 - If the caller cancels the readiness request, the check is cancelled too and no `Unhealthy` is reported for that.
+- A failed readiness probe of the real database is written to the server log at `Warning` level (database did not answer, check timed out, or check threw), with no connection string, user or server name; the response is still the plain `503 Unhealthy`. Nothing is logged for `Healthy`, `Degraded` or the startup fallback. A database failure that `SqlConnectionProvider` already turns into "not reachable" is logged without the cause (type or message of the database error); only other exceptions are logged with their exception (TECHDEBT-006).
 
 ### Limitations
 

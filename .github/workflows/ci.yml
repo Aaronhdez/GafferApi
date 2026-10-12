@@ -35,6 +35,7 @@ jobs:
           global-json-file: global.json
       - run: dotnet restore gaffer-api.sln
       - run: dotnet build gaffer-api.sln --no-restore -warnaserror
+      - run: dotnet format gaffer-api.sln --verify-no-changes --severity info --exclude Gaffer.Api.Client/
       - run: pwsh ./scripts/run-migrations.ps1
       - run: dotnet test gaffer-api.sln --no-build
 

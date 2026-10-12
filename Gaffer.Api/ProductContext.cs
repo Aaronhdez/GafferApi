@@ -1,4 +1,4 @@
-﻿namespace Gaffer.Api;
+namespace Gaffer.Api;
 
 public class ProductContext {
     public string Name { get; set; } = "Gaffer API";

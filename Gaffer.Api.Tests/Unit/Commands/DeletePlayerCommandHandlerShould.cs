@@ -1,4 +1,4 @@
-﻿using AwesomeAssertions;
+using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
@@ -8,21 +8,18 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
 
-public class DeletePlayerCommandHandlerShould
-{
-    private IPlayerRepository _repository;
-    private DeletePlayerCommandHandler _handler;
-    
+public class DeletePlayerCommandHandlerShould {
+    private IPlayerRepository repository;
+    private DeletePlayerCommandHandler handler;
+
     [SetUp]
-    public void Setup()
-    {
-        _repository = Substitute.For<IPlayerRepository>();
-        _handler = new DeletePlayerCommandHandler(_repository);
+    public void Setup() {
+        repository = Substitute.For<IPlayerRepository>();
+        handler = new DeletePlayerCommandHandler(repository);
     }
 
     [Test]
-    public async Task DeleteAPlayerWhileBeingExecuted()
-    {
+    public async Task DeleteAPlayerWhileBeingExecuted() {
         var createPlayerCommand = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
         var player = new Player(
             createPlayerCommand.Id,
@@ -31,40 +28,37 @@ public class DeletePlayerCommandHandlerShould
             TestDefaultValues.DefaultSecondLastName,
             TestDefaultValues.DefaultGender,
             TestDefaultValues.DefaultBirthDate);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
 
-        await _handler.Handle(createPlayerCommand, CancellationToken.None);
+        await handler.Handle(createPlayerCommand, CancellationToken.None);
 
-        await _repository.Received(1).Delete(Arg.Is<Guid>(g => g == TestDefaultValues.EmptyPlayerId), Arg.Any<CancellationToken>());
+        await repository.Received(1).Delete(Arg.Is<Guid>(g => g == TestDefaultValues.EmptyPlayerId), Arg.Any<CancellationToken>());
     }
-    
-    [Test]
-    public async Task ThrowExceptionIfPlayerNotFound()
-    {
-        var createPlayerCommand = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = async () => await _handler.Handle(createPlayerCommand, CancellationToken.None);
+    [Test]
+    public async Task ThrowExceptionIfPlayerNotFound() {
+        var createPlayerCommand = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        var result = async () => await handler.Handle(createPlayerCommand, CancellationToken.None);
 
         await result.Should().ThrowAsync<CannotDeletePlayerNotFoundException>();
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileFindingPlayer()
-    {
+    public async Task PropagateTheRepositoryFailureWhileFindingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileDeletingPlayer()
-    {
+    public async Task PropagateTheRepositoryFailureWhileDeletingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
         var player = new Player(
@@ -75,11 +69,11 @@ public class DeletePlayerCommandHandlerShould
             TestDefaultValues.DefaultGender,
             TestDefaultValues.DefaultBirthDate);
 
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
-        _repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }

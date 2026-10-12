@@ -16,11 +16,13 @@ Plan folder `.github/plans/<ID>/`.
 ## Work
 
 1. Record `Inicio` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) for this cycle in `STATUS.md`. Compact closed cycles first (see `AGENTS.md`, "Plans and Evidence"): `STATUS.md` keeps full detail only for the current and previous cycle; move every older `APPROVED` cycle to the summary index before reading it further, and move its detail (decisions, per-criterion evidence) verbatim to `STATUS-archive.md` in the plan folder instead of deleting it by hand (OPT-026, OPT-029), and read `STATUS.md` by range, not whole.
-2. Address open `CHANGES_REQUESTED` in `REVIEW.md` first; otherwise implement the next pending step.
+2. Address open `CHANGES_REQUESTED` in `REVIEW.md` first; otherwise implement the next pending step. Read that step file whole, but from `00-*.md` only the decisions and rules that apply (`grep`/ranges), and `STATUS.md` by range; never `cat` the plan files together.
+   - Shell state does not persist between `Bash` calls: define scratchpad variables in the same call that uses them and guard them (`: "${S:?}"`), or create files with `Write`.
 3. Read `.github/doc/common/dev-stack.md` / `test-stack.md` fragments; `*-documentation.md` only when touching a dependency; start from `.github/doc/resources/templates-*/` when a template matches.
 4. Follow the double test loop (acceptance → unit → refactor) with red→green evidence.
    - Record each red as `n × estado` (or `n × CSxxxx`) per test class, grouping the actual results; never "todos" (OPT-038).
    - Define the red-summary command once (e.g. `... | grep -oE ... | sort | uniq -c` per test class) and reuse it for every red, with no extra summary passes (OPT-041).
+   - In steps that change the served response body, record during red a compact "before" table (values per case) in `STATUS.md` so REVIEWER only needs the "after" probe (OPT-047).
    - Before changing the signature or nullability of a shared type, `grep -rn` its usages in product and tests and adapt them in the same step (OPT-039).
 5. Preflight before tests: MySQL-backed tests run against the operator's local Docker database; if unavailable, record the exact blocker.
 6. Apply project lessons: update `Gaffer.Api.Tests/TestFixture.cs` DI in the same increment as new handlers.

@@ -2,8 +2,7 @@ using Gaffer.Api.Domain;
 
 namespace Gaffer.Api.Shared.Repositories;
 
-public interface IFacilityRepository
-{
+public interface IFacilityRepository {
     Task<List<Facility>> Get(FacilitySearchCriteria criteria, CancellationToken cancellationToken);
     Task Save(Facility facility, CancellationToken cancellationToken);
 
@@ -38,37 +37,26 @@ public interface IFacilityRepository
 }
 
 public class FacilityStandNotFoundException(Guid facilityId, Guid standId)
-    : Exception($"Stand {standId} not found in facility {facilityId}")
-{
+    : Exception($"Stand {standId} not found in facility {facilityId}") {
     public Guid FacilityId { get; } = facilityId;
     public Guid StandId { get; } = standId;
 }
 
 public class FacilityMaxStandsExceededException(Guid facilityId)
-    : Exception($"Facility {facilityId} already has the maximum number of stands")
-{
+    : Exception($"Facility {facilityId} already has the maximum number of stands") {
     public Guid FacilityId { get; } = facilityId;
 }
 
-public class FacilitySearchCriteria
-{
-    public List<SearchCriteria> criteriaList { get; set; } = [];
+public class FacilitySearchCriteria {
+    public List<SearchCriteria> CriteriaList { get; set; } = [];
 }
 
 public class FacilitySearchFilterNotPermittedException(string fieldName)
-    : Exception("FilterNotPermitted")
-{
+    : Exception("FilterNotPermitted") {
     public string FieldName { get; } = fieldName;
 }
 
-public class FacilityNotFoundException : Exception
-{
-    public FacilityNotFoundException(string message, Guid id) : base(message)
-    {
-        Id = id.ToString();
-        ErrorMessage = $"Facility with id {id} not found in Database";
-    }
-
-    public string Id { get; set; }
-    public string ErrorMessage { get; set; }
+public class FacilityNotFoundException(string message, Guid id) : Exception(message) {
+    public string Id { get; set; } = id.ToString();
+    public string ErrorMessage { get; set; } = $"Facility with id {id} not found in Database";
 }

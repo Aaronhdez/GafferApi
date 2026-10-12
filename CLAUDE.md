@@ -49,4 +49,4 @@ Analyze fresh input separately from cache read/write; in Claude Code cache is mo
 - Adding several methods to an existing file: `Edit` against a stable anchor (e.g. before the class's closing brace), not `head`/`tail` splicing (OPT-018).
 - Environment: Git Bash on Windows with no guaranteed Python or other interpreter in `PATH`. Check (`command -v python`) before scripting a mechanical edit, or use `Edit`/`sed` directly (OPT-024).
 - Ad-hoc probes (`dotnet run`, `dotnet fsi`): filter the output from the first run (`2>&1 | grep <expected result>` or `| tail -n 40`) and apply OPT-006 to them (OPT-025).
-- Timestamps: record `Inicio`/`Fin` with a real UTC clock (`date -u +%Y-%m-%dT%H:%M:%SZ` or `Get-Date -AsUTC -Format o`), never local time with a `Z` suffix (OPT-009).
+- Timestamps: record `Inicio`/`Fin` with a real UTC clock (`date -u +%Y-%m-%dT%H:%M:%SZ` or `Get-Date -AsUTC -Format o`), never local time with a `Z` suffix (OPT-009). If a run is interrupted and resumed, `Fin` is the time of the last useful work before the cut; record the resumption in a separate row with its own `Inicio`/`Fin`.

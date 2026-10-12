@@ -8,19 +8,14 @@ using Newtonsoft.Json.Linq;
 
 namespace Gaffer.Api.Tests.Acceptance;
 
-public class FacilityStandsFeaturesShould
-{
-    private IGafferApiClient _client;
+public class FacilityStandsFeaturesShould {
+    private IGafferApiClient client;
 
     [SetUp]
-    public void SetUp()
-    {
-        _client = TestFixture.GafferApiClientTest;
-    }
+    public void SetUp() => client = TestFixture.GafferApiClientTest;
 
     [Test]
-    public async Task ListTheStandsOfAFacilityAndAnEmptyListWhenThereAreNone()
-    {
+    public async Task ListTheStandsOfAFacilityAndAnEmptyListWhenThereAreNone() {
         var withStands = await CreateFacilityWithStands("North", "South");
         var withoutStands = await CreateFacilityWithStands();
 
@@ -32,8 +27,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task ReadAStandOfAFacility()
-    {
+    public async Task ReadAStandOfAFacility() {
         var facilityId = await CreateFacilityWithStands("North");
         var stand = (await GetStands(facilityId)).Single();
 
@@ -45,8 +39,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task CreateAStandReturningItsServerGeneratedIdAndLocation()
-    {
+    public async Task CreateAStandReturningItsServerGeneratedIdAndLocation() {
         var facilityId = await CreateFacilityWithStands("North");
 
         var response = await Send(HttpMethod.Post, Uris.FacilityStands($"{facilityId}"), new { StandName = "East", StandCapacity = 3000 });
@@ -61,8 +54,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task IgnoreAnIdSentInTheCreationBody()
-    {
+    public async Task IgnoreAnIdSentInTheCreationBody() {
         var facilityId = await CreateFacilityWithStands();
         var requested = Guid.NewGuid();
 
@@ -73,8 +65,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task RejectAFifthStandWithoutChangingTheFacility()
-    {
+    public async Task RejectAFifthStandWithoutChangingTheFacility() {
         var facilityId = await CreateFacilityWithStands("A", "B", "C", "D");
         var before = await GetStands(facilityId);
 
@@ -85,8 +76,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task ReplaceTheNameAndCapacityOfAStandKeepingItsId()
-    {
+    public async Task ReplaceTheNameAndCapacityOfAStandKeepingItsId() {
         var facilityId = await CreateFacilityWithStands("North", "South");
         var north = (await GetStands(facilityId)).Single(stand => stand.StandName == "North");
 
@@ -99,13 +89,11 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task DeleteAStandIncludingTheLastOne()
-    {
+    public async Task DeleteAStandIncludingTheLastOne() {
         var facilityId = await CreateFacilityWithStands("North", "South");
         var stands = await GetStands(facilityId);
 
-        foreach (var stand in stands)
-        {
+        foreach (var stand in stands) {
             var response = await Send(HttpMethod.Delete, Uris.FacilityStand($"{facilityId}", $"{stand.Id}"));
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
         }
@@ -115,8 +103,7 @@ public class FacilityStandsFeaturesShould
     }
 
     [Test]
-    public async Task AnswerNotFoundWithTheFacilityKeyWhenTheFacilityDoesNotExist()
-    {
+    public async Task AnswerNotFoundWithTheFacilityKeyWhenTheFacilityDoesNotExist() {
         var missing = Guid.NewGuid();
         var body = new { StandName = "East", StandCapacity = 3000 };
 
@@ -129,15 +116,13 @@ public class FacilityStandsFeaturesShould
             await Send(HttpMethod.Delete, Uris.FacilityStand($"{missing}", $"{Guid.NewGuid()}")),
         };
 
-        foreach (var response in responses)
-        {
+        foreach (var response in responses) {
             await AssertProblem(response, HttpStatusCode.NotFound, "Error.Facilities.Stands.FacilityNotFound");
         }
     }
 
     [Test]
-    public async Task AnswerNotFoundWithTheStandKeyForMissingOrForeignStandsWithoutChangingThem()
-    {
+    public async Task AnswerNotFoundWithTheStandKeyForMissingOrForeignStandsWithoutChangingThem() {
         var facilityId = await CreateFacilityWithStands("North");
         var otherFacilityId = await CreateFacilityWithStands("Foreign");
         var foreign = (await GetStands(otherFacilityId)).Single();
@@ -152,24 +137,20 @@ public class FacilityStandsFeaturesShould
             await Send(HttpMethod.Delete, Uris.FacilityStand($"{facilityId}", $"{Guid.NewGuid()}")),
         };
 
-        foreach (var response in responses)
-        {
+        foreach (var response in responses) {
             await AssertProblem(response, HttpStatusCode.NotFound, "Error.Facilities.Stands.StandNotFound");
         }
         (await GetStands(otherFacilityId)).Should().BeEquivalentTo([foreign]);
     }
 
     [Test]
-    public async Task NeverExceedFourStandsWhenCreatingThemConcurrently()
-    {
+    public async Task NeverExceedFourStandsWhenCreatingThemConcurrently() {
         const int attempts = 10;
         const int concurrentRequests = 4;
-        for (var attempt = 0; attempt < attempts; attempt++)
-        {
+        for (var attempt = 0; attempt < attempts; attempt++) {
             var facilityId = await CreateFacilityWithStands("A", "B", "C");
             var start = new TaskCompletionSource();
-            var requests = Enumerable.Range(0, concurrentRequests).Select(async i =>
-            {
+            var requests = Enumerable.Range(0, concurrentRequests).Select(async i => {
                 await start.Task;
                 return await Send(HttpMethod.Post, Uris.FacilityStands($"{facilityId}"), new { StandName = $"Extra {i}", StandCapacity = 1000 });
             }).ToList();
@@ -186,8 +167,7 @@ public class FacilityStandsFeaturesShould
     // --- Step 03b: domain validation of the stand sub-resource (OPT-037: one representative per rule type) ---
 
     [TestCaseSource(typeof(StandValidationCases), nameof(StandValidationCases.InvalidStands))]
-    public async Task RejectAnInvalidStandWithoutChangingTheStands(string method, string field, object body)
-    {
+    public async Task RejectAnInvalidStandWithoutChangingTheStands(string method, string field, object body) {
         var facilityId = await CreateFacilityWithStands("North", "South");
         var before = await GetStands(facilityId);
         var uri = method == "POST"
@@ -202,8 +182,7 @@ public class FacilityStandsFeaturesShould
 
     [TestCase("POST")]
     [TestCase("PUT")]
-    public async Task RejectAnInvalidStandBeforeLookingForTheFacility(string method)
-    {
+    public async Task RejectAnInvalidStandBeforeLookingForTheFacility(string method) {
         var unknownFacility = Guid.NewGuid();
         var uri = method == "POST"
             ? Uris.FacilityStands($"{unknownFacility}")
@@ -211,24 +190,22 @@ public class FacilityStandsFeaturesShould
 
         var response = await Send(new HttpMethod(method), uri, new { StandName = "East", StandCapacity = -1 });
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandCapacity");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standCapacity");
     }
 
     [Test]
-    public async Task RejectAStandNameLongerThanItsColumnWithAValidationError()
-    {
+    public async Task RejectAStandNameLongerThanItsColumnWithAValidationError() {
         var facilityId = await CreateFacilityWithStands("North");
         var before = await GetStands(facilityId);
 
         var response = await Send(HttpMethod.Post, Uris.FacilityStands($"{facilityId}"), new { StandName = new string('x', 300), StandCapacity = 1000 });
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandName");
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standName");
         (await GetStands(facilityId)).Should().BeEquivalentTo(before);
     }
 
     [Test]
-    public async Task CreateAndReplaceAStandWithValuesAtTheLimits()
-    {
+    public async Task CreateAndReplaceAStandWithValuesAtTheLimits() {
         var facilityId = await CreateFacilityWithStands("North");
         var longest = new string('s', 100);
 
@@ -246,40 +223,36 @@ public class FacilityStandsFeaturesShould
     }
 
     [TestCase("POST", """{"standName":"East",""", null)]
-    [TestCase("POST", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "StandCapacity")]
+    [TestCase("POST", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "standCapacity")]
     [TestCase("PUT", """{"standName":"East",""", null)]
-    [TestCase("PUT", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "StandCapacity")]
-    public async Task ReturnTheValidationFormatForStandBodiesThatCannotBeBound(string method, string json, string? field)
-    {
+    [TestCase("PUT", """{"standName":"East","standCapacity":"ZZZ_NOT_A_NUMBER"}""", "standCapacity")]
+    public async Task ReturnTheValidationFormatForStandBodiesThatCannotBeBound(string method, string json, string? field) {
         var facilityId = await CreateFacilityWithStands("North");
         var stands = await GetStands(facilityId);
         var uri = method == "POST"
             ? Uris.FacilityStands($"{facilityId}")
             : Uris.FacilityStand($"{facilityId}", $"{stands[0].Id}");
-        var request = new HttpRequestMessage(new HttpMethod(method), uri)
-        {
+        var request = new HttpRequestMessage(new HttpMethod(method), uri) {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         };
 
-        var response = await _client.SendAsync(request);
+        var response = await client.SendAsync(request);
 
         var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, field is null ? [] : [field]);
-        ((JObject)problem["Extensions"]!["Errors"]!).Properties().Should().NotBeEmpty();
+        ProblemJson.ErrorsOf(problem).Properties().Should().NotBeEmpty();
         problem.ToString().Should().NotContain("ZZZ_NOT_A_NUMBER");
         (await GetStands(facilityId)).Should().BeEquivalentTo(stands);
     }
 
     [Test]
-    public async Task KeepReadingKeepingAndDeletingAStoredStandThatBreaksTheRules()
-    {
+    public async Task KeepReadingKeepingAndDeletingAStoredStandThatBreaksTheRules() {
         var facilityId = await CreateFacilityWithStands("North");
         var legacyStandId = await StandValidationCases.InsertALegacyStandWithANegativeCapacity(facilityId);
 
         var stands = await GetStands(facilityId);
         stands.Should().ContainEquivalentOf(new SearchFacilityStandResult(legacyStandId, StandValidationCases.LegacyStandName, StandValidationCases.LegacyStandCapacity));
 
-        var updated = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Put, Uris.UpdateFacility($"{facilityId}"))
-        {
+        var updated = await client.SendAsync(new HttpRequestMessage(HttpMethod.Put, Uris.UpdateFacility($"{facilityId}")) {
             Content = new StringContent(FacilityValidationCases.ValidBody(), Encoding.UTF8, "application/json")
         });
 
@@ -292,8 +265,7 @@ public class FacilityStandsFeaturesShould
         (await GetStands(facilityId)).Select(stand => stand.Id).Should().NotContain(legacyStandId);
     }
 
-    private async Task<List<SearchFacilityStandResult>> GetStands(Guid facilityId)
-    {
+    private async Task<List<SearchFacilityStandResult>> GetStands(Guid facilityId) {
         var response = await Send(HttpMethod.Get, Uris.FacilityStands($"{facilityId}"));
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var stands = await response.Content.ReadFromJsonAsync<List<SearchFacilityStandResult>>(TestJson.Options);
@@ -301,17 +273,14 @@ public class FacilityStandsFeaturesShould
         return stands!;
     }
 
-    private async Task<Guid> CreateFacilityWithStands(params string[] standNames)
-    {
-        var requestBody = new
-        {
+    private async Task<Guid> CreateFacilityWithStands(params string[] standNames) {
+        var requestBody = new {
             Name = "City Arena",
             Active = true,
             BuildDate = new DateTime(2020, 7, 20),
             Type = "Arena",
             Capacity = 18000,
-            Address = new
-            {
+            Address = new {
                 Street = "Arena Road",
                 StreetNumber = "50",
                 PostalCode = "08001",
@@ -326,21 +295,18 @@ public class FacilityStandsFeaturesShould
         return await response.Content.ReadFromJsonAsync<Guid>();
     }
 
-    private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string translationKey)
-    {
+    private static async Task AssertProblem(HttpResponseMessage response, HttpStatusCode status, string translationKey) {
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(status, raw);
-        JObject.Parse(raw)["Extensions"]!["ErrorTranslationKey"]!.Value<string>().Should().Be(translationKey);
+        ProblemJson.TranslationKeyOf(ProblemJson.Parse(raw)).Should().Be(translationKey);
     }
 
-    private async Task<HttpResponseMessage> Send(HttpMethod method, Uri uri, object? body = null)
-    {
+    private async Task<HttpResponseMessage> Send(HttpMethod method, Uri uri, object? body = null) {
         var request = new HttpRequestMessage(method, uri);
-        if (body is not null)
-        {
+        if (body is not null) {
             request.Content = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, "application/json");
         }
-        return await _client.SendAsync(request);
+        return await client.SendAsync(request);
     }
 }
 
@@ -348,37 +314,34 @@ public class FacilityStandsFeaturesShould
 /// AC3b.11 (OPT-035): stand bodies where the <see cref="TestFixture"/> host (implicit required of <c>StandName</c>)
 /// and production (<c>AddMvcCore</c>) diverge, checked on the production pipeline (<see cref="StartupTestServer"/>).
 /// </summary>
-public class FacilityStandValidationInTheProductionPipelineShould
-{
+public class FacilityStandValidationInTheProductionPipelineShould {
     private const string FacilitiesPath = "/api/v1.0/facilities/";
-    private StartupTestServer _server;
+    private StartupTestServer server;
 
     [OneTimeSetUp]
-    public async Task OneTimeSetUp() => _server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
+    public async Task OneTimeSetUp() => server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
 
     [OneTimeTearDown]
-    public async Task OneTimeTearDown() => await _server.DisposeAsync();
+    public async Task OneTimeTearDown() => await server.DisposeAsync();
 
     [TestCase("POST", """{"standCapacity":10}""", TestName = "{m}(POST, StandName absent)")]
     [TestCase("POST", """{"standName":null,"standCapacity":10}""", TestName = "{m}(POST, StandName null)")]
     [TestCase("PUT", """{"standCapacity":10}""", TestName = "{m}(PUT, StandName absent)")]
     [TestCase("PUT", """{"standName":null,"standCapacity":10}""", TestName = "{m}(PUT, StandName null)")]
-    public async Task RejectAStandWithoutNameWithTheStandsKeyAndFieldWithoutChanges(string method, string json)
-    {
+    public async Task RejectAStandWithoutNameWithTheStandsKeyAndFieldWithoutChanges(string method, string json) {
         var facilityId = await CreateFacility();
         var standsPath = $"{FacilitiesPath}{facilityId}/stands";
-        var before = await _server.Client.GetStringAsync(standsPath);
+        var before = await server.Client.GetStringAsync(standsPath);
         var standId = ((JObject)JArray.Parse(before)[0]).GetValue("id", StringComparison.OrdinalIgnoreCase)!.Value<string>();
         var path = method == "POST" ? standsPath : $"{standsPath}/{standId}";
 
         var response = await Send(new HttpMethod(method), path, json);
 
-        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "StandName");
-        (await _server.Client.GetStringAsync(standsPath)).Should().Be(before);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, StandValidationCases.StandsValidationKey, "standName");
+        (await server.Client.GetStringAsync(standsPath)).Should().Be(before);
     }
 
-    private async Task<Guid> CreateFacility()
-    {
+    private async Task<Guid> CreateFacility() {
         var created = await Send(HttpMethod.Post, FacilitiesPath,
             FacilityValidationCases.ValidBody(body => FacilityValidationCases.SetStands(body, ("North", 100))));
         var raw = await created.Content.ReadAsStringAsync();
@@ -387,36 +350,31 @@ public class FacilityStandValidationInTheProductionPipelineShould
     }
 
     private async Task<HttpResponseMessage> Send(HttpMethod method, string path, string json) =>
-        await _server.Client.SendAsync(new HttpRequestMessage(method, path)
-        {
+        await server.Client.SendAsync(new HttpRequestMessage(method, path) {
             Content = new StringContent(json, Encoding.UTF8, "application/json")
         });
 }
 
 /// <summary>Shared cases of the stand sub-resource validation tests (step 03b).</summary>
-public static class StandValidationCases
-{
+public static class StandValidationCases {
     public const string StandsValidationKey = "Error.Facilities.Stands.Validation";
     public const string LegacyStandName = "Legacy Stand";
     public const int LegacyStandCapacity = -5;
 
     /// <summary>OPT-037: one representative per rule type and operation.</summary>
-    public static IEnumerable<TestCaseData> InvalidStands()
-    {
-        foreach (var method in new[] { "POST", "PUT" })
-        {
-            yield return new TestCaseData(method, "StandName", new { StandName = "   ", StandCapacity = 10 })
+    public static IEnumerable<TestCaseData> InvalidStands() {
+        foreach (var method in new[] { "POST", "PUT" }) {
+            yield return new TestCaseData(method, "standName", new { StandName = "   ", StandCapacity = 10 })
                 .SetArgDisplayNames(method, "StandName whitespace");
-            yield return new TestCaseData(method, "StandName", new { StandName = FacilityValidationCases.TooLongText, StandCapacity = 10 })
+            yield return new TestCaseData(method, "standName", new { StandName = FacilityValidationCases.TooLongText, StandCapacity = 10 })
                 .SetArgDisplayNames(method, "StandName 101 chars");
-            yield return new TestCaseData(method, "StandCapacity", new { StandName = "East", StandCapacity = -1 })
+            yield return new TestCaseData(method, "standCapacity", new { StandName = "East", StandCapacity = -1 })
                 .SetArgDisplayNames(method, "StandCapacity -1");
         }
     }
 
     /// <summary>Inserts by SQL a stand with a negative capacity linked to the facility (Q16: read without validation).</summary>
-    public static async Task<Guid> InsertALegacyStandWithANegativeCapacity(Guid facilityId)
-    {
+    public static async Task<Guid> InsertALegacyStandWithANegativeCapacity(Guid facilityId) {
         var standId = Guid.NewGuid();
         var provider = TestFixture.SqlConnectionProviderTest;
         await provider.ExecuteAsync(

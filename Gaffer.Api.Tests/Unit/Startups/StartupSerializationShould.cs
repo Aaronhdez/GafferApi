@@ -6,11 +6,9 @@ using Newtonsoft.Json.Converters;
 
 namespace Gaffer.Api.Tests.Unit.Startups;
 
-public class StartupSerializationShould
-{
+public class StartupSerializationShould {
     [Test]
-    public void LeaveTheSystemTextJsonOptionsWithTheFrameworkDefaults()
-    {
+    public void LeaveTheSystemTextJsonOptionsWithTheFrameworkDefaults() {
         using var serviceProvider = StartupServices.Build();
 
         var jsonOptions = serviceProvider.GetRequiredService<IOptions<JsonOptions>>().Value.JsonSerializerOptions;
@@ -20,8 +18,7 @@ public class StartupSerializationShould
     }
 
     [Test]
-    public void SerializeWithNewtonsoftUsingUtcDatesAndEnumsAsText()
-    {
+    public void SerializeWithNewtonsoftUsingUtcDatesAndEnumsAsText() {
         using var serviceProvider = StartupServices.Build();
 
         var settings = serviceProvider.GetRequiredService<IOptions<MvcNewtonsoftJsonOptions>>().Value.SerializerSettings;

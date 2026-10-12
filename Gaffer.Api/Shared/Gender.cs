@@ -1,7 +1,6 @@
-﻿namespace Gaffer.Api.Shared;
+namespace Gaffer.Api.Shared;
 
-public enum Gender
-{
+public enum Gender {
     MALE,
     FEMALE,
     OTHER

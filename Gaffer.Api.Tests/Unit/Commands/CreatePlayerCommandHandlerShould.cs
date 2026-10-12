@@ -1,4 +1,4 @@
-﻿using AwesomeAssertions;
+using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
@@ -9,21 +9,18 @@ using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
 
-public class CreatePlayerCommandHandlerShould
-{
-    private IPlayerRepository _repository;
-    private CreatePlayerCommandHandler _handler;
+public class CreatePlayerCommandHandlerShould {
+    private IPlayerRepository repository;
+    private CreatePlayerCommandHandler handler;
 
     [SetUp]
-    public void Setup()
-    {
-        _repository = Substitute.For<IPlayerRepository>();
-        _handler = new CreatePlayerCommandHandler(_repository);
+    public void Setup() {
+        repository = Substitute.For<IPlayerRepository>();
+        handler = new CreatePlayerCommandHandler(repository);
     }
 
     [Test]
-    public async Task CreateAPlayerWhileBeingExecuted()
-    {
+    public async Task CreateAPlayerWhileBeingExecuted() {
         var createPlayerCommand = new CreatePlayerCommand(
             TestDefaultValues.DefaultFirstName,
             TestDefaultValues.DefaultLastName,
@@ -31,9 +28,9 @@ public class CreatePlayerCommandHandlerShould
             TestDefaultValues.DefaultBirthDate,
             TestDefaultValues.DefaultGender);
 
-        await _handler.Handle(createPlayerCommand, CancellationToken.None);
+        await handler.Handle(createPlayerCommand, CancellationToken.None);
 
-        await _repository.Received(1).Save(Arg.Is<Player>(p =>
+        await repository.Received(1).Save(Arg.Is<Player>(p =>
             p != null && p.FirstName == TestDefaultValues.DefaultFirstName
             && p.LastName == TestDefaultValues.DefaultLastName
             && p.SecondLastName == TestDefaultValues.DefaultSecondLastName
@@ -43,8 +40,7 @@ public class CreatePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task ReturnCreatedPlayerResponseWithGeneratedId()
-    {
+    public async Task ReturnCreatedPlayerResponseWithGeneratedId() {
         var command = new CreatePlayerCommand(
             "Jane",
             "Smith",
@@ -53,15 +49,15 @@ public class CreatePlayerCommandHandlerShould
             Gender.FEMALE);
         Player? savedPlayer = null;
 
-        _repository.When(x => x.Save(Arg.Any<Player>(), Arg.Any<CancellationToken>()))
+        repository.When(x => x.Save(Arg.Any<Player>(), Arg.Any<CancellationToken>()))
             .Do(callInfo => savedPlayer = callInfo.Arg<Player>());
 
-        var result = await _handler.Handle(command, CancellationToken.None);
+        var result = await handler.Handle(command, CancellationToken.None);
 
         result.Id.Should().NotBeEmpty();
         savedPlayer.Should().NotBeNull();
         result.Id.Should().Be(savedPlayer!.Id);
-        await _repository.Received(1).Save(Arg.Is<Player>(p =>
+        await repository.Received(1).Save(Arg.Is<Player>(p =>
             p != null && p.Id == result.Id
             && p.FirstName == command.FirstName
             && p.LastName == command.LastName
@@ -72,16 +68,15 @@ public class CreatePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task RejectAnInvalidPlayerWithEveryInvalidFieldAndNotSaveIt()
-    {
+    public async Task RejectAnInvalidPlayerWithEveryInvalidFieldAndNotSaveIt() {
         var command = new CreatePlayerCommand("", new string('l', 101), "", DateTime.UtcNow.Date.AddDays(1), (Gender)99);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         var failure = (await result.Should().ThrowAsync<ValidationFailedException>()).Which;
         failure.Title.Should().Be("Cannot create player");
         failure.ErrorTranslationKey.Should().Be(ValidationErrorKeys.PlayersCreate);
         failure.Errors.Keys.Should().BeEquivalentTo("FirstName", "LastName", "SecondLastName", "BirthDate", "Gender");
-        await _repository.DidNotReceive().Save(Arg.Any<Player>(), Arg.Any<CancellationToken>());
+        await repository.DidNotReceive().Save(Arg.Any<Player>(), Arg.Any<CancellationToken>());
     }
 }

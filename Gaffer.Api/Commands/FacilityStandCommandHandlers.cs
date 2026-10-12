@@ -14,20 +14,15 @@ public record ReplaceFacilityStandCommand(Guid FacilityId, Guid StandId, string 
 public record RemoveFacilityStandCommand(Guid FacilityId, Guid StandId) : ICommand;
 
 public class AddFacilityStandCommandHandler(IFacilityRepository facilityRepository)
-    : ICommandHandler<AddFacilityStandCommand, AddFacilityStandResponse>
-{
+    : ICommandHandler<AddFacilityStandCommand, AddFacilityStandResponse> {
     public const string CannotCreateStandTitle = "Cannot create stand";
 
-    public async Task<AddFacilityStandResponse> Handle(AddFacilityStandCommand command, CancellationToken cancellationToken)
-    {
+    public async Task<AddFacilityStandResponse> Handle(AddFacilityStandCommand command, CancellationToken cancellationToken) {
         // Built before the repository is called: an invalid stand is a 400 even if the facility does not exist (Q21 a)).
         var stand = StandValidation.Create(Guid.NewGuid(), command.StandName, command.StandCapacity, CannotCreateStandTitle);
-        try
-        {
+        try {
             await facilityRepository.AddStand(command.FacilityId, stand, cancellationToken);
-        }
-        catch (FacilityNotFoundException ex)
-        {
+        } catch (FacilityNotFoundException ex) {
             throw new FacilityStandsFacilityNotFoundException(ex.Message, command.FacilityId);
         }
 
@@ -36,52 +31,37 @@ public class AddFacilityStandCommandHandler(IFacilityRepository facilityReposito
 }
 
 public class ReplaceFacilityStandCommandHandler(IFacilityRepository facilityRepository)
-    : ICommandHandler<ReplaceFacilityStandCommand>
-{
+    : ICommandHandler<ReplaceFacilityStandCommand> {
     public const string CannotUpdateStandTitle = "Cannot update stand";
 
-    public async Task Handle(ReplaceFacilityStandCommand command, CancellationToken cancellationToken)
-    {
+    public async Task Handle(ReplaceFacilityStandCommand command, CancellationToken cancellationToken) {
         // Built before the repository is called: an invalid stand is a 400 before any 404 (Q21 a)).
         var stand = StandValidation.Create(command.StandId, command.StandName, command.StandCapacity, CannotUpdateStandTitle);
-        try
-        {
+        try {
             await facilityRepository.UpdateStand(command.FacilityId, stand, cancellationToken);
-        }
-        catch (FacilityNotFoundException ex)
-        {
+        } catch (FacilityNotFoundException ex) {
             throw new FacilityStandsFacilityNotFoundException(ex.Message, command.FacilityId);
         }
     }
 }
 
-internal static class StandValidation
-{
+internal static class StandValidation {
     /// <summary>Creates the stand of a sub-resource request; its rules become a 400 with <see cref="ValidationErrorKeys.FacilitiesStands"/>.</summary>
-    public static Stand Create(Guid standId, string? standName, int standCapacity, string title)
-    {
-        try
-        {
+    public static Stand Create(Guid standId, string? standName, int standCapacity, string title) {
+        try {
             return Stand.Create(standId, standName, standCapacity);
-        }
-        catch (DomainValidationException ex)
-        {
+        } catch (DomainValidationException ex) {
             throw new ValidationFailedException(title, ValidationErrorKeys.FacilitiesStands, ex.Errors);
         }
     }
 }
 
 public class RemoveFacilityStandCommandHandler(IFacilityRepository facilityRepository)
-    : ICommandHandler<RemoveFacilityStandCommand>
-{
-    public async Task Handle(RemoveFacilityStandCommand command, CancellationToken cancellationToken)
-    {
-        try
-        {
+    : ICommandHandler<RemoveFacilityStandCommand> {
+    public async Task Handle(RemoveFacilityStandCommand command, CancellationToken cancellationToken) {
+        try {
             await facilityRepository.DeleteStand(command.FacilityId, command.StandId, cancellationToken);
-        }
-        catch (FacilityNotFoundException ex)
-        {
+        } catch (FacilityNotFoundException ex) {
             throw new FacilityStandsFacilityNotFoundException(ex.Message, command.FacilityId);
         }
     }

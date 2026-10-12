@@ -49,6 +49,7 @@ sequenceDiagram
 | `IFacilityRepository` | `AddStand` | `Task AddStand(Guid facilityId, Stand stand, CancellationToken)` | `Task` | Lock, `CountStands`, throws `FacilityMaxStandsExceededException` at 4, then `InsertStand`. |
 | `IFacilityRepository` | `UpdateStand` | `Task UpdateStand(Guid facilityId, Stand stand, CancellationToken)` | `Task` | Lock, `EnsureStandBelongsToFacility` (`Facilities_Stands`), `UPDATE Stands`. |
 | `IFacilityRepository` | `DeleteStand` | `Task DeleteStand(Guid facilityId, Guid standId, CancellationToken)` | `Task` | Lock, ownership check, `DELETE` of the stand and its `Facilities_Stands` row. |
+| `IFacilityRepository` | `Delete` (whole facility) | `Task Delete(Guid id, CancellationToken)` | `Task` | TECHDEBT-006: one transaction with a single `DELETE FROM Facilities WHERE Id = @Id`. The address, stands and link rows go away through the schema: `ON DELETE CASCADE` foreign keys on the two link tables (`M0002`) and the `TRG_Facilities_BeforeDelete` trigger that deletes `Stands` and `Addresses` (`M0003`). The former `DeleteStands`/`DeleteAddress` statements were removed. Does not take the facility lock of the stand operations. Proof: `SqlFacilityRepositoryShould` deletes only the facility row and finds `(0,0,0,0,0)` rows in `Facilities, Addresses, Facilities_Addresses, Stands, Facilities_Stands` for it and `(1,1,1,3,3)` for another facility. |
 | `FacilityStandsFacilityNotFoundException` | — | `(string message, Guid facilityId)` | — | Maps to `404` `Error.Facilities.Stands.FacilityNotFound`. |
 | `FacilityStandNotFoundException` | — | `(Guid facilityId, Guid standId)` | — | Maps to `404` `Error.Facilities.Stands.StandNotFound`. |
 | `FacilityMaxStandsExceededException` | — | `(Guid facilityId)` | — | Maps to `400` `Error.Facilities.Stands.Create.MaxStandsExceeded`. |
@@ -70,7 +71,7 @@ Content-Type: application/json
 { "standName": "North", "standCapacity": 5000 }
 ```
 
-`201 Created`, `Location: .../stands/{newId}`, body `"{newId}"`. A fifth stand answers `400` with `Extensions.ErrorTranslationKey = "Error.Facilities.Stands.Create.MaxStandsExceeded"`.
+`201 Created`, `Location: .../stands/{newId}`, body `"{newId}"`. A fifth stand answers `400` with `errorTranslationKey = "Error.Facilities.Stands.Create.MaxStandsExceeded"`.
 
 ```http
 DELETE /api/v1/facilities/3d9c.../stands/{standId}
@@ -87,7 +88,7 @@ Content-Type: application/json
 { "standName": "", "standCapacity": -1 }
 ```
 
-`400`, `Extensions.ErrorTranslationKey = "Error.Facilities.Stands.Validation"`, `Extensions.Errors` with `StandName` and `StandCapacity`; nothing is saved.
+`400`, `errorTranslationKey = "Error.Facilities.Stands.Validation"`, `errors` with `standName` and `standCapacity`; nothing is saved.
 
 ## How to test
 

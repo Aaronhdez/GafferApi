@@ -45,8 +45,9 @@ sequenceDiagram
 | `DatabaseStartup` | `ReadyTag` | `const string = "ready"` | Tag shared with the route predicate. |
 | `IDatabaseProbe` / `SqlDatabaseProbe` | `IsReachableAsync` | `Task<bool> IsReachableAsync(CancellationToken)` | Creates a `SqlConnectionProvider` per check and calls the new `TestConnection(CancellationToken)` overload. |
 | `SqlConnectionProvider` | `TestConnection` | `Task<bool> TestConnection(CancellationToken)` | Overload with token (`OpenAsync`/`ExecuteScalarAsync`); an already cancelled token throws without touching the connection. `TestConnection()` delegates with `default`; `IDatabaseConnectionProvider` is unchanged. |
-| `DatabaseHealthCheck` | `CheckHealthAsync` | `Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext, CancellationToken)` | `DummyByConfiguration` → `Degraded("Database disabled by configuration.")`; `DummyByFallback` → `Unhealthy` without probing; `Sql` → probe with a token linked to the request plus `CancelAfter(5 s)` and `WaitAsync` (bounds the wait even if the probe ignores the token): `true` → `Healthy`, `false`/exception/timeout → `Unhealthy`; request cancelled → `OperationCanceledException`. Results carry no `Exception` or `Data`; descriptions are fixed texts. |
-| `DatabaseHealthCheck` | `DefaultTimeout` | `TimeSpan` = 5 s | Constructor accepts another timeout (tests). |
+| `DatabaseHealthCheck` | `CheckHealthAsync` | `Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext, CancellationToken)` | `DummyByConfiguration` → `Degraded("Database disabled by configuration.")`; `DummyByFallback` → `Unhealthy` without probing; `Sql` → probe with a token linked to the request plus `CancelAfter(timeout)` and `WaitAsync` (bounds the wait even if the probe ignores the token): `true` → `Healthy`, `false`/exception/timeout → `Unhealthy`, each failure also logged at `Warning` (`false`: "the database did not answer", no exception; timeout: "timed out after {Timeout}", no exception; any other exception: logged with the exception); request cancelled → `OperationCanceledException`. Results carry no `Exception` or `Data`; descriptions are fixed texts. |
+| `DatabaseHealthCheck` | ctor | `DatabaseHealthCheck(DatabaseProviderSelection, IDatabaseProbe?, TimeSpan? timeout = null, ILogger<DatabaseHealthCheck>? logger = null)` | `timeout` defaults to `DefaultTimeout`; `logger` defaults to `NullLogger`. `DatabaseStartup.AddDatabaseHealthCheck` passes the host `ILogger<DatabaseHealthCheck>`; existing test constructions keep compiling since `logger` is last and optional. |
+| `DatabaseHealthCheck` | `DefaultTimeout` | `static readonly TimeSpan` = 5 s | Injectable timeout (TECHDEBT-006): tests use 200 ms instead of waiting 5 s. |
 
 ## Dependencies
 
@@ -68,6 +69,6 @@ Fallback case (database enabled but down at startup): `/health/live` answers `20
 ## How to test
 
 - Acceptance: `Gaffer.Api.Tests/Acceptance/HealthCheckShould.cs` (live and ready healthy, ready `503` on fallback without leaking connection details, ready `200 Degraded` when disabled or without connection string).
-- Unit: `Unit/HealthChecks/DatabaseHealthCheckShould.cs` (reason × probe matrix; request cancellation; blocked probe becomes `Unhealthy` after 5 s).
-- Integration: `Integration/DatabaseStartupShould.cs` (reason registered per branch) and `Unit/ConnectionProviders/SqlConnectionProviderShould.cs` (token overload).
+- Unit: `Unit/HealthChecks/DatabaseHealthCheckShould.cs` (reason × probe matrix; request cancellation; blocked probe becomes `Unhealthy` after the injected timeout, `DefaultTimeout` is 5 s asserted without waiting; `Warning` logging matrix: throws → with exception, `false`/timeout → without exception, `Healthy`/`Degraded`/fallback → nothing, no sensitive fragment in the message; class time 5.3 s → 0.7 s).
+- Integration: `Integration/DatabaseStartupShould.cs` (reason registered per branch and `GiveTheRegisteredHealthCheckTheHostLoggerSoAFailedProbeIsLogged`) and `Unit/ConnectionProviders/SqlConnectionProviderShould.cs` (token overload).
 - Run with `dotnet test gaffer-api.sln` against the Docker MariaDB database ([`database-configuration.md`](./database-configuration.md)).

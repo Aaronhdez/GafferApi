@@ -23,10 +23,10 @@
 - **Omitted or absent field** (`firstName`, `lastName`, `birthDate`, `gender`): the player's current value is kept.
 - **Explicit `null`** for `birthDate` or `gender`: also keeps the current value (these are typed fields on the wire; a `null` cannot represent "clear this date/gender" since the domain does not support an empty date or gender).
 - **`secondLastName`** follows the same rule as the other fields: absent or `null` keeps the current value. A value that is `""` or only whitespace is rejected with `400`. A body without fields changes nothing.
-- **Sent fields are validated** with the player rules (names 1-100 characters and not only whitespace, `birthDate` between 1900-01-01 and today and at least 16 years old, `gender` a defined value). Only fields that were sent are checked; all invalid ones are reported together and nothing is saved. Response: `400`, `Extensions.ErrorTranslationKey = "Error.Players.Update.Validation"`, `Extensions.Errors` per field. Details: [`input-validation.md`](./input-validation.md).
+- **Sent fields are validated** with the player rules (names 1-100 characters and not only whitespace, `birthDate` between 1900-01-01 and today and at least 16 years old, `gender` a defined value). Only fields that were sent are checked; all invalid ones are reported together and nothing is saved. Response: `400`, `errorTranslationKey = "Error.Players.Update.Validation"`, `errors` per field. Details: [`input-validation.md`](./input-validation.md).
 - **Unknown id with an invalid body**: `404` (the player is looked up before the body is checked).
 - **Existing data is not revalidated**: a `PUT` that does not send an invalid stored field (for example a stored name of 101 characters) does not fail because of it.
-- **Unknown player id**: `404 Not Found` with `Extensions.ErrorTranslationKey = "Error.Players.Update.PlayerNotFound"`.
+- **Unknown player id**: `404 Not Found` with `errorTranslationKey = "Error.Players.Update.PlayerNotFound"`.
 - **`birthDate` and `gender` are optional and nullable in the request schema** (previously required): the published OpenAPI/Swagger contract reflects this, so a generated client no longer forces the caller to supply them.
 
 ### Limitations

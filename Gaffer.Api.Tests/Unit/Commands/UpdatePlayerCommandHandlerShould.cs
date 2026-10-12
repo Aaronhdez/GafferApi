@@ -10,11 +10,10 @@ using NSubstitute.ExceptionExtensions;
 
 namespace Gaffer.Api.Tests.Unit.Commands;
 
-public class UpdatePlayerCommandHandlerShould
-{
-    private IPlayerRepository _repository;
-    private UpdatePlayerCommandHandler _handler;
-    private readonly Guid _playerId = Guid.NewGuid();
+public class UpdatePlayerCommandHandlerShould {
+    private IPlayerRepository repository;
+    private UpdatePlayerCommandHandler handler;
+    private readonly Guid playerId = Guid.NewGuid();
     private const string NewName = "NewName";
     private const string NewLastName = "ANewLastName";
     private const string NewSecondLastName = "SecondLastName";
@@ -24,36 +23,33 @@ public class UpdatePlayerCommandHandlerShould
     private const Gender NewGender = Gender.FEMALE;
 
     [SetUp]
-    public void Setup()
-    {
-        _repository = Substitute.For<IPlayerRepository>();
-        _handler = new UpdatePlayerCommandHandler(_repository);
+    public void Setup() {
+        repository = Substitute.For<IPlayerRepository>();
+        handler = new UpdatePlayerCommandHandler(repository);
     }
 
     [Test]
-    public async Task UpdateAPlayerWhileBeingExecuted()
-    {
+    public async Task UpdateAPlayerWhileBeingExecuted() {
         var player = AnExistingPlayer();
-        var command = new UpdatePlayerCommand
-        {
-            Id = _playerId,
+        var command = new UpdatePlayerCommand {
+            Id = playerId,
             FirstName = NewName,
             LastName = NewLastName,
             SecondLastName = NewSecondLastName,
             BirthDate = NewBirthDate,
             Gender = NewGender,
         };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        await _repository.Received(1)
+        await repository.Received(1)
             .Get(Arg.Is<PlayerSearchCriteria>(sc =>
-                    sc != null && sc.criteriaList.Any(c =>
+                    sc != null && sc.CriteriaList.Any(c =>
                         c.Name == "Id"
-                        && c.Value == _playerId.ToString())),
+                        && c.Value == playerId.ToString())),
                 Arg.Any<CancellationToken>());
-        await _repository.Received(1).Update(Arg.Is<Player>(p =>
+        await repository.Received(1).Update(Arg.Is<Player>(p =>
                 p != null && p.Id == player.Id
                 && p.FirstName == NewName
                 && p.LastName == NewLastName
@@ -64,15 +60,14 @@ public class UpdatePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task KeepOmittedFieldsIncludingTheSecondLastNameWhenOnlyFirstNameIsSent()
-    {
+    public async Task KeepOmittedFieldsIncludingTheSecondLastNameWhenOnlyFirstNameIsSent() {
         var player = AnExistingPlayer();
-        var command = new UpdatePlayerCommand { Id = _playerId, FirstName = NewName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        await _repository.Received(1).Update(Arg.Is<Player>(p =>
+        await repository.Received(1).Update(Arg.Is<Player>(p =>
                 p != null && p.FirstName == NewName
                 && p.LastName == TestDefaultValues.DefaultLastName
                 && p.SecondLastName == TestDefaultValues.DefaultSecondLastName
@@ -83,15 +78,14 @@ public class UpdatePlayerCommandHandlerShould
 
     [TestCase("Nuevo", "Nuevo")]
     [TestCase(null, TestDefaultValues.DefaultSecondLastName)]
-    public async Task ReplaceTheSecondLastNameOnlyWhenAValueIsSentAndKeepTheRest(string? sentSecondLastName, string? expectedSecondLastName)
-    {
+    public async Task ReplaceTheSecondLastNameOnlyWhenAValueIsSentAndKeepTheRest(string? sentSecondLastName, string? expectedSecondLastName) {
         var player = AnExistingPlayer();
-        var command = new UpdatePlayerCommand { Id = _playerId, SecondLastName = sentSecondLastName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        var command = new UpdatePlayerCommand { Id = playerId, SecondLastName = sentSecondLastName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        await _repository.Received(1).Update(Arg.Is<Player>(p =>
+        await repository.Received(1).Update(Arg.Is<Player>(p =>
                 p != null && p.FirstName == TestDefaultValues.DefaultFirstName
                 && p.LastName == TestDefaultValues.DefaultLastName
                 && p.SecondLastName == expectedSecondLastName
@@ -101,37 +95,33 @@ public class UpdatePlayerCommandHandlerShould
     }
 
     [Test]
-    public async Task ThrowExceptionWhenPlayerNotFound()
-    {
-        var command = new UpdatePlayerCommand { Id = _playerId, FirstName = NewName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+    public async Task ThrowExceptionWhenPlayerNotFound() {
+        var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         await result.Should().ThrowAsync<CannotUpdatePlayerNotFoundException>();
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileGettingPlayer()
-    {
+    public async Task PropagateTheRepositoryFailureWhileGettingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
-        var command = new UpdatePlayerCommand { Id = _playerId, FirstName = NewName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+        var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [Test]
-    public async Task PropagateTheRepositoryFailureWhileUpdatingPlayer()
-    {
+    public async Task PropagateTheRepositoryFailureWhileUpdatingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
         var player = AnExistingPlayer();
-        var command = new UpdatePlayerCommand
-        {
-            Id = _playerId,
+        var command = new UpdatePlayerCommand {
+            Id = playerId,
             FirstName = NewName,
             LastName = NewLastName,
             SecondLastName = NewSecondLastName,
@@ -139,81 +129,76 @@ public class UpdatePlayerCommandHandlerShould
             Gender = NewGender,
         };
 
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
-        _repository.Update(Arg.Any<Player>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Update(Arg.Any<Player>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         (await result.Should().ThrowExactlyAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
     }
 
     [TestCase("")]
     [TestCase("   ")]
-    public async Task RejectAnEmptySecondLastNameWithoutUpdating(string sentSecondLastName)
-    {
-        var command = new UpdatePlayerCommand { Id = _playerId, SecondLastName = sentSecondLastName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
+    public async Task RejectAnEmptySecondLastNameWithoutUpdating(string sentSecondLastName) {
+        var command = new UpdatePlayerCommand { Id = playerId, SecondLastName = sentSecondLastName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         var failure = (await result.Should().ThrowAsync<ValidationFailedException>()).Which;
         failure.ErrorTranslationKey.Should().Be(ValidationErrorKeys.PlayersUpdate);
         failure.Errors.Keys.Should().Equal("SecondLastName");
-        await _repository.DidNotReceive().Update(Arg.Any<Player>(), Arg.Any<CancellationToken>());
+        await repository.DidNotReceive().Update(Arg.Any<Player>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ReportEverySentInvalidFieldAndNotUpdateWhenAnyIsInvalid()
-    {
-        var command = new UpdatePlayerCommand
-        {
-            Id = _playerId,
+    public async Task ReportEverySentInvalidFieldAndNotUpdateWhenAnyIsInvalid() {
+        var command = new UpdatePlayerCommand {
+            Id = playerId,
             FirstName = "",
             LastName = NewLastName,
             SecondLastName = NewSecondLastName,
             BirthDate = DateTime.UtcNow.Date.AddYears(-15),
             Gender = (Gender)99,
         };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         var failure = (await result.Should().ThrowAsync<ValidationFailedException>()).Which;
         failure.Title.Should().Be("Cannot update player");
         failure.ErrorTranslationKey.Should().Be(ValidationErrorKeys.PlayersUpdate);
         failure.Errors.Keys.Should().BeEquivalentTo("FirstName", "BirthDate", "Gender");
-        await _repository.DidNotReceive().Update(Arg.Any<Player>(), Arg.Any<CancellationToken>());
+        await repository.DidNotReceive().Update(Arg.Any<Player>(), Arg.Any<CancellationToken>());
     }
 
     [Test]
-    public async Task ReturnNotFoundBeforeValidatingTheSentFields()
-    {
-        var command = new UpdatePlayerCommand { Id = _playerId, FirstName = "" };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+    public async Task ReturnNotFoundBeforeValidatingTheSentFields() {
+        var command = new UpdatePlayerCommand { Id = playerId, FirstName = "" };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
 
-        var result = async () => await _handler.Handle(command, CancellationToken.None);
+        var result = async () => await handler.Handle(command, CancellationToken.None);
 
         await result.Should().ThrowAsync<CannotUpdatePlayerNotFoundException>();
     }
 
     [Test]
-    public async Task UpdateAStoredPlayerThatBreaksTheRulesWhenOnlyValidFieldsAreSent()
-    {
-        var legacy = new Player(_playerId, new string('x', 150), TestDefaultValues.DefaultLastName, "", OriginalGender,
+    public async Task UpdateAStoredPlayerThatBreaksTheRulesWhenOnlyValidFieldsAreSent() {
+        var legacy = new Player(playerId, new string('x', 150), TestDefaultValues.DefaultLastName, "", OriginalGender,
             DateTime.UtcNow.Date.AddYears(-10));
-        var command = new UpdatePlayerCommand { Id = _playerId, LastName = NewLastName };
-        _repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([legacy]);
+        var command = new UpdatePlayerCommand { Id = playerId, LastName = NewLastName };
+        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([legacy]);
 
-        await _handler.Handle(command, CancellationToken.None);
+        await handler.Handle(command, CancellationToken.None);
 
-        await _repository.Received(1).Update(Arg.Is<Player>(p =>
+        await repository.Received(1).Update(Arg.Is<Player>(p =>
                 p != null && p.LastName == NewLastName && p.FirstName.Length == 150 && p.SecondLastName == ""),
             Arg.Any<CancellationToken>());
     }
 
     private Player AnExistingPlayer() => new(
-        _playerId,
+        playerId,
         TestDefaultValues.DefaultFirstName,
         TestDefaultValues.DefaultLastName,
         TestDefaultValues.DefaultSecondLastName,

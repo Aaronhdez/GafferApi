@@ -1,7 +1,6 @@
-﻿namespace Gaffer.Api.Tests.TestShared;
+namespace Gaffer.Api.Tests.TestShared;
 
-public interface IGafferApiClient
-{
+public interface IGafferApiClient {
     Task<TResult?> PostAsync<TRequest, TResult>(Uri uri, TRequest body);
     Task<TResult?> GetAsync<TResult>(Uri uri);
     void Dispose();

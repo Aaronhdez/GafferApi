@@ -1,12 +1,11 @@
-﻿using Dapper;
+using Dapper;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.ConnectionProviders;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Infrastructure;
 
-public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
-{
+public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository {
     private static readonly IReadOnlyDictionary<string, string> AllowedFilterColumns =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -15,24 +14,20 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
             { "LastName", "LastName" }
         };
 
-    public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
-    {
+    public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken) {
         var (whereClause, parameters) = BuildFilters(criteria);
         var query = $"SELECT * FROM `Players`{whereClause};";
         return await dbConnectionProvider.QueryAsync<Player>(query, parameters, cancellationToken);
     }
 
-    private static (string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria criteria)
-    {
+    private static (string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria criteria) {
         var parameters = new DynamicParameters();
         var whereClause = string.Empty;
-        var filters = criteria.criteriaList.Where(item => item != null).ToList();
+        var filters = criteria.CriteriaList.Where(item => item != null).ToList();
 
-        for (var i = 0; i < filters.Count; i++)
-        {
+        for (var i = 0; i < filters.Count; i++) {
             var item = filters[i];
-            if (item.Name == null || !AllowedFilterColumns.TryGetValue(item.Name, out var column))
-            {
+            if (item.Name == null || !AllowedFilterColumns.TryGetValue(item.Name, out var column)) {
                 throw new PlayerSearchFilterNotPermittedException(item.Name ?? string.Empty);
             }
 
@@ -45,8 +40,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return (whereClause, parameters);
     }
 
-    public async Task Save(Player player, CancellationToken cancellationToken)
-    {
+    public async Task Save(Player player, CancellationToken cancellationToken) {
         const string query =
             "INSERT INTO `Players` (" +
                 "Id, " +
@@ -62,8 +56,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
                 "@SecondLastName, " +
                 "@Gender, " +
                 "@BirthDate);";
-        await dbConnectionProvider.ExecuteAsync(query, new
-        {
+        await dbConnectionProvider.ExecuteAsync(query, new {
             player.Id,
             player.FirstName,
             player.LastName,
@@ -73,14 +66,12 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         }, cancellationToken);
     }
 
-    public async Task Delete(Guid id, CancellationToken cancellationToken)
-    {
+    public async Task Delete(Guid id, CancellationToken cancellationToken) {
         var query = "DELETE FROM `Players` WHERE ID = @Id";
         await dbConnectionProvider.ExecuteAsync(query, new { Id = id }, cancellationToken);
     }
 
-    public async Task Update(Player player, CancellationToken cancellationToken)
-    {
+    public async Task Update(Player player, CancellationToken cancellationToken) {
         const string query =
             "UPDATE `Players` SET " +
                 "FirstName = @FirstName, " +
@@ -90,8 +81,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
                 "BirthDate = @BirthDate " +
         "WHERE " +
             "Id = @Id";
-        await dbConnectionProvider.ExecuteAsync(query, new
-        {
+        await dbConnectionProvider.ExecuteAsync(query, new {
             player.Id,
             player.FirstName,
             player.LastName,

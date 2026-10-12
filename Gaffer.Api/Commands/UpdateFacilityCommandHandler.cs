@@ -15,8 +15,7 @@ public record UpdateFacilityAddressCommand(
 /// <param name="Id">Id of an existing stand of the facility to update in place; otherwise the stand is new.</param>
 public record UpdateFacilityStandCommand(string StandName, int StandCapacity, Guid? Id = null);
 
-public class UpdateFacilityCommand : ICommand
-{
+public class UpdateFacilityCommand : ICommand {
     public Guid Id { get; set; }
     public string Name { get; set; } = null!;
     public bool Active { get; set; }
@@ -24,23 +23,16 @@ public class UpdateFacilityCommand : ICommand
     public FacilityType Type { get; set; }
     public int Capacity { get; set; }
     public UpdateFacilityAddressCommand? Address { get; set; }
-    public List<UpdateFacilityStandCommand>? Stands { get; set; }
+    public IReadOnlyList<UpdateFacilityStandCommand?>? Stands { get; set; }
 }
 
-public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository) : ICommandHandler<UpdateFacilityCommand>
-{
-    public async Task Handle(UpdateFacilityCommand command, CancellationToken cancellationToken)
-    {
-        try
-        {
+public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository) : ICommandHandler<UpdateFacilityCommand> {
+    public async Task Handle(UpdateFacilityCommand command, CancellationToken cancellationToken) {
+        try {
             await facilityRepository.Update(command.Id, existing => BuildUpdatedFacility(existing, command), cancellationToken);
-        }
-        catch (FacilityNotFoundException ex)
-        {
+        } catch (FacilityNotFoundException ex) {
             throw new CannotUpdateFacilityNotFoundException(ex.Message, command.Id);
-        }
-        catch (DomainValidationException ex)
-        {
+        } catch (DomainValidationException ex) {
             throw new ValidationFailedException(CannotUpdateFacilityTitle, ValidationErrorKeys.FacilitiesUpdate, ex.Errors);
         }
     }
@@ -49,8 +41,7 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
 
     // Runs inside the repository lock: an unknown id is a 404 before the body is validated (Q21 a)), and a
     // validation error thrown here rolls back the transaction.
-    private static Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command)
-    {
+    private static Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command) {
         var address = command.Address is null
             ? null
             : new Address(
@@ -66,8 +57,9 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         // revalidated (Q16). Every invalid field is reported at once.
         var requested = command.Stands ?? [];
         var errors = new DomainValidationErrors();
-        Facility.CheckRequestedStands(errors, requested.Select(stand => ((string?)stand.StandName, stand.StandCapacity)).ToList());
-        var stands = MergeStands(existing, requested);
+        Facility.CheckRequestedStands(errors, requested.Select(ToRequestedStand).ToList());
+        // A null stand is only reported (by its index); the merge works on the stands actually sent.
+        var stands = MergeStands(existing, requested.OfType<UpdateFacilityStandCommand>().ToList());
 
         Facility? updated = null;
         errors.Collect(() => updated = Facility.Create(
@@ -83,6 +75,9 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         return updated!;
     }
 
+    private static (string? StandName, int StandCapacity)? ToRequestedStand(UpdateFacilityStandCommand? stand)
+        => stand is null ? null : (stand.StandName, stand.StandCapacity);
+
     /// <summary>
     /// Merges the requested stands into the existing ones: a stand sent with the <c>Id</c> of an existing stand
     /// updates it in place; existing stands not sent are kept unchanged; any other stand (no <c>Id</c>, unknown
@@ -91,14 +86,12 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
     /// is validated by <see cref="Facility"/>.
     /// </summary>
     /// <exception cref="CannotUpdateFacilityDuplicatedStandException">The <c>Id</c> of an existing stand is repeated.</exception>
-    private static List<Stand> MergeStands(Facility existing, List<UpdateFacilityStandCommand> requested)
-    {
+    private static List<Stand> MergeStands(Facility existing, List<UpdateFacilityStandCommand> requested) {
         var existingIds = existing.Stands.Select(stand => stand.Id).ToHashSet();
         bool IsMatched(UpdateFacilityStandCommand stand) => stand.Id is { } id && existingIds.Contains(id);
         var matched = requested.Where(IsMatched).ToList();
         var repeated = matched.GroupBy(stand => stand.Id!.Value).FirstOrDefault(group => group.Count() > 1);
-        if (repeated is not null)
-        {
+        if (repeated is not null) {
             throw new CannotUpdateFacilityDuplicatedStandException(existing.Id, repeated.Key);
         }
 
@@ -114,13 +107,11 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
     }
 }
 
-public class CannotUpdateFacilityNotFoundException(string message, Guid id) : Exception(message)
-{
+public class CannotUpdateFacilityNotFoundException(string message, Guid id) : Exception(message) {
     public Guid Id { get; } = id;
 }
 
-public class CannotUpdateFacilityException(string message, Guid id) : Exception(message)
-{
+public class CannotUpdateFacilityException(string message, Guid id) : Exception(message) {
     public Guid Id { get; } = id;
     public const string InternalServerErrorReason = "Internal Server Error";
     public string Reason { get; } = InternalServerErrorReason;

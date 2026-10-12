@@ -6,31 +6,28 @@ using NSwag;
 
 namespace Gaffer.Api.Tests.Acceptance;
 
-public class OpenApiContractShould
-{
-    private StartupTestServer _server;
-    private JObject _document;
+public class OpenApiContractShould {
+    private StartupTestServer server;
+    private JObject document;
 
     [OneTimeSetUp]
-    public async Task OneTimeSetUp()
-    {
-        _server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
-        var response = await _server.Client.GetAsync("/swagger/v1/swagger.json");
+    public async Task OneTimeSetUp() {
+        server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
+        var response = await server.Client.GetAsync("/swagger/v1/swagger.json");
         var raw = await response.Content.ReadAsStringAsync();
         response.StatusCode.Should().Be(HttpStatusCode.OK, raw);
-        _document = JObject.Parse(raw);
+        document = JObject.Parse(raw);
     }
 
     [OneTimeTearDown]
-    public async Task OneTimeTearDown() => await _server.DisposeAsync();
+    public async Task OneTimeTearDown() => await server.DisposeAsync();
 
     [TestCase("Gender", new[] { "MALE", "FEMALE", "OTHER" })]
     [TestCase("FacilityType", new[] { "Stadium", "Arena", "Pitch", "Training" })]
-    public void DeclareEnumsAsTextWithTheirMemberNames(string schemaName, string[] memberNames)
-    {
+    public void DeclareEnumsAsTextWithTheirMemberNames(string schemaName, string[] memberNames) {
         var schema = Schemas()[schemaName];
 
-        schema.Should().NotBeNull(_document.ToString());
+        schema.Should().NotBeNull(document.ToString());
         TestContext.Out.WriteLine(schema!.ToString());
         schema["type"]!.ToString().Should().Be("string");
         schema["enum"]!.Values<string>().Should().Equal(memberNames);
@@ -38,9 +35,8 @@ public class OpenApiContractShould
 
     [TestCase("players")]
     [TestCase("facilities")]
-    public void DeclareCreatedAsTheSuccessResponseOfCreate(string resource)
-    {
-        var paths = (JObject)_document["paths"]!;
+    public void DeclareCreatedAsTheSuccessResponseOfCreate(string resource) {
+        var paths = (JObject)document["paths"]!;
         var createPath = paths.Properties().Single(path => path.Name.TrimEnd('/').EndsWith($"/{resource}"));
 
         var responses = (JObject)createPath.Value["post"]!["responses"]!;
@@ -51,9 +47,8 @@ public class OpenApiContractShould
 
     [TestCase("birthDate")]
     [TestCase("gender")]
-    public async Task DeclareUpdatePlayerRequestFieldAsOptionalAndNullable(string propertyName)
-    {
-        var document = await OpenApiDocument.FromJsonAsync(_document.ToString());
+    public async Task DeclareUpdatePlayerRequestFieldAsOptionalAndNullable(string propertyName) {
+        var document = await OpenApiDocument.FromJsonAsync(this.document.ToString());
         var schema = document.Definitions["UpdatePlayerRequest"];
         var rawSchema = Schemas()["UpdatePlayerRequest"]!.ToString();
         TestContext.Out.WriteLine(rawSchema);
@@ -63,5 +58,5 @@ public class OpenApiContractShould
         property.IsNullable(document.SchemaType).Should().BeTrue(rawSchema);
     }
 
-    private JObject Schemas() => (JObject)(_document["definitions"] ?? _document["components"]!["schemas"])!;
+    private JObject Schemas() => (JObject)(document["definitions"] ?? document["components"]!["schemas"])!;
 }

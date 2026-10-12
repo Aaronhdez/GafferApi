@@ -14,14 +14,12 @@ namespace Gaffer.Api.Startups;
 /// rules (operation key and <c>Errors</c>), with generic messages that never echo the received value.
 /// Other actions keep the default ASP.NET response.
 /// </summary>
-public static class ValidationStartup
-{
+public static class ValidationStartup {
     public const string InvalidValueMessage = "The value is not valid.";
     public const string BodyField = "Body";
 
     private static readonly IReadOnlyDictionary<(Type Controller, string Action), (string Title, string Key)> Operations =
-        new Dictionary<(Type, string), (string, string)>
-        {
+        new Dictionary<(Type, string), (string, string)> {
             [(typeof(PlayerController), nameof(PlayerController.Create))] = ("Cannot create player", ValidationErrorKeys.PlayersCreate),
             [(typeof(PlayerController), nameof(PlayerController.Update))] = ("Cannot update player", ValidationErrorKeys.PlayersUpdate),
             [(typeof(FacilitiesController), nameof(FacilitiesController.Create))] = (CreateFacilityCommandHandler.CannotCreateFacilityTitle, ValidationErrorKeys.FacilitiesCreate),
@@ -30,21 +28,17 @@ public static class ValidationStartup
             [(typeof(FacilityStandsController), nameof(FacilityStandsController.Update))] = (ReplaceFacilityStandCommandHandler.CannotUpdateStandTitle, ValidationErrorKeys.FacilitiesStands),
         };
 
-    public static IServiceCollection ConfigureValidationResponses(this IServiceCollection services)
-    {
-        services.PostConfigure<ApiBehaviorOptions>(options =>
-        {
+    public static IServiceCollection ConfigureValidationResponses(this IServiceCollection services) {
+        services.PostConfigure<ApiBehaviorOptions>(options => {
             var defaultFactory = options.InvalidModelStateResponseFactory;
             options.InvalidModelStateResponseFactory = context => BuildValidationResponse(context) ?? defaultFactory(context);
         });
         return services;
     }
 
-    private static IActionResult? BuildValidationResponse(ActionContext context)
-    {
+    private static IActionResult? BuildValidationResponse(ActionContext context) {
         if (context.ActionDescriptor is not ControllerActionDescriptor action
-            || !Operations.TryGetValue((action.ControllerTypeInfo.AsType(), action.MethodInfo.Name), out var operation))
-        {
+            || !Operations.TryGetValue((action.ControllerTypeInfo.AsType(), action.MethodInfo.Name), out var operation)) {
             return null;
         }
 
@@ -57,8 +51,7 @@ public static class ValidationStartup
 
         var problemDetails = ExceptionToHttpResponseConverters.BuildValidationProblemDetails(operation.Title, operation.Key, errors);
         problemDetails.Instance = context.HttpContext.Request.Path.Value;
-        return new ContentResult
-        {
+        return new ContentResult {
             StatusCode = problemDetails.Status,
             ContentType = "application/json",
             Content = ExceptionToHttpResponseConverters.Serialize(problemDetails),
@@ -66,11 +59,9 @@ public static class ValidationStartup
     }
 
     // "request.firstName" / "firstName" -> "FirstName"; the body parameter itself -> "Body".
-    private static string FieldName(string key, string? bodyParameter)
-    {
+    private static string FieldName(string key, string? bodyParameter) {
         var path = key;
-        if (bodyParameter is not null)
-        {
+        if (bodyParameter is not null) {
             if (string.Equals(path, bodyParameter, StringComparison.OrdinalIgnoreCase)) path = string.Empty;
             else if (path.StartsWith(bodyParameter + ".", StringComparison.OrdinalIgnoreCase)) path = path[(bodyParameter.Length + 1)..];
         }

@@ -9,17 +9,14 @@ using Microsoft.Extensions.Options;
 namespace Gaffer.Api.Tests.Integration;
 
 [NonParallelizable]
-public class ApiDatabaseConfigurationShould
-{
+public class ApiDatabaseConfigurationShould {
     [Test]
-    public void NotKeepAPasswordInTheVersionedDevelopmentSettings()
-    {
+    public void NotKeepAPasswordInTheVersionedDevelopmentSettings() {
         var settings = new ConfigurationBuilder()
             .AddJsonFile(Path.Combine(ApiProjectDirectory(), "appsettings.Development.json"), optional: false)
             .Build();
 
-        var connectionString = new DbConnectionStringBuilder
-        {
+        var connectionString = new DbConnectionStringBuilder {
             ConnectionString = settings["DatabaseConfig:ConnectionString"] ?? string.Empty
         };
 
@@ -28,8 +25,7 @@ public class ApiDatabaseConfigurationShould
     }
 
     [Test]
-    public async Task ReceiveTheConnectionStringFromTheEnvironmentOverTheAppSettings()
-    {
+    public async Task ReceiveTheConnectionStringFromTheEnvironmentOverTheAppSettings() {
         var connectionString = TestConfiguration.DatabaseConnectionString;
         using var _ = new EnvironmentVariableScope("DatabaseConfig__ConnectionString", connectionString);
         using var host = Host.CreateDefaultBuilder()
@@ -45,11 +41,9 @@ public class ApiDatabaseConfigurationShould
             .Should().BeOfType<SqlConnectionProvider>();
     }
 
-    private static string ApiProjectDirectory()
-    {
+    private static string ApiProjectDirectory() {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "gaffer-api.sln")))
-        {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "gaffer-api.sln"))) {
             directory = directory.Parent;
         }
 
