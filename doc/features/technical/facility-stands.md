@@ -41,10 +41,10 @@ sequenceDiagram
 |---|---|---|---|---|
 | `FacilityStandsController` | `GetAll` | `GET ""` | `List<SearchFacilityStandResult>` | Lists the stands of a facility. |
 | `FacilityStandsController` | `GetBy` | `GET "{standId}"` | `SearchFacilityStandResult` | Reads one stand; also the target of the `Location` header. |
-| `FacilityStandsController` | `Create` | `POST ""` `(Guid facilityId, FacilityStandRequest)` | `ActionResult<Guid>` | `CreatedAtAction(GetBy, ...)`, `201`. |
-| `FacilityStandsController` | `Update` | `PUT "{standId}"` | `IActionResult` | `204`. |
+| `FacilityStandsController` | `Create` | `POST ""` `(Guid facilityId, FacilityStandRequest)` | `ActionResult<Guid>` | `CreatedAtAction(GetBy, ...)`, `201`. Invalid body → `400` `Error.Facilities.Stands.Validation`. |
+| `FacilityStandsController` | `Update` | `PUT "{standId}"` | `IActionResult` | `204`; invalid body → `400` `Error.Facilities.Stands.Validation`. |
 | `FacilityStandsController` | `Delete` | `DELETE "{standId}"` | `IActionResult` | `204`. |
-| `FacilityStandRequest` | `StandName`, `StandCapacity` | `string`, `int` | — | Body for create and replace. |
+| `FacilityStandRequest` | `StandName`, `StandCapacity` | `string`, `int` | — | Body for create and replace. Without DataAnnotations: `StandValidation.Create` (in `FacilityStandCommandHandlers`) calls `Stand.Create(id, name, capacity)` before the repository and turns `DomainValidationException` into `ValidationFailedException(title, "Error.Facilities.Stands.Validation", errors)`; model binding errors on these two actions use the same key through `ValidationStartup`. Validation runs before the facility lookup (400 before 404). |
 | `IFacilityRepository` | `GetStands`, `GetStand` | `Task<List<Stand>>`, `Task<Stand>` | — | `EnsureFacilityExists` first; `GetStand` throws `FacilityStandNotFoundException` for a missing or foreign stand. Reads take no lock. |
 | `IFacilityRepository` | `AddStand` | `Task AddStand(Guid facilityId, Stand stand, CancellationToken)` | `Task` | Lock, `CountStands`, throws `FacilityMaxStandsExceededException` at 4, then `InsertStand`. |
 | `IFacilityRepository` | `UpdateStand` | `Task UpdateStand(Guid facilityId, Stand stand, CancellationToken)` | `Task` | Lock, `EnsureStandBelongsToFacility` (`Facilities_Stands`), `UPDATE Stands`. |
@@ -57,7 +57,7 @@ sequenceDiagram
 
 - `IDatabaseConnectionProvider.ExecuteInTransactionAsync`, per-request connection and cancellation: [`database-connection-lifecycle.md`](./database-connection-lifecycle.md).
 - `ExceptionToHttpResponseConverters`: [`error-handling.md`](./error-handling.md).
-- `Stand` domain value; the 4-stand cap is `MaxStands` in `SqlFacilityRepository` for this endpoint family and the `Facility` constructor for creation and `PUT`.
+- `Stand` domain: `Stand.Create` validates `StandName` (1-100, not whitespace) and `StandCapacity` (>= 0); rehydration through the constructor does not validate. The 4-stand cap is `MaxStands` in `SqlFacilityRepository` for this endpoint family and `Facility.Create` / `CheckRequestedStands` for creation and `PUT`. See [`input-validation.md`](./input-validation.md).
 - OpenAPI/client: the five operations change the served contract; `Gaffer.Api.Client` is regenerated and versioned by the operator (see [`api-client-versioning.md`](./api-client-versioning.md) and [`ci-github-actions.md`](./ci-github-actions.md)).
 - Tests need the handler registrations in `Gaffer.Api.Tests/TestFixture.cs`.
 
@@ -77,6 +77,17 @@ DELETE /api/v1/facilities/3d9c.../stands/{standId}
 ```
 
 `204 No Content`; `404` with `Error.Facilities.Stands.StandNotFound` when the stand does not exist or belongs to another facility.
+
+Invalid body:
+
+```http
+POST /api/v1/facilities/3d9c.../stands HTTP/1.1
+Content-Type: application/json
+
+{ "standName": "", "standCapacity": -1 }
+```
+
+`400`, `Extensions.ErrorTranslationKey = "Error.Facilities.Stands.Validation"`, `Extensions.Errors` with `StandName` and `StandCapacity`; nothing is saved.
 
 ## How to test
 

@@ -40,4 +40,5 @@ This document covers how `Gaffer.Api` classifies and reports failures that are n
 - Player partial update, which relies on the same infrastructure-failure behaviour: [`player-update.md`](./player-update.md).
 - Player search and its pre-existing non-permitted-filter behaviour, now mirrored by Facility search: [`player-search.md`](./player-search.md).
 - Per-request database connection lifecycle and request-cancellation propagation (what "the database is unreachable" or "the request was cancelled" means at runtime): [`database-connection-reliability.md`](./database-connection-reliability.md).
-- Facility update's own domain `400`s (`DuplicatedStand`, the 4-stand cap), which reuse this same converter/middleware pipeline: [`facility-update.md`](./facility-update.md).
+- Facility update's own domain `400`s (`DuplicatedStand`, and the validation `400` including the 4-stand cap), which reuse this same converter/middleware pipeline: [`facility-update.md`](./facility-update.md).
+- Input validation `400`s (one key per operation, `Extensions.Errors` per field, model binding errors included): [`input-validation.md`](./input-validation.md).

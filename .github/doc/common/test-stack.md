@@ -23,6 +23,8 @@
 - Integration tests
 - Shared fixture-based setup patterns
   - Full test server (OPT-022): to dump or compare routes actually served (e.g. `/swagger/*/swagger.json`), use `Gaffer.Api.Tests/TestShared/StartupTestServer.cs`; `TestFixture`'s internal `TestServer` does not expose Swagger routes and returns 404.
+  - Served OpenAPI dump helper (OPT-034): `Gaffer.Api.Tests/Acceptance/ServedOpenApiDocumentDump.cs` is an `[Explicit]` test (never run by the normal suite) that writes the `swagger.json` served by `StartupTestServer` byte for byte to the path in `GAFFER_SWAGGER_DUMP_PATH`; capture before and after a change and compare with `cmp` or sha256 to prove the contract did not change. Example (Git Bash): `GAFFER_SWAGGER_DUMP_PATH=/path/swagger.json dotnet test Gaffer.Api.Tests --filter "FullyQualifiedName~ServedOpenApiDocumentDump"`. Without the variable it fails and writes nothing.
+  - `StartupTestServer.StartAsync(bool enabled, string? connectionString)` and `Services` start the production pipeline with the database disabled, without connection string or unreachable (used for `/health/*`); `StartAsync(string)` is unchanged.
 
 ## Testing Strategy Notes
 

@@ -17,7 +17,9 @@ Plan folder `.github/plans/<ID>/`.
 
 1. Record `Inicio` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) for this cycle in `STATUS.md`. Read `STATUS.md` from its summary index and current-cycle section with `offset`/`limit`, not whole.
 2. Review `git status` and the full diff: functional defects, regressions, broken contracts, missing tests, missing `TestFixture.cs` DI registrations.
+   - Start from `git diff --stat` and `grep -n "public .*Task\|\[Test\]\|\[TestCase"` on the new test names (NUnit); open test files by range only where a criterion needs it. Read the full diff of product code only, not of tests (OPT-040).
 3. Re-run the relevant tests with the same preflight as BUILDER (MySQL in local Docker; record exact blocker if unavailable).
+   - Reproduce red without touching the working tree, following the worktree recipe in `.github/doc/work-guidelines.md` (OPT-033).
 4. Check each acceptance criterion and red→green evidence.
 5. Write findings and verdict in `REVIEW.md`:
    - `CHANGES_REQUESTED` → state `NEEDS_CHANGES` on any blocking defect, undemonstrated criterion or missing red→green evidence.
