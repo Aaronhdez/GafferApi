@@ -6,6 +6,7 @@ This document covers the Facility operations that extend the initial creation fl
 
 - **Select** is implemented as `GET /{id}` (single facility, via a filtered `SearchFacilitiesQuery`) and `GET ""` (all facilities, unfiltered).
 - **Update** replaces `Address` fully and replaces the `Stands` collection fully (delete + reinsert), not a partial/merge update.
+  > Superseded: the current update flow (stand merge by `Id`, row lock, input validation) is documented in [doc/features/facility-update.md](../../../doc/features/facility-update.md) and its technical counterpart. `IFacilityRepository.Update(Facility)` is no longer public; the repository exposes `Update(Guid, Func<Facility, Facility>, CancellationToken)`.
 - **Delete** is a hard delete, cascading removal of the facility's `Address` and `Stands` join rows before deleting the `Facilities` row itself.
 
 ## Sequence/Architecture Diagram
@@ -36,7 +37,7 @@ sequenceDiagram
     UpdateFacilityCommandHandler->>IFacilityRepository: Get(criteria by Id)
     IFacilityRepository-->>UpdateFacilityCommandHandler: existing Facility or FacilityNotFoundException
     UpdateFacilityCommandHandler->>UpdateFacilityCommandHandler: BuildUpdatedFacility (replace Address + Stands)
-    UpdateFacilityCommandHandler->>IFacilityRepository: Update(facility)
+    UpdateFacilityCommandHandler->>IFacilityRepository: Update(id, buildUpdated)
     IFacilityRepository->>SqlFacilityRepository: Update implementation
     SqlFacilityRepository->>Database: UPDATE Facilities; delete+insert Address/Stands (transaction)
     SqlFacilityRepository-->>UpdateFacilityCommandHandler: void / exception
@@ -70,7 +71,7 @@ sequenceDiagram
 | `DeleteFacilityCommand` | record | `DeleteFacilityCommand(Guid Id)` | — | Command identifying the facility to delete. |
 | `DeleteFacilityCommandHandler` | `Handle` | `Task Handle(DeleteFacilityCommand, CancellationToken)` | `Task` | Verifies the facility exists (throws `FacilityNotFoundException` otherwise), then deletes via `IFacilityRepository.Delete`. Wraps failures in `CannotDeleteFacilityNotFoundException` / `CannotDeleteFacilityException`. |
 | `IFacilityRepository` | `Get` | `Task<List<Facility>> Get(FacilitySearchCriteria, CancellationToken)` | `List<Facility>` | Returns facilities matching the criteria, including joined `Address` and `Stands`. |
-| `IFacilityRepository` | `Update` | `Task Update(Facility, CancellationToken)` | `Task` | Persists a full facility replacement. |
+| `IFacilityRepository` | `Update` | `Task Update(Guid, Func<Facility, Facility>, CancellationToken)` | `Task` | Locks the facility row, reads it inside the transaction, writes the facility returned by the callback and commits. |
 | `IFacilityRepository` | `Delete` | `Task Delete(Guid, CancellationToken)` | `Task` | Removes a facility and its related rows. |
 | `SqlFacilityRepository` | `Get` | see interface | `List<Facility>` | Builds a dynamic `WHERE` clause from an allow-list of columns (`Id, Name, Active, BuildDate, Type, Capacity`), then loads `Address`/`Stands` per row via separate joined queries. |
 | `SqlFacilityRepository` | `Update` | see interface | `Task` | Single transaction: updates the `Facilities` row, deletes existing `Stands`/`Address` links, then reinserts `Address` and `Stands` (full replace). |

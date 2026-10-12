@@ -43,8 +43,9 @@ Analyze fresh input separately from cache read/write; in Claude Code cache is mo
 `Grep`/`Glob` before `Read`; use `offset`/`limit` on large files; filter `Bash` output (e.g. `dotnet test --verbosity quiet`, failures only).
 
 - Red/green: the process exit code (`$?` / `$LASTEXITCODE`) is the primary criterion; `grep` only extracts failure detail. Console output is localized (`Correctas`/`Con error`, not `Passed`/`Failed`) (OPT-005).
-- Warning counts: capture only the MSBuild summary (`dotnet build gaffer-api.sln --no-incremental -v q 2>&1 | grep -E "Warning\(s\)|Error\(s\)"`); keep the full list only when a criterion compares which warnings are new (OPT-006).
+- Warning counts: capture only the MSBuild summary (`dotnet build gaffer-api.sln --no-incremental -v q 2>&1 | grep -E "Warning\(s\)|Error\(s\)|Advertencia\(s\)|Errores"`; the console is localized, so match both languages); keep the full list only when a criterion compares which warnings are new (OPT-006).
 - Once a command result is summarized in `STATUS.md`, reference that row; do not reopen or requote the full output later (OPT-007).
+- Checking an OPT in `MEMORIES.md`: extract only its row by ID, truncated (`grep "^| OPT-0NN " .github/agent-harness/MEMORIES.md | cut -c1-300`; also `MEMORIES-archive.md` for compacted rows); never `grep` whole rows of the file.
 - Adding several methods to an existing file: `Edit` against a stable anchor (e.g. before the class's closing brace), not `head`/`tail` splicing (OPT-018).
 - Environment: Git Bash on Windows with no guaranteed Python or other interpreter in `PATH`. Check (`command -v python`) before scripting a mechanical edit, or use `Edit`/`sed` directly (OPT-024).
 - Ad-hoc probes (`dotnet run`, `dotnet fsi`): filter the output from the first run (`2>&1 | grep <expected result>` or `| tail -n 40`) and apply OPT-006 to them (OPT-025).
