@@ -24,7 +24,7 @@ Plan folder `.github/plans/<ID>/`.
 5. Write findings and verdict in `REVIEW.md`:
    - `CHANGES_REQUESTED` → state `NEEDS_CHANGES` on any blocking defect, undemonstrated criterion or missing red→green evidence.
    - `APPROVED` → state `APPROVED` only when everything is demonstrable.
-6. Record `Fin` in `STATUS.md` and append one `estimado`/`n/a` row to `usage/REVIEWER.md`.
+6. Record `Fin` (ISO 8601 UTC, `date -u +%Y-%m-%dT%H:%M:%SZ`) in `STATUS.md` and append one `estimado`/`n/a` row to `usage/REVIEWER.md`.
 
 ## Skills (read only when the trigger applies)
 
