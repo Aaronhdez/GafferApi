@@ -176,6 +176,8 @@ public class ExceptionToHttpResponseConvertersShould
 
     [TestCase("Cannot create player", "Error.Players.Create.Validation")]
     [TestCase("Cannot update player", "Error.Players.Update.Validation")]
+    [TestCase("Cannot create facility", "Error.Facilities.Create.Validation")]
+    [TestCase("Cannot update facility", "Error.Facilities.Update.Validation")]
     public void ConvertAValidationFailureIntoABadRequestWithTheOperationKeyAndEveryFieldError(string title, string key)
     {
         var errors = new Dictionary<string, string[]>
@@ -198,5 +200,12 @@ public class ExceptionToHttpResponseConvertersShould
     {
         ValidationErrorKeys.PlayersCreate.Should().Be("Error.Players.Create.Validation");
         ValidationErrorKeys.PlayersUpdate.Should().Be("Error.Players.Update.Validation");
+    }
+
+    [Test]
+    public void NameTheFacilityValidationKeysByOperation()
+    {
+        ValidationErrorKeys.FacilitiesCreate.Should().Be("Error.Facilities.Create.Validation");
+        ValidationErrorKeys.FacilitiesUpdate.Should().Be("Error.Facilities.Update.Validation");
     }
 }

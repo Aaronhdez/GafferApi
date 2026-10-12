@@ -123,21 +123,8 @@ public class Player(
         errors.ThrowIfAny();
     }
 
-    private static void CheckName(DomainValidationErrors errors, string field, string? value)
-    {
-        if (value is null)
-        {
-            errors.Add(field, $"{field} is required.");
-        }
-        else if (string.IsNullOrWhiteSpace(value))
-        {
-            errors.Add(field, $"{field} must not be empty or contain only whitespace.");
-        }
-        else if (value.Length > MaxNameLength)
-        {
-            errors.Add(field, $"{field} must be at most {MaxNameLength} characters long.");
-        }
-    }
+    private static void CheckName(DomainValidationErrors errors, string field, string? value) =>
+        errors.RequireText(field, value, MaxNameLength);
 
     // The age rule: the player turns MinimumAge on BirthDate.AddYears(MinimumAge) (29 February -> 28 February).
     private static void CheckBirthDate(DomainValidationErrors errors, DateTime birthDate, DateTime todayUtc)

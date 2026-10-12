@@ -73,7 +73,7 @@ public class UpdateFacilityCommandHandlerShould
                 && facility.BuildDate == command.BuildDate
                 && facility.Type == command.Type
                 && facility.Capacity == command.Capacity
-                && facility.Address.Street == command.Address.Street
+                && facility.Address.Street == command.Address!.Street
                 && facility.Address.StreetNumber == command.Address.StreetNumber
                 && facility.Address.PostalCode == command.Address.PostalCode
                 && facility.Address.City == command.Address.City
@@ -225,7 +225,7 @@ public class UpdateFacilityCommandHandlerShould
         var updated = UpdatedFacility();
         updated.Name.Should().Be(command.Name);
         updated.Capacity.Should().Be(command.Capacity);
-        updated.Address.Street.Should().Be(command.Address.Street);
+        updated.Address.Street.Should().Be(command.Address!.Street);
         updated.Stands.Select(Describe).Should().BeEquivalentTo(
             [$"{stands[0].Id}:Renovated:5000", .. originalDescriptions.Skip(1)]);
     }
@@ -265,6 +265,65 @@ public class UpdateFacilityCommandHandlerShould
 
         await result.Should().ThrowAsync<FacilityValidationException>().WithMessage("*Stands cannot exceed 4*");
         _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectAnInvalidBodyWithEveryInvalidFieldInsideTheLockWithoutUpdating()
+    {
+        GivenExisting(BuildExistingFacility(_facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Name = new string('a', 101);
+        command.BuildDate = new DateTime(1799, 12, 31);
+        command.Capacity = -1;
+        command.Address = new UpdateFacilityAddressCommand("", "200", "08002", "Barcelona", "Catalonia", "Spain");
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Name", "BuildDate", "Capacity", "Address.Street");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectAnAbsentAddressWithTheUpdateKeyWithoutUpdating()
+    {
+        GivenExisting(BuildExistingFacility(_facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Address = null;
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Address");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task ReturnNotFoundBeforeValidatingAnInvalidBody()
+    {
+        _repository.Update(Arg.Any<Guid>(), Arg.Any<Func<Facility, Facility>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new FacilityNotFoundException("Facility not found", _facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Name = "";
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await result.Should().ThrowExactlyAsync<CannotUpdateFacilityNotFoundException>();
+    }
+
+    [Test]
+    public async Task UpdateAStoredFacilityThatBreaksTheRulesWhenTheBodyIsValid()
+    {
+        var legacy = new Facility(_facilityId, new string('x', 150), true, new DateTime(1700, 1, 1), FacilityType.Arena, -5,
+            new Address(Guid.NewGuid(), "", "1", new string('7', 30), "City", "Region", "Country"), null);
+        GivenExisting(legacy);
+
+        await _handler.Handle(BuildCommand(_facilityId), CancellationToken.None);
+
+        UpdatedFacility().Name.Should().Be("New Stadium Name");
+        UpdatedFacility().Address.Id.Should().Be(legacy.Address.Id);
     }
 
     private Facility UpdatedFacility() => _updatedFacility!;

@@ -120,3 +120,57 @@ Ninguno.
 ### Bloqueos
 
 Ninguno.
+
+## Ciclo 3 - Paso 03a (validación de dominio de Facility y dirección; ayudante del `swagger.json`)
+
+**Veredicto: APPROVED**
+
+### Alcance revisado
+
+| Elemento | Resultado |
+| --- | --- |
+| `git status` | Del plan: `Domain/Facility.cs`, `Domain/DomainValidationException.cs`, `Domain/Player.cs` (refactor), handlers de create/update, `FacilitiesController.cs` (solo mapeo, Q23), `ValidationFailedException.cs`, `Startups/ValidationStartup.cs`; tests `FacilityFeaturesShould.cs`, `Unit/Domain/FacilityShould.cs` (nuevo), handlers, `ExceptionToHttpResponseConvertersShould.cs`, `SqlFacilityRepositoryShould.cs`, `Acceptance/ServedOpenApiDocumentDump.cs` (nuevo). Ajenos (preservados, no revisados): `MEMORIES.md`, `HARNESS-001/*`. Redirecciones `03-*.md`/`04-*.md` sin cambios en el diff. |
+| Fuera de alcance | Sin cambios en `TestFixture.cs`, `Startup.cs` (OPT-035), migraciones, DTOs, rutas, atributos, `Stand`/`/stands` (03b), `nswag.json` ni cliente generado. |
+| DI `TestFixture.cs` | No requerida: no hay handlers nuevos. |
+| Controlador (Q23) | Diff de 2 líneas: `request.Address is null ? null : new ...AddressCommand(...)` en `Create` y `Update`. Nada más. |
+| Update dentro del lock (Q21 a)) | `BuildUpdatedFacility` se ejecuta en el callback de `SqlFacilityRepository.Update` (L210-216) antes de `WriteFacility`; la excepción sale del `ExecuteInTransactionAsync` → nada escrito; 404 antes que 400. |
+
+### Evidencia por criterio (re-ejecutada por REVIEWER; `Quionis_DB` Up en `0.0.0.0:3306`)
+
+Rojo reproducido en un worktree temporal `HEAD` (scratchpad, eliminado al terminar) con los tests nuevos copiados; el árbol de trabajo no se tocó.
+
+| AC | Evidencia REVIEWER | Estado |
+| --- | --- | --- |
+| AC3a.0 | Ayudante `[Explicit]` estable (`ServedOpenApiDocumentDump.WriteTheServedSwaggerJsonToTheConfiguredPath`, variable `GAFFER_SWAGGER_DUMP_PATH`). Sin variable: exit 1 con `Set the environment variable GAFFER_SWAGGER_DUMP_PATH ... Nothing was written.` (falla antes de arrancar el servidor). Suite normal 574/574, 0 omitidos (no se ejecuta ni cuenta). Determinismo: BUILDER 2 capturas iguales; REVIEWER 2 capturas (HEAD y actual) con el mismo sha256. | Demostrado |
+| AC3a.1 | Rojo HEAD: 34/34 `RejectTheCreationOfAnInvalidFacilityWithoutSavingIt` + `RejectCreatingAFacilityWithMissingAddress` con error. Verde: suite exit 0. Cubre vacío, espacios, máx+1, 1799-12-31, mañana, `Type` 99, `Capacity` -1, dirección ausente; filas `Facilities`/`Addresses` sin cambio. | Demostrado |
+| AC3a.2 | Rojo HEAD: 34/34 `RejectTheUpdateOfAFacilityWithAnInvalidBodyAndChangeNothing`. Verde: clave `Error.Facilities.Update.Validation`, `GET` idéntico. `ReturnNotFoundWhenUpdatingAnUnknownFacilityWithAnInvalidBody` verde. Fusión (TECHDEBT-003) y lock (TECHDEBT-004) en verde en la suite. | Demostrado |
+| AC3a.4 | `CreateAFacilityWhoseValuesAreAtTheLimits` (201) y `UpdateAFacilityWithValuesAtTheLimits` verdes; `GET` devuelve lo enviado. PUT devuelve 200, no 204 (ver decisión 1). | Demostrado |
+| AC3a.5 | Rojo HEAD: `ReportEveryInvalidField...` y 4/4 `ReturnTheValidationFormatForBodiesThatCannotBeBound`. Verde: 5 campos en `Errors`, sin eco del valor; JSON mal formado y enum de texto desconocido → formato Q4 con clave de la operación. | Demostrado |
+| AC3a.11 | `FacilityValidationInTheProductionPipelineShould` sobre `StartupTestServer` (`AddMvcCore`), 16 casos × POST/PUT. Rojo HEAD 32/32: **18 × 500 `Unknown error`, 7 × 201 y 7 × 200** (datos inválidos escritos en producción). Verde: 400, clave y campo, sin escritura. Divergencia de mensaje registrada en `STATUS.md` (obs. 1). | Demostrado |
+| AC3a.7 | Rojo unitario HEAD: build exit 1, 12 × CS0117 + 8 × CS1501. Verde: `FacilityShould` (inválidos, límites, hoy, default UTC, todos a la vez, > 4 gradas, rehidratación, `Address.Create`), handlers (sin `Save`/`Update`, 404 antes que validación), converters con claves de facility. | Demostrado |
+| AC3a.10 | `KeepReadingAndUpdatingAStoredFacilityThatBreaksTheRules` y `SqlFacilityRepositoryShould.ReadAStoredFacilityThatBreaksTheCreationRulesWithoutValidatingIt` verdes en HEAD (caracterización) y ahora. PUT válido → 200 (ver decisión 1). | Demostrado |
+| AC3a.8 | Rama "comparación con ayudante" (el diff toca `FacilitiesController.cs` y `ValidationStartup.cs`): volcado HEAD y actual, ambos sha256 `be49f0ab...a5a6bfe`, `cmp` exit 0. `FacilitiesControllerContractShould` sin cambios y verde. Cliente generado sin tocar. | Demostrado |
+| AC3a.9 | `dotnet build gaffer-api.sln --no-incremental -v q` exit 0, 0 Advertencia(s); `dotnet test gaffer-api.sln --no-build -v q` exit 0, 574/574, 0 omitidos (413 → 574); `CancellationToken.None` en `Gaffer.Api` = 0. Tests adaptados listados en `STATUS.md`. | Demostrado |
+
+### Decisiones sobre los puntos que dejó BUILDER
+
+| # | Punto | Decisión |
+| --- | --- | --- |
+| 1 | PUT correcto → 200, no 204 | **Errata del plan, no un incumplimiento.** `FacilitiesController.Update` devuelve `Task` sin resultado (ASP.NET responde 200 vacío) desde antes de este plan; el test previo `UpdateAFacilityFieldsAndAddressKeepingItsFourStands` ya exigía 200; cambiarlo rompería AC3a.8 (contrato idéntico) y Q20 a). AC3a.4/AC3a.10 se dan por cumplidos con 200. PLANNER puede corregir el texto (y revisar 03b). |
+| 2 | Dirección ausente: `Detail` genérico, mensaje en `Errors.Address` | Aceptado. Q4 y el texto de Q23 piden el 400 del dominio con `Error.Facilities.Create/Update.Validation`; el `Detail` `Address is required` de `FacilityValidationException` nunca fue observable por HTTP (producción 500; host de tests 400 de ASP.NET) y el mensaje sigue en `Errors.Address`. El converter de `FacilityValidationException` se mantiene para el límite de gradas (03b). |
+| 3 | Mensaje por campo distinto entre `TestFixture` y producción | No bloqueante: AC3a.11 solo exige registrarlo y que clave y campo coincidan, lo que sí aserta la suite. El texto concreto es deducido, no aserto; queda como riesgo conocido de OPT-035 ("Obviemos este punto"). |
+| 4 | Ruta `Integration/SqlFacilityRepositoryShould.cs` | Errata del plan; el fichero real es `Unit/Repositories/SqlFacilityRepositoryShould.cs` (usa la BD de Docker). Sin impacto. |
+| 5 | 2 tests adaptados y `!` en `UpdateFacilityCommandHandlerShould` | Correcto. `ThrowExceptionWhenAddressIsMissing` pasa de fijar un `NullReferenceException` (defecto) a `ValidationFailedException` con clave, campo y sin `Save`; `RejectCreatingAFacilityWithMissingAddress` se endurece (400 + clave + campo). Los `!` (L76, L228) solo silencian CS8602 por la nueva nulabilidad; mismas aserciones. |
+
+### Observaciones no bloqueantes
+
+| # | Observación |
+| --- | --- |
+| 1 | Imprecisión en `STATUS.md` (fila "Rojo aceptación"): dice que los 32 casos de producción daban **500**; REVIEWER mide 18 × 500, 7 × 201 y 7 × 200. El rojo es válido igualmente y el hallazgo es más grave (en producción se aceptaban y escribían campos ausentes/`null`), cosa que este paso corrige. |
+| 2 | `Address.Create` solo lo usan los tests (producción valida la dirección a través de `Facility.Create`). Es API pública sin consumidor de producto; aceptable porque el plan pide reglas "en los caminos de creación de `Facility` y `Address`". |
+| 3 | Con campos inválidos y > 4 gradas a la vez solo se informa de los campos (el límite lo comprueba el constructor después). Queda para 03b. |
+| 4 | Documentar el ayudante en `.github/doc/common/test-stack.md` queda pendiente para DOCUMENTER u operador (OPT-034). |
+
+### Bloqueos
+
+Ninguno.

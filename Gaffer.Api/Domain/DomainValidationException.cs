@@ -32,6 +32,26 @@ public sealed class DomainValidationErrors
         messages.Add(message);
     }
 
+    /// <summary>
+    /// Shared text rule: the value is required, must not be empty or only whitespace, and is at most
+    /// <paramref name="maxLength"/> characters long. The messages never repeat the value.
+    /// </summary>
+    public void RequireText(string field, string? value, int maxLength)
+    {
+        if (value is null)
+        {
+            Add(field, $"{field} is required.");
+        }
+        else if (string.IsNullOrWhiteSpace(value))
+        {
+            Add(field, $"{field} must not be empty or contain only whitespace.");
+        }
+        else if (value.Length > maxLength)
+        {
+            Add(field, $"{field} must be at most {maxLength} characters long.");
+        }
+    }
+
     /// <summary>Runs <paramref name="operation"/> and keeps its validation errors instead of failing at once.</summary>
     public void Collect(Action operation)
     {

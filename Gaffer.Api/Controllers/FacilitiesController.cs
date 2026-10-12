@@ -45,7 +45,7 @@ public class FacilitiesController(
             request.BuildDate,
             request.Type,
             request.Capacity,
-            new CreateFacilityAddressCommand(
+            request.Address is null ? null : new CreateFacilityAddressCommand(
                 request.Address.Street,
                 request.Address.StreetNumber,
                 request.Address.PostalCode,
@@ -75,7 +75,7 @@ public class FacilitiesController(
             BuildDate = request.BuildDate,
             Type = request.Type,
             Capacity = request.Capacity,
-            Address = new UpdateFacilityAddressCommand(
+            Address = request.Address is null ? null : new UpdateFacilityAddressCommand(
                 request.Address.Street,
                 request.Address.StreetNumber,
                 request.Address.PostalCode,

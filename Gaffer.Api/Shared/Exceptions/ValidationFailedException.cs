@@ -5,6 +5,8 @@ public static class ValidationErrorKeys
 {
     public const string PlayersCreate = "Error.Players.Create.Validation";
     public const string PlayersUpdate = "Error.Players.Update.Validation";
+    public const string FacilitiesCreate = "Error.Facilities.Create.Validation";
+    public const string FacilitiesUpdate = "Error.Facilities.Update.Validation";
 }
 
 /// <summary>

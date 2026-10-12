@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 
@@ -101,12 +102,15 @@ public class CreateFacilityCommandHandlerShould
             new DateTime(2021, 3, 15),
             FacilityType.Training,
             1200,
-            null!,
+            null,
             null);
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<NullReferenceException>();
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesCreate);
+        exception.Errors.Keys.Should().Equal("Address");
+        await _repository.DidNotReceiveWithAnyArgs().Save(default!, default);
     }
 
     [Test]
@@ -137,5 +141,25 @@ public class CreateFacilityCommandHandlerShould
 
         await result.Should().ThrowAsync<FacilityValidationException>()
             .WithMessage("*Stands cannot exceed 4*");
+    }
+
+    [Test]
+    public async Task RejectAnInvalidFacilityWithEveryInvalidFieldAndNotSaveIt()
+    {
+        var command = new CreateFacilityCommand(
+            "",
+            true,
+            DateTime.UtcNow.Date.AddDays(1),
+            (FacilityType)99,
+            -1,
+            new CreateFacilityAddressCommand("Main Avenue", new string('1', 21), "28001", "Madrid", "Madrid", "   "),
+            null);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesCreate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Name", "BuildDate", "Type", "Capacity", "Address.StreetNumber", "Address.Country");
+        await _repository.DidNotReceiveWithAnyArgs().Save(default!, default);
     }
 }

@@ -191,6 +191,35 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
         }
 
         [Test]
+        public async Task ReadAStoredFacilityThatBreaksTheCreationRulesWithoutValidatingIt()
+        {
+            var facilityId = Guid.NewGuid();
+            var addressId = Guid.NewGuid();
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities` (Id, Name, Active, BuildDate, Type, Capacity) VALUES (@Id, @Name, 1, @BuildDate, 'Arena', -5);",
+                new { Id = facilityId, Name = new string('x', 150), BuildDate = new DateTime(1700, 1, 1) });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Addresses` (Id, Street, StreetNumber, PostalCode, City, Region, Country) " +
+                "VALUES (@Id, '', '1', @PostalCode, 'City', 'Region', 'Country');",
+                new { Id = addressId, PostalCode = new string('7', 30) });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities_Addresses` (FacilityId, AddressId) VALUES (@FacilityId, @AddressId);",
+                new { FacilityId = facilityId, AddressId = addressId });
+
+            var result = await _repository.Get(new FacilitySearchCriteria
+            {
+                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{facilityId}" }]
+            }, CancellationToken.None);
+
+            var stored = result.Should().ContainSingle().Subject;
+            stored.Name.Should().HaveLength(150);
+            stored.Capacity.Should().Be(-5);
+            stored.BuildDate.Should().Be(new DateTime(1700, 1, 1));
+            stored.Address.Street.Should().BeEmpty();
+            stored.Address.PostalCode.Should().HaveLength(30);
+        }
+
+        [Test]
         public async Task ReturnEmptyListWhenNoFacilityMatchesCriteria()
         {
             var facility = new Facility(

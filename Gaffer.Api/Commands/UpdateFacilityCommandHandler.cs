@@ -23,7 +23,7 @@ public class UpdateFacilityCommand : ICommand
     public DateTime BuildDate { get; set; }
     public FacilityType Type { get; set; }
     public int Capacity { get; set; }
-    public UpdateFacilityAddressCommand Address { get; set; } = null!;
+    public UpdateFacilityAddressCommand? Address { get; set; }
     public List<UpdateFacilityStandCommand>? Stands { get; set; }
 }
 
@@ -39,22 +39,32 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
         {
             throw new CannotUpdateFacilityNotFoundException(ex.Message, command.Id);
         }
+        catch (DomainValidationException ex)
+        {
+            throw new ValidationFailedException(CannotUpdateFacilityTitle, ValidationErrorKeys.FacilitiesUpdate, ex.Errors);
+        }
     }
 
+    public const string CannotUpdateFacilityTitle = "Cannot update facility";
+
+    // Runs inside the repository lock: an unknown id is a 404 before the body is validated (Q21 a)), and a
+    // validation error thrown here rolls back the transaction.
     private static Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command)
     {
-        var address = new Address(
-            existing.Address.Id,
-            command.Address.Street,
-            command.Address.StreetNumber,
-            command.Address.PostalCode,
-            command.Address.City,
-            command.Address.Region,
-            command.Address.Country);
+        var address = command.Address is null
+            ? null
+            : new Address(
+                existing.Address.Id,
+                command.Address.Street,
+                command.Address.StreetNumber,
+                command.Address.PostalCode,
+                command.Address.City,
+                command.Address.Region,
+                command.Address.Country);
 
         var stands = MergeStands(existing, command.Stands ?? []);
 
-        return new Facility(
+        return Facility.Create(
             existing.Id,
             command.Name,
             command.Active,

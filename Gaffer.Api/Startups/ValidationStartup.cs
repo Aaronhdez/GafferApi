@@ -1,3 +1,4 @@
+using Gaffer.Api.Commands;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Shared.Exceptions;
 using Microsoft.AspNetCore.Mvc;
@@ -23,6 +24,8 @@ public static class ValidationStartup
         {
             [(typeof(PlayerController), nameof(PlayerController.Create))] = ("Cannot create player", ValidationErrorKeys.PlayersCreate),
             [(typeof(PlayerController), nameof(PlayerController.Update))] = ("Cannot update player", ValidationErrorKeys.PlayersUpdate),
+            [(typeof(FacilitiesController), nameof(FacilitiesController.Create))] = (CreateFacilityCommandHandler.CannotCreateFacilityTitle, ValidationErrorKeys.FacilitiesCreate),
+            [(typeof(FacilitiesController), nameof(FacilitiesController.Update))] = (UpdateFacilityCommandHandler.CannotUpdateFacilityTitle, ValidationErrorKeys.FacilitiesUpdate),
         };
 
     public static IServiceCollection ConfigureValidationResponses(this IServiceCollection services)
