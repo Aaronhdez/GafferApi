@@ -7,7 +7,7 @@ This document covers the Facility operations that extend the initial creation fl
 - **Select** is implemented as `GET /{id}` (single facility, via a filtered `SearchFacilitiesQuery`) and `GET ""` (all facilities, unfiltered).
 - **Update** replaces `Address` fully and replaces the `Stands` collection fully (delete + reinsert), not a partial/merge update.
   > Superseded: the current update flow (stand merge by `Id`, row lock, input validation) is documented in [doc/features/facility-update.md](../../../doc/features/facility-update.md) and its technical counterpart. `IFacilityRepository.Update(Facility)` is no longer public; the repository exposes `Update(Guid, Func<Facility, Facility>, CancellationToken)`.
-- **Delete** is a hard delete, cascading removal of the facility's `Address` and `Stands` join rows before deleting the `Facilities` row itself.
+- **Delete** is a hard delete of the `Facilities` row only; the database removes the facility's `Address`, `Stands` and their join rows through the cascading foreign keys and the `TRG_Facilities_BeforeDelete` trigger (migrations M0002/M0003).
 
 ## Sequence/Architecture Diagram
 
@@ -50,7 +50,7 @@ sequenceDiagram
     IFacilityRepository-->>DeleteFacilityCommandHandler: existing Facility or null
     DeleteFacilityCommandHandler->>IFacilityRepository: Delete(id)
     IFacilityRepository->>SqlFacilityRepository: Delete implementation
-    SqlFacilityRepository->>Database: DELETE Stands/Address links, DELETE Facilities row (transaction)
+    SqlFacilityRepository->>Database: DELETE Facilities row (FK cascade + trigger remove Address/Stands)
     SqlFacilityRepository-->>DeleteFacilityCommandHandler: void / exception
     DeleteFacilityCommandHandler-->>FacilitiesController: void / CannotDeleteFacility(NotFound)Exception
     FacilitiesController-->>Client: 200 OK | 404 / 4xx error
@@ -75,7 +75,7 @@ sequenceDiagram
 | `IFacilityRepository` | `Delete` | `Task Delete(Guid, CancellationToken)` | `Task` | Removes a facility and its related rows. |
 | `SqlFacilityRepository` | `Get` | see interface | `List<Facility>` | Builds a dynamic `WHERE` clause from an allow-list of columns (`Id, Name, Active, BuildDate, Type, Capacity`), then loads `Address`/`Stands` per row via separate joined queries. |
 | `SqlFacilityRepository` | `Update` | see interface | `Task` | Single transaction: updates the `Facilities` row, deletes existing `Stands`/`Address` links, then reinserts `Address` and `Stands` (full replace). |
-| `SqlFacilityRepository` | `Delete` | see interface | `Task` | Single transaction: deletes `Stands` and `Address` links/rows, then deletes the `Facilities` row. |
+| `SqlFacilityRepository` | `Delete` | see interface | `Task` | Deletes only the `Facilities` row; the cascading foreign keys and `TRG_Facilities_BeforeDelete` remove `Address`, `Stands` and the join rows. |
 
 ## Dependencies
 
@@ -126,4 +126,4 @@ await facilitiesController.Delete(facilityId);
 
 - `CannotDeleteFacilityException.Reason` is declared as a `get`-only property but is never assigned in the constructor, so it is always `null`. `ExceptionToHttpResponseConverters` builds an error code `Error.Facilities.Delete.{Reason}` using this value, which will always render as `Error.Facilities.Delete.` — this should be fixed by populating `Reason` from the caught exception.
 - `SqlFacilityRepository.Get` builds its `WHERE` clause by string concatenation (column names interpolated directly), relying solely on the `AllowedFilterColumns` allow-list for injection safety; parameter *values* are bound via Dapper parameters, but this pattern should be reviewed if more filter columns are added.
-- `Update` and `Delete` perform delete+reinsert of `Address`/`Stands` on every update rather than diffing, which is simple but not efficient for large `Stands` collections.
+- `Delete` relies on the database schema (cascading foreign keys and `TRG_Facilities_BeforeDelete`) to remove the facility's `Address` and `Stands`; changing those migrations changes the delete behaviour. The current `Update` flow is documented in [doc/features/facility-update.md](../../../doc/features/facility-update.md).
