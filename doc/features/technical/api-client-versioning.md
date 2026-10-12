@@ -54,7 +54,8 @@ sequenceDiagram
 
 - No new `PackageReference` or MSBuild `Import` was added; `Directory.Build.props` only adds the property and target described above, scoped to `Gaffer.Api.Client`.
 - Contract changes that require a version bump under this rule: see [`api-contract-and-access.md`](./api-contract-and-access.md) (this plan's own MAJOR-worthy change: `201` + `Location` on create, enums as text).
-- [`player-update.md`](./player-update.md): `UpdatePlayerRequest.birthDate`/`gender` become optional and nullable (schema relaxation, backward-compatible for existing callers) but `secondLastName` is now always cleared when omitted (a client-visible behaviour change, not a schema change) — factor both in when deciding the bump for that change.
+- [`player-update.md`](./player-update.md): `UpdatePlayerRequest.birthDate`/`gender` become optional and nullable (schema relaxation, backward-compatible for existing callers). Historical note: that version cleared `secondLastName` when it was omitted; TECHDEBT-005 reverted that (omitted or `null` keeps it, `""` is a `400`) without a schema change, so no regeneration or version bump was triggered by it. A behaviour change without a schema change can still deserve a mention when the operator versions the next release.
+- Input validation (TECHDEBT-005): no DTO attribute, route or `ProducesResponseType` was added, and the served `swagger.json` was identical (same sha256) before and after each step, so the validation `400`s, the `PUT /facilities` change to `400` for more than 4 stands, and `/health/*` (outside the OpenAPI document) did not require regenerating or versioning `Gaffer.Api.Client`. See [`input-validation.md`](../input-validation.md) and [`health-checks.md`](../health-checks.md).
 - `.github/doc/common/dev-stack.md`, "Build and Packaging Notes" documents this rule at the stack level.
 
 ## Usage Examples

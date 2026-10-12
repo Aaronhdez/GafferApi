@@ -1,6 +1,8 @@
-﻿using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Infrastructure;
+using Gaffer.Api.Shared.ConnectionProviders;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 
 namespace Gaffer.Api.Startups;
@@ -10,8 +12,22 @@ public class DatabaseConfig {
     public string? ConnectionString { get; set; }
 }
 
+/// <summary>Why <see cref="DatabaseStartup.ConfigureDatabase"/> chose the registered connection provider.</summary>
+public enum DatabaseProviderReason
+{
+    Sql,
+    /// <summary>Database disabled or without a connection string: the dummy provider is intended.</summary>
+    DummyByConfiguration,
+    /// <summary>Database enabled but unreachable at startup: the dummy provider stays until the API restarts.</summary>
+    DummyByFallback
+}
+
+public sealed record DatabaseProviderSelection(DatabaseProviderReason Reason);
+
 public static class DatabaseStartup
 {
+    public const string ReadyTag = "ready";
+
     public static void ConfigureDatabase(
         this IServiceCollection services, 
         IConfiguration configuration,
@@ -20,9 +36,10 @@ public static class DatabaseStartup
         var infrastructureOptions = configuration.GetSection("DatabaseConfig");
         services.Configure<DatabaseConfig>(infrastructureOptions);
         var dbConfig = infrastructureOptions.Get<DatabaseConfig>();
+        AddDatabaseHealthCheck(services);
         
         if (dbConfig is not { Enabled: true } || string.IsNullOrEmpty(dbConfig.ConnectionString)) {
-            AddDummyConnector(services);
+            AddDummyConnector(services, DatabaseProviderReason.DummyByConfiguration);
             return;
         }
         
@@ -31,15 +48,29 @@ public static class DatabaseStartup
             logger?.LogWarning(
                 "Database is not reachable at startup; falling back to {ConnectionProvider}.",
                 nameof(DummyConnectionProvider));
-            AddDummyConnector(services);
+            AddDummyConnector(services, DatabaseProviderReason.DummyByFallback);
             return;
         }
 
         services.AddScoped<IDatabaseConnectionProvider>(_ => new SqlConnectionProvider(connectionString));
+        services.AddSingleton(new DatabaseProviderSelection(DatabaseProviderReason.Sql));
+        services.AddSingleton<IDatabaseProbe>(new SqlDatabaseProbe(connectionString));
     }
 
-    private static void AddDummyConnector(IServiceCollection services)
-        => services.AddScoped<IDatabaseConnectionProvider, DummyConnectionProvider>();
+    private static void AddDummyConnector(IServiceCollection services, DatabaseProviderReason reason)
+    {
+        services.AddScoped<IDatabaseConnectionProvider, DummyConnectionProvider>();
+        services.AddSingleton(new DatabaseProviderSelection(reason));
+    }
+
+    private static void AddDatabaseHealthCheck(IServiceCollection services)
+        => services.AddHealthChecks().Add(new HealthCheckRegistration(
+            DatabaseHealthCheck.Name,
+            serviceProvider => new DatabaseHealthCheck(
+                serviceProvider.GetRequiredService<DatabaseProviderSelection>(),
+                serviceProvider.GetService<IDatabaseProbe>()),
+            failureStatus: null,
+            tags: [ReadyTag]));
 
     // ConfigureServices is synchronous. The async probe runs on the thread pool so no caller
     // synchronization context can deadlock it, and GetResult() rethrows without AggregateException.

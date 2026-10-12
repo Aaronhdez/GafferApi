@@ -1,5 +1,6 @@
 ﻿using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Commands;
@@ -34,31 +35,28 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
     }
 
+    // Partial update: an absent or null field is left unchanged (SecondLastName included); every sent field goes
+    // through its validating setter, and all the invalid ones are reported together before anything is saved.
     private static void UpdatePlayer(Player player, UpdatePlayerCommand command)
     {
-        if (!string.IsNullOrEmpty(command.FirstName))
+        var errors = new DomainValidationErrors();
+        if (command.FirstName is not null) errors.Collect(() => player.SetFirstName(command.FirstName));
+        if (command.LastName is not null) errors.Collect(() => player.SetLastName(command.LastName));
+        if (command.SecondLastName is not null) errors.Collect(() => player.SetSecondLastName(command.SecondLastName));
+        if (command.BirthDate.HasValue) errors.Collect(() => player.SetBirthDate(command.BirthDate.Value));
+        if (command.Gender.HasValue) errors.Collect(() => player.SetGender(command.Gender.Value));
+
+        try
         {
-            player.SetFirstName(command.FirstName);
+            errors.ThrowIfAny();
         }
-
-        if (!string.IsNullOrEmpty(command.LastName))
+        catch (DomainValidationException ex)
         {
-            player.SetLastName(command.LastName);
-        }
-
-        // SecondLastName is always replaced: absent, null or empty clears it.
-        player.SetSecondLastName(string.IsNullOrEmpty(command.SecondLastName) ? null : command.SecondLastName);
-
-        if (command.BirthDate.HasValue)
-        {
-            player.SetBirthDate(command.BirthDate.Value);
-        }
-
-        if (command.Gender.HasValue)
-        {
-            player.SetGender(command.Gender.Value);
+            throw new ValidationFailedException(CannotUpdatePlayerTitle, ValidationErrorKeys.PlayersUpdate, ex.Errors);
         }
     }
+
+    private const string CannotUpdatePlayerTitle = "Cannot update player";
 }
 
 public class CannotUpdatePlayerNotFoundException(string message, Guid id) : Exception(message)

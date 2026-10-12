@@ -116,6 +116,32 @@ public class DatabaseStartupShould
             .Should().BeOfType<DummyConnectionProvider>();
     }
 
+    [Test]
+    public async Task RegisterThatTheSqlProviderWasChosenWhenTheDatabaseIsReachable()
+    {
+        await using var serviceProvider = BuildServiceProvider(enabled: true, ReachableConnectionString);
+
+        serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.Sql);
+    }
+
+    [Test]
+    public async Task RegisterThatTheDummyProviderIsAFallbackWhenTheDatabaseIsUnreachable()
+    {
+        await using var serviceProvider = BuildServiceProvider(enabled: true, UnreachableConnectionString);
+
+        serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.DummyByFallback);
+    }
+
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    public async Task RegisterThatTheDummyProviderComesFromTheConfigurationWhenTheDatabaseIsDisabledOrNotConfigured(
+        bool enabled, bool configured)
+    {
+        await using var serviceProvider = BuildServiceProvider(enabled, configured ? ReachableConnectionString : "");
+
+        serviceProvider.GetRequiredService<DatabaseProviderSelection>().Reason.Should().Be(DatabaseProviderReason.DummyByConfiguration);
+    }
+
     private static string ReachableConnectionString => TestConfiguration.DatabaseConnectionString;
     private static string UnreachableConnectionString => TestConfiguration.UnreachableDatabaseConnectionString;
 

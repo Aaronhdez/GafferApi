@@ -82,4 +82,33 @@ public class FacilityStandCommandHandlersShould
         await add.Should().ThrowExactlyAsync<FacilityMaxStandsExceededException>();
         await remove.Should().ThrowExactlyAsync<FacilityStandNotFoundException>();
     }
+
+    // Step 03b: one case per rule and handler; the stand is built before the repository is called (400 before 404).
+    [TestCase("", 10, "StandName")]
+    [TestCase("East", -1, "StandCapacity")]
+    public async Task RejectAnInvalidStandOnCreationWithoutCallingTheRepository(string standName, int standCapacity, string field)
+    {
+        var act = async () => await new AddFacilityStandCommandHandler(_repository)
+            .Handle(new AddFacilityStandCommand(_facilityId, standName, standCapacity), CancellationToken.None);
+
+        var exception = (await act.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesStands);
+        exception.Title.Should().Be(AddFacilityStandCommandHandler.CannotCreateStandTitle);
+        exception.Errors.Keys.Should().Equal(field);
+        await _repository.DidNotReceiveWithAnyArgs().AddStand(default, default!, default);
+    }
+
+    [TestCase("   ", 10, "StandName")]
+    [TestCase("East", -1, "StandCapacity")]
+    public async Task RejectAnInvalidStandOnReplacementWithoutCallingTheRepository(string standName, int standCapacity, string field)
+    {
+        var act = async () => await new ReplaceFacilityStandCommandHandler(_repository)
+            .Handle(new ReplaceFacilityStandCommand(_facilityId, _standId, standName, standCapacity), CancellationToken.None);
+
+        var exception = (await act.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesStands);
+        exception.Title.Should().Be(ReplaceFacilityStandCommandHandler.CannotUpdateStandTitle);
+        exception.Errors.Keys.Should().Equal(field);
+        await _repository.DidNotReceiveWithAnyArgs().UpdateStand(default, default!, default);
+    }
 }

@@ -1,3 +1,4 @@
+using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
@@ -190,6 +191,55 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
         }
 
         [Test]
+        public async Task ReadAStoredFacilityThatBreaksTheCreationRulesWithoutValidatingIt()
+        {
+            var facilityId = Guid.NewGuid();
+            var addressId = Guid.NewGuid();
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities` (Id, Name, Active, BuildDate, Type, Capacity) VALUES (@Id, @Name, 1, @BuildDate, 'Arena', -5);",
+                new { Id = facilityId, Name = new string('x', 150), BuildDate = new DateTime(1700, 1, 1) });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Addresses` (Id, Street, StreetNumber, PostalCode, City, Region, Country) " +
+                "VALUES (@Id, '', '1', @PostalCode, 'City', 'Region', 'Country');",
+                new { Id = addressId, PostalCode = new string('7', 30) });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities_Addresses` (FacilityId, AddressId) VALUES (@FacilityId, @AddressId);",
+                new { FacilityId = facilityId, AddressId = addressId });
+
+            var result = await _repository.Get(new FacilitySearchCriteria
+            {
+                criteriaList = [new SearchCriteria { Name = "Id", Value = $"{facilityId}" }]
+            }, CancellationToken.None);
+
+            var stored = result.Should().ContainSingle().Subject;
+            stored.Name.Should().HaveLength(150);
+            stored.Capacity.Should().Be(-5);
+            stored.BuildDate.Should().Be(new DateTime(1700, 1, 1));
+            stored.Address.Street.Should().BeEmpty();
+            stored.Address.PostalCode.Should().HaveLength(30);
+        }
+
+        [Test]
+        public async Task ReadAStoredStandThatBreaksTheCreationRulesWithoutValidatingIt()
+        {
+            var facility = new Facility(Guid.NewGuid(), "Legacy Stands Arena", true, new DateTime(2020, 1, 1), FacilityType.Arena, 100,
+                new Address(Guid.NewGuid(), "Street", "1", "08001", "City", "Region", "Country"), []);
+            await _repository.Save(facility, CancellationToken.None);
+            var standId = Guid.NewGuid();
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Stands` (Id, StandName, StandCapacity) VALUES (@Id, '', -5);", new { Id = standId });
+            await _databaseConnectionProvider.ExecuteAsync(
+                "INSERT INTO `Facilities_Stands` (FacilityId, StandId) VALUES (@FacilityId, @StandId);",
+                new { FacilityId = facility.Id, StandId = standId });
+
+            var stands = await _repository.GetStands(facility.Id, CancellationToken.None);
+            var stand = await _repository.GetStand(facility.Id, standId, CancellationToken.None);
+
+            stands.Should().ContainSingle().Which.Should().BeEquivalentTo(new Stand(standId, "", -5));
+            stand.Should().BeEquivalentTo(new Stand(standId, "", -5));
+        }
+
+        [Test]
         public async Task ReturnEmptyListWhenNoFacilityMatchesCriteria()
         {
             var facility = new Facility(
@@ -251,7 +301,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
                 [new Stand(north.Id, "North Renovated", 5000), east]);
 
-            await _repository.Update(updated, CancellationToken.None);
+            await _repository.Update(original.Id, _ => updated, CancellationToken.None);
 
             var result = await GetById(original.Id);
             result.Name.Should().Be(updated.Name);
@@ -305,7 +355,7 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 new Address(original.Address.Id, "New Road", "99", "41001", "Seville", "Andalusia", "Spain"),
                 [new Stand(north.Id, "North Renovated", 5000), new Stand(Guid.NewGuid(), standNameLongerThanItsColumn, 1000)]);
 
-            var act = async () => await _repository.Update(updated, CancellationToken.None);
+            var act = async () => await _repository.Update(original.Id, _ => updated, CancellationToken.None);
 
             var failure = await act.Should().ThrowAsync<Exception>();
             TestContext.Out.WriteLine(failure.Which.Message);
@@ -427,9 +477,10 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
                 facility.Capacity, facility.Address,
                 [facility.Stands[0], new Stand(Guid.NewGuid(), "East", 1000)]);
 
-            await _recordedRepository.Update(updated, _cancellation.Token);
+            await _recordedRepository.Update(facility.Id, _ => updated, _cancellation.Token);
 
-            // Transaction + facility + address + linked stands lookup + one stand update + one stand insert and its link.
+            // Write alone: transaction + facility + address + linked stands lookup + one stand update + one stand insert and its link
+            // (the row lock and the facility read inside the same transaction add more calls).
             _recorder.ShouldHaveReceivedOnly(_cancellation.Token, minimumCalls: 7);
         }
 
@@ -722,5 +773,31 @@ public class SqlFacilityRepositoryShould : BaseSqlTest
     {
         public Guid FacilityId { get; init; }
         public Guid StandId { get; init; }
+    }
+}
+public class FacilityRepositoryContractShould
+{
+    [Test]
+    public void OnlyAcceptAWholeFacilityForCreationSoEveryUpdateGoesThroughTheLock()
+    {
+        var methodsTakingAFacility = typeof(IFacilityRepository).GetMethods()
+            .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(Facility)))
+            .Select(method => method.Name);
+
+        methodsTakingAFacility.Should().Equal(nameof(IFacilityRepository.Save));
+    }
+
+    [Test]
+    public void ExposeNoPublicFacilityWriteWithoutTheIdAndTheBuildFunction()
+    {
+        var publicMethodsTakingAFacility = typeof(SqlFacilityRepository)
+            .GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            .Where(method => method.GetParameters().Any(parameter => parameter.ParameterType == typeof(Facility)))
+            .Select(method => method.Name);
+
+        publicMethodsTakingAFacility.Should().Equal(nameof(SqlFacilityRepository.Save));
+        typeof(SqlFacilityRepository).GetMethod(nameof(SqlFacilityRepository.Update),
+                [typeof(Guid), typeof(Func<Facility, Facility>), typeof(CancellationToken)])
+            .Should().NotBeNull();
     }
 }

@@ -28,12 +28,13 @@ This document covers how `Gaffer.Api` manages its database connection: one conne
 ### Limitations
 
 - The startup fallback only covers connectivity failures (e.g. host unreachable, timeout). A malformed connection string still fails at startup.
-- Once the database is confirmed reachable at startup, the API does not later mark it as down if it stops responding while the API is running.
+- Once the database is confirmed reachable at startup, the API does not switch provider if it stops responding while running; `/health/ready` reports it instead (see [`health-checks.md`](./health-checks.md)). The fallback itself is kept and is permanent until restart.
 - If a database operation fails or is cancelled outside of a transaction, the connection is still closed back to the pool (`try/finally`) and the original exception propagates unchanged. Inside a transaction, the transaction owns and closes the connection.
 
 ## See also
 
 - Technical detail: [`doc/features/technical/database-connection-lifecycle.md`](./technical/database-connection-lifecycle.md).
+- How to see the fallback (`/health/live`, `/health/ready`): [`health-checks.md`](./health-checks.md).
 - This mechanism underlies every database-backed feature, including [player search](./player-search.md).
 - How the connection string itself is supplied (User Secrets / environment variables, no password in versioned files): [`database-configuration.md`](./database-configuration.md).
 - What a request sees when the database is unreachable mid-request (not just at startup) for Delete/Update on Players and Facilities: [`error-handling.md`](./error-handling.md).

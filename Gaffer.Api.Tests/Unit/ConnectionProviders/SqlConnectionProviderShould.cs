@@ -86,6 +86,27 @@ public class SqlConnectionProviderShould
     }
 
     [Test]
+    public async Task NotTestTheConnectionWhenItsTokenIsAlreadyCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+
+        var testConnection = async () => await provider.TestConnection(CancelledToken());
+
+        await testConnection.Should().ThrowAsync<OperationCanceledException>();
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
+    [Test]
+    public async Task ReportAReachableDatabaseWithATokenThatIsNotCancelled()
+    {
+        await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);
+        using var source = new CancellationTokenSource();
+
+        (await provider.TestConnection(source.Token)).Should().BeTrue();
+        provider.ConnectionState.Should().Be(ConnectionState.Closed);
+    }
+
+    [Test]
     public async Task CloseButNotReleaseTheConnectionAfterEachOperation()
     {
         await using var provider = new SqlConnectionProvider(TestDefaultValues.TestConnectionString);

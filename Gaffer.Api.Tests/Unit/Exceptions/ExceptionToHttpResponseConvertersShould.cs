@@ -110,6 +110,9 @@ public class ExceptionToHttpResponseConvertersShould
             404, "Facility not found", _ => "Facility not found", "Error.Facilities.Stands.FacilityNotFound"),
         [typeof(FacilityStandNotFoundException)] = new(id => new FacilityStandNotFoundException(id, RepeatedStandId),
             404, "Stand not found", id => $"Stand {RepeatedStandId} not found in facility {id}", "Error.Facilities.Stands.StandNotFound"),
+        [typeof(ValidationFailedException)] = new(_ => new ValidationFailedException("Cannot create player", ValidationErrorKeys.PlayersCreate,
+                new Dictionary<string, string[]> { ["FirstName"] = ["FirstName is required."] }),
+            400, "Cannot create player", _ => ValidationFailedException.InvalidFieldsDetail, "Error.Players.Create.Validation"),
         [typeof(FacilityMaxStandsExceededException)] = new(id => new FacilityMaxStandsExceededException(id),
             400, "Cannot create stand", id => $"Facility {id} already has the maximum number of stands", "Error.Facilities.Stands.Create.MaxStandsExceeded"),
     };
@@ -169,5 +172,43 @@ public class ExceptionToHttpResponseConvertersShould
         new CannotUpdatePlayerException("boom", id).Reason.Should().Be(InternalServerErrorReason);
         new CannotDeleteFacilityException("boom", id).Reason.Should().Be(InternalServerErrorReason);
         new CannotUpdateFacilityException("boom", id).Reason.Should().Be(InternalServerErrorReason);
+    }
+
+    [TestCase("Cannot create player", "Error.Players.Create.Validation")]
+    [TestCase("Cannot update player", "Error.Players.Update.Validation")]
+    [TestCase("Cannot create facility", "Error.Facilities.Create.Validation")]
+    [TestCase("Cannot update facility", "Error.Facilities.Update.Validation")]
+    [TestCase("Cannot create stand", "Error.Facilities.Stands.Validation")]
+    [TestCase("Cannot update stand", "Error.Facilities.Stands.Validation")]
+    public void ConvertAValidationFailureIntoABadRequestWithTheOperationKeyAndEveryFieldError(string title, string key)
+    {
+        var errors = new Dictionary<string, string[]>
+        {
+            ["FirstName"] = ["FirstName must be at most 100 characters."],
+            ["Gender"] = ["Gender must be one of the defined values."],
+        };
+        var converter = ExceptionToHttpResponseConverters.PlayerConverters[typeof(ValidationFailedException)];
+
+        var problemDetails = converter(new ValidationFailedException(title, key, errors));
+
+        problemDetails.Status.Should().Be(400);
+        problemDetails.Title.Should().Be(title);
+        problemDetails.Extensions["ErrorTranslationKey"].Should().Be(key);
+        problemDetails.Extensions["Errors"].Should().BeEquivalentTo(errors);
+    }
+
+    [Test]
+    public void NameThePlayerValidationKeysByOperation()
+    {
+        ValidationErrorKeys.PlayersCreate.Should().Be("Error.Players.Create.Validation");
+        ValidationErrorKeys.PlayersUpdate.Should().Be("Error.Players.Update.Validation");
+    }
+
+    [Test]
+    public void NameTheFacilityValidationKeysByOperation()
+    {
+        ValidationErrorKeys.FacilitiesCreate.Should().Be("Error.Facilities.Create.Validation");
+        ValidationErrorKeys.FacilitiesUpdate.Should().Be("Error.Facilities.Update.Validation");
+        ValidationErrorKeys.FacilitiesStands.Should().Be("Error.Facilities.Stands.Validation");
     }
 }

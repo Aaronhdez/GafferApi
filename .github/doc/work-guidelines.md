@@ -27,6 +27,15 @@ Each feature follows a double test loop:
 - Refactor after both loops pass.
 - Re-run acceptance and unit tests to avoid regressions.
 
+### Reproducing red during review
+
+To show that new tests fail without the product change, without touching the working tree (no `git stash`):
+
+1. `git worktree add <scratchpad>/red HEAD`
+2. Apply only the test diff to the worktree (e.g. `git diff HEAD -- Gaffer.Api.Tests | git -C <scratchpad>/red apply`).
+3. `dotnet test <scratchpad>/red/gaffer-api.sln --filter <step filter>` and record the result as `n × estado` per test class.
+4. `git worktree remove --force <scratchpad>/red`
+
 ## Branching and Integration Rules
 
 - `main` is the integration branch.

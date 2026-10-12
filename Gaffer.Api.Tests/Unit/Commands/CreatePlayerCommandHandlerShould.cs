@@ -2,6 +2,7 @@
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
@@ -68,5 +69,19 @@ public class CreatePlayerCommandHandlerShould
             && p.Birthdate == command.Birthdate
             && p.Gender == command.Gender
         ), Arg.Any<CancellationToken>());
+    }
+
+    [Test]
+    public async Task RejectAnInvalidPlayerWithEveryInvalidFieldAndNotSaveIt()
+    {
+        var command = new CreatePlayerCommand("", new string('l', 101), "", DateTime.UtcNow.Date.AddDays(1), (Gender)99);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var failure = (await result.Should().ThrowAsync<ValidationFailedException>()).Which;
+        failure.Title.Should().Be("Cannot create player");
+        failure.ErrorTranslationKey.Should().Be(ValidationErrorKeys.PlayersCreate);
+        failure.Errors.Keys.Should().BeEquivalentTo("FirstName", "LastName", "SecondLastName", "BirthDate", "Gender");
+        await _repository.DidNotReceive().Save(Arg.Any<Player>(), Arg.Any<CancellationToken>());
     }
 }

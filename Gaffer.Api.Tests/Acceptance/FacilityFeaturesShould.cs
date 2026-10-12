@@ -115,7 +115,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "Address");
     }
 
     [Test]
@@ -149,7 +149,7 @@ public class FacilityFeaturesShould
 
         var response = await SendCreateFacilityRequest(requestBody);
 
-        response.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.UnprocessableEntity);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, "Stands");
     }
 
     [Test]
@@ -316,7 +316,7 @@ public class FacilityFeaturesShould
 
         var response = await SendUpdateFacilityRequest(createdId, updateRequestBody);
 
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, "Stands");
     }
 
     [Test]
@@ -423,7 +423,7 @@ public class FacilityFeaturesShould
             StandWithoutId("B", 1000),
             StandWithoutId("C", 1000)));
 
-        await AssertRejectedWithoutChanges(response, "Error.Facilities.Create.Validation", facilityId, before);
+        await AssertRejectedWithoutChanges(response, "Error.Facilities.Update.Validation", facilityId, before);
     }
 
     [Test]
@@ -436,7 +436,7 @@ public class FacilityFeaturesShould
             StandWithoutId("A", 1000),
             StandWithId(Guid.NewGuid(), "B", 1000)));
 
-        await AssertRejectedWithoutChanges(response, "Error.Facilities.Create.Validation", facilityId, before);
+        await AssertRejectedWithoutChanges(response, "Error.Facilities.Update.Validation", facilityId, before);
     }
 
     [Test]
@@ -615,4 +615,488 @@ public class FacilityFeaturesShould
         };
         return await _client.SendAsync(request);
     }
+
+    // --- Step 03a: domain validation of the facility and its address (create/update) ---
+
+    [Test]
+    public async Task CreateAFacilityWhoseValuesAreAtTheLimits()
+    {
+        foreach (var (name, change) in FacilityValidationCases.Boundaries())
+        {
+            var body = FacilityValidationCases.ValidBody(change);
+
+            var response = await PostRawJson(body);
+
+            var raw = await response.Content.ReadAsStringAsync();
+            response.StatusCode.Should().Be(HttpStatusCode.Created, $"{name}: {raw}");
+            var created = await GetFacility(JsonConvert.DeserializeObject<Guid>(raw));
+            FacilityValidationCases.ShouldMatchTheSentBody(created, body, name);
+        }
+    }
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidBodies))]
+    public async Task RejectTheCreationOfAnInvalidFacilityWithoutSavingIt(string field, Action<JObject> change)
+    {
+        var before = await FacilityValidationCases.CountStoredRows();
+
+        var response = await PostRawJson(FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, field);
+        (await FacilityValidationCases.CountStoredRows()).Should().Be(before);
+    }
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidBodies))]
+    public async Task RejectTheUpdateOfAFacilityWithAnInvalidBodyAndChangeNothing(string field, Action<JObject> change)
+    {
+        var createdId = await CreateFacilityWithStands("North", "South");
+        var before = await GetFacility(createdId);
+
+        var response = await PutRawJson(createdId, FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, field);
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
+    [Test]
+    public async Task UpdateAFacilityWithValuesAtTheLimits()
+    {
+        var createdId = await CreateFacilityWithStands("North");
+        foreach (var (name, change) in FacilityValidationCases.Boundaries())
+        {
+            var body = FacilityValidationCases.ValidBody(change);
+
+            var response = await PutRawJson(createdId, body);
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK, $"{name}: {await response.Content.ReadAsStringAsync()}");
+            FacilityValidationCases.ShouldMatchTheSentBody(await GetFacility(createdId), body, name);
+        }
+    }
+
+    [Test]
+    public async Task ReturnNotFoundWhenUpdatingAnUnknownFacilityWithAnInvalidBody()
+    {
+        var response = await PutRawJson(Guid.NewGuid(), FacilityValidationCases.ValidBody(body =>
+        {
+            body["name"] = "";
+            body["capacity"] = -1;
+        }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound, await response.Content.ReadAsStringAsync());
+    }
+
+    [Test]
+    public async Task ReportEveryInvalidFieldOfTheFacilityAndItsAddressWithoutEchoingTheRejectedValues()
+    {
+        var createdId = await CreateFacilityWithStands("North");
+        var before = await GetFacility(createdId);
+        var invalid = FacilityValidationCases.ValidBody(FacilityValidationCases.SeveralInvalidFields);
+
+        var created = await PostRawJson(invalid);
+        var updated = await PutRawJson(createdId, invalid);
+
+        foreach (var (response, key) in new[] { (created, FacilityValidationCases.CreateValidationKey), (updated, FacilityValidationCases.UpdateValidationKey) })
+        {
+            var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, key, FacilityValidationCases.SeveralInvalidFieldNames);
+            problem.ToString().Should().NotContain(FacilityValidationCases.TooLongText);
+        }
+
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
+    [TestCase("POST", """{"name":"Arena",""", null)]
+    [TestCase("POST", "UNKNOWN_TYPE", "Type")]
+    [TestCase("PUT", """{"name":"Arena",""", null)]
+    [TestCase("PUT", "UNKNOWN_TYPE", "Type")]
+    public async Task ReturnTheValidationFormatForBodiesThatCannotBeBound(string method, string body, string? field)
+    {
+        var json = body == "UNKNOWN_TYPE"
+            ? FacilityValidationCases.ValidBody(b => b["type"] = FacilityValidationCases.UnknownTypeText)
+            : body;
+        var response = method == "POST"
+            ? await PostRawJson(json)
+            : await PutRawJson(await CreateFacilityWithStands("North"), json);
+
+        var key = method == "POST" ? FacilityValidationCases.CreateValidationKey : FacilityValidationCases.UpdateValidationKey;
+        var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, key, field is null ? [] : [field]);
+        ((JObject)problem["Extensions"]!["Errors"]!).Properties().Should().NotBeEmpty();
+        problem.ToString().Should().NotContain(FacilityValidationCases.UnknownTypeText);
+    }
+
+    [Test]
+    public async Task KeepReadingAndUpdatingAStoredFacilityThatBreaksTheRules()
+    {
+        var legacy = await FacilityValidationCases.InsertALegacyFacilityThatBreaksTheRules();
+
+        var stored = await GetFacility(legacy.Id);
+        stored.Name.Should().Be(legacy.Name);
+        stored.Capacity.Should().Be(legacy.Capacity);
+        stored.BuildDate.Should().Be(legacy.BuildDate);
+        stored.Address.PostalCode.Should().Be(legacy.PostalCode);
+        var all = await _client.SendAsync(new HttpRequestMessage(HttpMethod.Get, Uris.GetAllFacilities()));
+        all.StatusCode.Should().Be(HttpStatusCode.OK);
+        var listed = await all.Content.ReadFromJsonAsync<List<SearchFacilityResult>>(TestJson.Options);
+        listed.Should().ContainSingle(facility => facility.Id == legacy.Id).Which.Should().BeEquivalentTo(stored);
+
+        var response = await PutRawJson(legacy.Id, FacilityValidationCases.ValidBody());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        (await GetFacility(legacy.Id)).Name.Should().Be(FacilityValidationCases.ValidName);
+    }
+
+    // --- Step 03b: domain validation of the nested stands (OPT-037: one representative per rule type) ---
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    public async Task RejectTheCreationOfAFacilityWithAnInvalidStandWithoutSavingIt(string field, Action<JObject> change)
+    {
+        var before = await FacilityValidationCases.CountStoredRows();
+
+        var response = await PostRawJson(FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, field);
+        (await FacilityValidationCases.CountStoredRows()).Should().Be(before);
+    }
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.InvalidNestedStands))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.TooManyStands))]
+    public async Task RejectTheUpdateOfAFacilityWithInvalidStandsAndChangeNothing(string field, Action<JObject> change)
+    {
+        var createdId = await CreateFacilityWithStands("North", "South");
+        var before = await GetFacility(createdId);
+
+        var response = await PutRawJson(createdId, FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, field);
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
+    [Test]
+    public async Task CreateAndUpdateAFacilityWithStandsAtTheLimits()
+    {
+        var longest = new string('s', 100);
+        var created = await PostRawJson(FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, (longest, 0), ("North", 1))));
+        var createdRaw = await created.Content.ReadAsStringAsync();
+        created.StatusCode.Should().Be(HttpStatusCode.Created, createdRaw);
+        var id = JsonConvert.DeserializeObject<Guid>(createdRaw);
+        (await GetFacility(id)).Stands.Select(stand => (stand.StandName, stand.StandCapacity))
+            .Should().BeEquivalentTo([(longest, 0), ("North", 1)]);
+
+        var updatedName = new string('u', 100);
+        var updated = await PutRawJson(id, FacilityValidationCases.ValidBody(body =>
+            FacilityValidationCases.SetStands(body, (updatedName, 0))));
+
+        updated.StatusCode.Should().Be(HttpStatusCode.OK, await updated.Content.ReadAsStringAsync());
+        (await GetFacility(id)).Stands.Select(stand => (stand.StandName, stand.StandCapacity))
+            .Should().BeEquivalentTo([(longest, 0), ("North", 1), (updatedName, 0)]);
+    }
+
+    [Test]
+    public async Task ReportEveryInvalidFieldOfTheFacilityItsAddressAndItsStandsWithoutEchoingTheRejectedValues()
+    {
+        var createdId = await CreateFacilityWithStands("North");
+        var before = await GetFacility(createdId);
+        var invalid = FacilityValidationCases.ValidBody(body =>
+        {
+            FacilityValidationCases.SeveralInvalidFields(body);
+            FacilityValidationCases.SetStands(body, (FacilityValidationCases.TooLongText, 10), ("Valid", -1));
+        });
+        string[] fields = [.. FacilityValidationCases.SeveralInvalidFieldNames, "Stands[0].StandName", "Stands[1].StandCapacity"];
+
+        var created = await PostRawJson(invalid);
+        var updated = await PutRawJson(createdId, invalid);
+
+        foreach (var (response, key) in new[] { (created, FacilityValidationCases.CreateValidationKey), (updated, FacilityValidationCases.UpdateValidationKey) })
+        {
+            var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, key, fields);
+            problem.ToString().Should().NotContain(FacilityValidationCases.TooLongText);
+        }
+
+        (await GetFacility(createdId)).Should().BeEquivalentTo(before);
+    }
+
+    private async Task<HttpResponseMessage> PostRawJson(string json)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, Uris.CreateFacility())
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        return await _client.SendAsync(request);
+    }
+
+    private async Task<HttpResponseMessage> PutRawJson(Guid id, string json)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, Uris.UpdateFacility(id.ToString()))
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        };
+        return await _client.SendAsync(request);
+    }
+}
+
+/// <summary>
+/// AC3a.11 (OPT-035): the cases where the <see cref="TestFixture"/> host (<c>AddControllers</c>, DataAnnotations and
+/// implicit required) and production (<c>AddMvcCore</c>) diverge, checked on the production pipeline
+/// (<see cref="StartupTestServer"/>).
+/// </summary>
+public class FacilityValidationInTheProductionPipelineShould
+{
+    private const string FacilitiesPath = "/api/v1.0/facilities/";
+    private StartupTestServer _server;
+
+    [OneTimeSetUp]
+    public async Task OneTimeSetUp() => _server = await StartupTestServer.StartAsync(TestDefaultValues.TestConnectionString);
+
+    [OneTimeTearDown]
+    public async Task OneTimeTearDown() => await _server.DisposeAsync();
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
+    public async Task RejectTheCreationWithTheOperationKeyAndFieldWithoutSaving(string field, Action<JObject> change)
+    {
+        var before = await FacilityValidationCases.CountStoredRows();
+
+        var response = await Send(HttpMethod.Post, FacilitiesPath, FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey, field);
+        (await FacilityValidationCases.CountStoredRows()).Should().Be(before);
+    }
+
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentBodies))]
+    [TestCaseSource(typeof(FacilityValidationCases), nameof(FacilityValidationCases.DivergentStandBodies))]
+    public async Task RejectTheUpdateWithTheOperationKeyAndFieldWithoutChanges(string field, Action<JObject> change)
+    {
+        var created = await Send(HttpMethod.Post, FacilitiesPath, FacilityValidationCases.ValidBody());
+        var createdRaw = await created.Content.ReadAsStringAsync();
+        created.StatusCode.Should().Be(HttpStatusCode.Created, createdRaw);
+        var id = JsonConvert.DeserializeObject<Guid>(createdRaw);
+        var before = await _server.Client.GetStringAsync($"{FacilitiesPath}{id}");
+
+        var response = await Send(HttpMethod.Put, $"{FacilitiesPath}{id}", FacilityValidationCases.ValidBody(change));
+
+        await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.UpdateValidationKey, field);
+        (await _server.Client.GetStringAsync($"{FacilitiesPath}{id}")).Should().Be(before);
+    }
+
+    private async Task<HttpResponseMessage> Send(HttpMethod method, string path, string json) =>
+        await _server.Client.SendAsync(new HttpRequestMessage(method, path)
+        {
+            Content = new StringContent(json, Encoding.UTF8, "application/json")
+        });
+}
+
+/// <summary>Shared bodies, cases and assertions of the facility validation tests (step 03a).</summary>
+public static class FacilityValidationCases
+{
+    public const string CreateValidationKey = "Error.Facilities.Create.Validation";
+    public const string UpdateValidationKey = "Error.Facilities.Update.Validation";
+    public const string ValidName = "Validation Arena";
+    public const string UnknownTypeText = "ZZZ_UNKNOWN_TYPE";
+    public static readonly string TooLongText = new('a', 101);
+    private static DateTime TodayUtc => DateTime.UtcNow.Date;
+
+    private static readonly string[] LongTextAddressFields = ["street", "city", "region", "country"];
+    private static readonly string[] ShortTextAddressFields = ["streetNumber", "postalCode"];
+
+    public static string ValidBody(Action<JObject>? change = null)
+    {
+        var body = new JObject
+        {
+            ["name"] = ValidName,
+            ["active"] = true,
+            ["buildDate"] = IsoDate(new DateTime(2020, 7, 20)),
+            ["type"] = "Arena",
+            ["capacity"] = 18000,
+            ["address"] = new JObject
+            {
+                ["street"] = "Arena Road",
+                ["streetNumber"] = "50",
+                ["postalCode"] = "08001",
+                ["city"] = "Barcelona",
+                ["region"] = "Catalonia",
+                ["country"] = "Spain",
+            },
+        };
+        change?.Invoke(body);
+        return body.ToString(Formatting.None);
+    }
+
+    public static IEnumerable<TestCaseData> InvalidBodies()
+    {
+        TestCaseData Case(string name, string field, Action<JObject> change) =>
+            new TestCaseData(field, change).SetArgDisplayNames(name);
+
+        yield return Case("Name empty", "Name", body => body["name"] = "");
+        yield return Case("Name whitespace", "Name", body => body["name"] = "   ");
+        yield return Case("Name 101 chars", "Name", body => body["name"] = TooLongText);
+        yield return Case("Name absent", "Name", body => body.Remove("name"));
+        yield return Case("BuildDate 1799-12-31", "BuildDate", body => body["buildDate"] = IsoDate(new DateTime(1799, 12, 31)));
+        yield return Case("BuildDate tomorrow", "BuildDate", body => body["buildDate"] = IsoDate(TodayUtc.AddDays(1)));
+        yield return Case("BuildDate absent", "BuildDate", body => body.Remove("buildDate"));
+        yield return Case("Type 99", "Type", body => body["type"] = 99);
+        yield return Case("Capacity -1", "Capacity", body => body["capacity"] = -1);
+        yield return Case("Address absent", "Address", body => body.Remove("address"));
+        foreach (var field in LongTextAddressFields)
+        {
+            foreach (var testCase in AddressTextCases(field, TooLongText)) yield return testCase;
+        }
+
+        foreach (var field in ShortTextAddressFields)
+        {
+            foreach (var testCase in AddressTextCases(field, new string('1', 21))) yield return testCase;
+        }
+
+        IEnumerable<TestCaseData> AddressTextCases(string field, string tooLong)
+        {
+            var errorField = $"Address.{Pascal(field)}";
+            yield return Case($"{errorField} empty", errorField, body => body["address"]![field] = "");
+            yield return Case($"{errorField} whitespace", errorField, body => body["address"]![field] = "   ");
+            yield return Case($"{errorField} {tooLong.Length} chars", errorField, body => body["address"]![field] = tooLong);
+            yield return Case($"{errorField} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
+        }
+    }
+
+    /// <summary>
+    /// Cases where the <see cref="TestFixture"/> host rejects through model binding ([Required], implicit required)
+    /// and production reaches the domain (OPT-035).
+    /// </summary>
+    public static IEnumerable<TestCaseData> DivergentBodies()
+    {
+        TestCaseData Case(string name, string field, Action<JObject> change) =>
+            new TestCaseData(field, change).SetArgDisplayNames(name);
+
+        yield return Case("Address absent", "Address", body => body.Remove("address"));
+        yield return Case("Address null", "Address", body => body["address"] = null);
+        yield return Case("Name absent", "Name", body => body.Remove("name"));
+        yield return Case("Name null", "Name", body => body["name"] = null);
+        foreach (var field in LongTextAddressFields.Concat(ShortTextAddressFields))
+        {
+            var errorField = $"Address.{Pascal(field)}";
+            yield return Case($"{errorField} absent", errorField, body => ((JObject)body["address"]!).Remove(field));
+            yield return Case($"{errorField} null", errorField, body => body["address"]![field] = null);
+        }
+    }
+
+    /// <summary>Step 03b (OPT-037): one representative per stand rule; the invalid stand is the second one.</summary>
+    public static IEnumerable<TestCaseData> InvalidNestedStands()
+    {
+        TestCaseData Case(string name, string field, (string? Name, int Capacity) invalid) =>
+            new TestCaseData(field, (Action<JObject>)(body => SetStands(body, ("Valid", 100), invalid))).SetArgDisplayNames(name);
+
+        yield return Case("Stands[1].StandName whitespace", "Stands[1].StandName", ("   ", 100));
+        yield return Case("Stands[1].StandName 101 chars", "Stands[1].StandName", (TooLongText, 100));
+        yield return Case("Stands[1].StandCapacity -1", "Stands[1].StandCapacity", ("Valid", -1));
+    }
+
+    public static IEnumerable<TestCaseData> TooManyStands()
+    {
+        yield return new TestCaseData("Stands", (Action<JObject>)(body =>
+            SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)))).SetArgDisplayNames("5 stands");
+    }
+
+    /// <summary>
+    /// Step 03b (AC3b.11): stand cases where the <see cref="TestFixture"/> host rejects through model binding
+    /// ([MaxLength(4)], implicit required) and production reaches the domain (OPT-035).
+    /// </summary>
+    public static IEnumerable<TestCaseData> DivergentStandBodies()
+    {
+        TestCaseData Case(string name, string field, Action<JObject> change) =>
+            new TestCaseData(field, change).SetArgDisplayNames(name);
+
+        yield return Case("5 stands", "Stands", body => SetStands(body, ("A", 1), ("B", 1), ("C", 1), ("D", 1), ("E", 1)));
+        yield return Case("Stands[0].StandName absent", "Stands[0].StandName",
+            body => body["stands"] = new JArray(new JObject { ["standCapacity"] = 10 }));
+        yield return Case("Stands[0].StandName null", "Stands[0].StandName", body => SetStands(body, (null, 10)));
+    }
+
+    public static void SetStands(JObject body, params (string? Name, int Capacity)[] stands) =>
+        body["stands"] = new JArray(stands.Select(stand => new JObject
+        {
+            ["standName"] = stand.Name,
+            ["standCapacity"] = stand.Capacity,
+        }));
+
+    public static IEnumerable<(string Name, Action<JObject> Change)> Boundaries()
+    {
+        yield return ("Name and long address fields at 100, short ones at 20", body =>
+        {
+            body["name"] = new string('n', 100);
+            foreach (var field in LongTextAddressFields) body["address"]![field] = new string(field[0], 100);
+            foreach (var field in ShortTextAddressFields) body["address"]![field] = new string('9', 20);
+        });
+        yield return ("Capacity 0 and BuildDate 1800-01-01", body =>
+        {
+            body["capacity"] = 0;
+            body["buildDate"] = IsoDate(new DateTime(1800, 1, 1));
+        });
+        yield return ("BuildDate today (UTC)", body => body["buildDate"] = IsoDate(TodayUtc));
+    }
+
+    public static void SeveralInvalidFields(JObject body)
+    {
+        body["name"] = TooLongText;
+        body["capacity"] = -1;
+        body["buildDate"] = IsoDate(TodayUtc.AddDays(1));
+        body["address"]!["street"] = TooLongText;
+        body["address"]!["postalCode"] = "";
+    }
+
+    public static readonly string[] SeveralInvalidFieldNames = ["Name", "Capacity", "BuildDate", "Address.Street", "Address.PostalCode"];
+
+    public static void ShouldMatchTheSentBody(SearchFacilityResult facility, string json, string because)
+    {
+        var body = JObject.Parse(json);
+        facility.Name.Should().Be(body["name"]!.Value<string>(), because);
+        facility.Capacity.Should().Be(body["capacity"]!.Value<int>(), because);
+        facility.BuildDate.Date.Should().Be(DateTime.Parse(body["buildDate"]!.Value<string>()!.Substring(0, 10),
+            System.Globalization.CultureInfo.InvariantCulture), because);
+        facility.Address.Street.Should().Be(body["address"]!["street"]!.Value<string>(), because);
+        facility.Address.StreetNumber.Should().Be(body["address"]!["streetNumber"]!.Value<string>(), because);
+        facility.Address.PostalCode.Should().Be(body["address"]!["postalCode"]!.Value<string>(), because);
+        facility.Address.City.Should().Be(body["address"]!["city"]!.Value<string>(), because);
+        facility.Address.Region.Should().Be(body["address"]!["region"]!.Value<string>(), because);
+        facility.Address.Country.Should().Be(body["address"]!["country"]!.Value<string>(), because);
+    }
+
+    public static async Task<JObject> ShouldBeAValidationProblem(HttpResponseMessage response, string key, params string[] fields)
+    {
+        var raw = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest, raw);
+        var body = JObject.Parse(raw);
+        var translationKey = body["Extensions"]?["ErrorTranslationKey"]?.Value<string>();
+        translationKey.Should().Be(key, raw);
+        (body["Extensions"]?["Errors"] as JObject).Should().NotBeNull(raw);
+        var errorFields = ((JObject)body["Extensions"]!["Errors"]!).Properties().Select(property => property.Name);
+        if (fields.Length > 0) errorFields.Should().Contain(fields, raw);
+        return body;
+    }
+
+    public static async Task<(long Facilities, long Addresses)> CountStoredRows() =>
+        (await TestFixture.SqlConnectionProviderTest.QueryScalarAsync<long>("SELECT COUNT(*) FROM `Facilities`;"),
+            await TestFixture.SqlConnectionProviderTest.QueryScalarAsync<long>("SELECT COUNT(*) FROM `Addresses`;"));
+
+    public sealed record LegacyFacility(Guid Id, string Name, int Capacity, DateTime BuildDate, string PostalCode);
+
+    /// <summary>Inserts by SQL a facility that breaks the creation rules (Q16: stored data is read without validation).</summary>
+    public static async Task<LegacyFacility> InsertALegacyFacilityThatBreaksTheRules()
+    {
+        var legacy = new LegacyFacility(Guid.NewGuid(), new string('x', 150), -5, new DateTime(1700, 1, 1), new string('7', 30));
+        var addressId = Guid.NewGuid();
+        var provider = TestFixture.SqlConnectionProviderTest;
+        await provider.ExecuteAsync(
+            "INSERT INTO `Facilities` (Id, Name, Active, BuildDate, Type, Capacity) VALUES (@Id, @Name, 1, @BuildDate, 'Arena', @Capacity);",
+            new { legacy.Id, legacy.Name, legacy.BuildDate, legacy.Capacity });
+        await provider.ExecuteAsync(
+            "INSERT INTO `Addresses` (Id, Street, StreetNumber, PostalCode, City, Region, Country) " +
+            "VALUES (@Id, '', '1', @PostalCode, 'Legacy City', 'Legacy Region', 'Legacy Country');",
+            new { Id = addressId, legacy.PostalCode });
+        await provider.ExecuteAsync(
+            "INSERT INTO `Facilities_Addresses` (FacilityId, AddressId) VALUES (@FacilityId, @AddressId);",
+            new { FacilityId = legacy.Id, AddressId = addressId });
+        return legacy;
+    }
+
+    private static string Pascal(string field) => char.ToUpperInvariant(field[0]) + field[1..];
+
+    private static string IsoDate(DateTime date) =>
+        date.ToString("yyyy-MM-dd'T'00:00:00'Z'", System.Globalization.CultureInfo.InvariantCulture);
 }

@@ -65,6 +65,24 @@ public class SqlPlayerRepositoryShould : BaseSqlTest
         });
     }
 
+    [Test]
+    public async Task ReadAStoredPlayerThatBreaksTheCreationRulesWithoutValidatingIt()
+    {
+        var legacy = new Player(Guid.NewGuid(), new string('x', 150), "Legacy", string.Empty, Gender.OTHER,
+            DateTime.UtcNow.Date.AddYears(-10));
+        await InsertAPlayerInDb(legacy);
+
+        var result = await _repository.Get(new PlayerSearchCriteria
+        {
+            criteriaList = [new SearchCriteria { Name = "Id", Value = $"{legacy.Id}" }]
+        }, CancellationToken.None);
+
+        var stored = result.Should().ContainSingle().Subject;
+        stored.FirstName.Should().Be(legacy.FirstName);
+        stored.SecondLastName.Should().BeEmpty();
+        stored.Birthdate.Should().Be(legacy.Birthdate);
+    }
+
     [TestFixture]
     public class WhenPropagatingTheCancellationToken : SqlPlayerRepositoryShould
     {

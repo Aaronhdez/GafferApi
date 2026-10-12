@@ -73,7 +73,7 @@ public class UpdateFacilityCommandHandlerShould
                 && facility.BuildDate == command.BuildDate
                 && facility.Type == command.Type
                 && facility.Capacity == command.Capacity
-                && facility.Address.Street == command.Address.Street
+                && facility.Address.Street == command.Address!.Street
                 && facility.Address.StreetNumber == command.Address.StreetNumber
                 && facility.Address.PostalCode == command.Address.PostalCode
                 && facility.Address.City == command.Address.City
@@ -141,8 +141,10 @@ public class UpdateFacilityCommandHandlerShould
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<FacilityValidationException>()
-            .WithMessage("*Stands cannot exceed 4*");
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Stands");
+        exception.Errors["Stands"].Should().ContainSingle("the sent and the resulting stands both exceed the limit, reported once");
         _updatedFacility.Should().BeNull();
     }
 
@@ -225,7 +227,7 @@ public class UpdateFacilityCommandHandlerShould
         var updated = UpdatedFacility();
         updated.Name.Should().Be(command.Name);
         updated.Capacity.Should().Be(command.Capacity);
-        updated.Address.Street.Should().Be(command.Address.Street);
+        updated.Address.Street.Should().Be(command.Address!.Street);
         updated.Stands.Select(Describe).Should().BeEquivalentTo(
             [$"{stands[0].Id}:Renovated:5000", .. originalDescriptions.Skip(1)]);
     }
@@ -263,8 +265,115 @@ public class UpdateFacilityCommandHandlerShould
 
         var result = async () => await _handler.Handle(command, CancellationToken.None);
 
-        await result.Should().ThrowAsync<FacilityValidationException>().WithMessage("*Stands cannot exceed 4*");
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Stands");
         _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectMoreThanFourSentStandsEvenWhenTheFacilityIsFullWithoutUpdating()
+    {
+        var stands = Enumerable.Range(0, 4).Select(i => new Stand(Guid.NewGuid(), $"Stand {i}", 4500)).ToList();
+        GivenExisting(BuildExistingFacility(_facilityId, stands));
+        var command = BuildCommand(_facilityId, Enumerable.Range(0, 5).Select(i => new UpdateFacilityStandCommand($"New {i}", 10)).ToList());
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.Errors.Keys.Should().Equal("Stands");
+        exception.Errors["Stands"].Should().ContainSingle();
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectInvalidSentStandsNamingThemByTheirIndexInsideTheLockWithoutUpdating()
+    {
+        var north = new Stand(Guid.NewGuid(), "North", 4500);
+        GivenExisting(BuildExistingFacility(_facilityId, [north]));
+        var command = BuildCommand(_facilityId, [
+            new UpdateFacilityStandCommand("Valid", 10),
+            new UpdateFacilityStandCommand("   ", 10, north.Id),
+            new UpdateFacilityStandCommand("Valid", -1),
+        ]);
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Stands[1].StandName", "Stands[2].StandCapacity");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task KeepAStoredStandThatBreaksTheRulesWhenItIsNotSent()
+    {
+        var legacyStand = new Stand(Guid.NewGuid(), "", -5);
+        GivenExisting(BuildExistingFacility(_facilityId, [legacyStand]));
+
+        await _handler.Handle(BuildCommand(_facilityId, [new UpdateFacilityStandCommand("East", 10)]), CancellationToken.None);
+
+        UpdatedFacility().Stands.Select(Describe).Should().Contain(Describe(legacyStand));
+        UpdatedFacility().Stands.Should().HaveCount(2);
+    }
+
+    [Test]
+    public async Task RejectAnInvalidBodyWithEveryInvalidFieldInsideTheLockWithoutUpdating()
+    {
+        GivenExisting(BuildExistingFacility(_facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Name = new string('a', 101);
+        command.BuildDate = new DateTime(1799, 12, 31);
+        command.Capacity = -1;
+        command.Address = new UpdateFacilityAddressCommand("", "200", "08002", "Barcelona", "Catalonia", "Spain");
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().BeEquivalentTo("Name", "BuildDate", "Capacity", "Address.Street");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task RejectAnAbsentAddressWithTheUpdateKeyWithoutUpdating()
+    {
+        GivenExisting(BuildExistingFacility(_facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Address = null;
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        var exception = (await result.Should().ThrowExactlyAsync<ValidationFailedException>()).Which;
+        exception.ErrorTranslationKey.Should().Be(ValidationErrorKeys.FacilitiesUpdate);
+        exception.Errors.Keys.Should().Equal("Address");
+        _updatedFacility.Should().BeNull();
+    }
+
+    [Test]
+    public async Task ReturnNotFoundBeforeValidatingAnInvalidBody()
+    {
+        _repository.Update(Arg.Any<Guid>(), Arg.Any<Func<Facility, Facility>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new FacilityNotFoundException("Facility not found", _facilityId));
+        var command = BuildCommand(_facilityId);
+        command.Name = "";
+
+        var result = async () => await _handler.Handle(command, CancellationToken.None);
+
+        await result.Should().ThrowExactlyAsync<CannotUpdateFacilityNotFoundException>();
+    }
+
+    [Test]
+    public async Task UpdateAStoredFacilityThatBreaksTheRulesWhenTheBodyIsValid()
+    {
+        var legacy = new Facility(_facilityId, new string('x', 150), true, new DateTime(1700, 1, 1), FacilityType.Arena, -5,
+            new Address(Guid.NewGuid(), "", "1", new string('7', 30), "City", "Region", "Country"), null);
+        GivenExisting(legacy);
+
+        await _handler.Handle(BuildCommand(_facilityId), CancellationToken.None);
+
+        UpdatedFacility().Name.Should().Be("New Stadium Name");
+        UpdatedFacility().Address.Id.Should().Be(legacy.Address.Id);
     }
 
     private Facility UpdatedFacility() => _updatedFacility!;
