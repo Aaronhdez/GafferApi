@@ -26,14 +26,30 @@ This document covers how clients search for players and how the API reports erro
 - **Values with special characters** (e.g. an apostrophe) are matched safely; they no longer need any special handling by the caller.
 - **Unknown player** (`GET /players/{id}` for an id with no match): the API responds a bare `404 Not Found` — only `status` (and the request `instance` path) are set; `title`, `detail` and `type` are `null` and there is no `errorTranslationKey`. Callers should treat any 404 from this endpoint as "not found" without parsing a body for details.
 
+### Search capabilities inside the service (FEAT-001)
+
+Player search now supports, at repository level (`IPlayerRepository.Get(CriteriaSet, ...)`), richer criteria than the HTTP endpoint exposes. These are available to server-side code and future endpoints; the `POST /players/search` request/response contract is unchanged (each filter is still an exact-match `AND` on one value).
+
+| Criterion | What it does | Allowed fields |
+|---|---|---|
+| Value, `AND` / `OR` | Matches any of several exact values for a field; `OR` combines with the previous criterion with `OR` instead of `AND` | `Id`, `FirstName`, `LastName` |
+| Value, `LIKE` | "Contains" match for one or more values (any of them); `%`, `_` and `\` in the value are matched literally | `Id`, `FirstName`, `LastName` |
+| Interval | Inclusive range (`BETWEEN`) on a date | `BirthDate` |
+| Order | Sort ascending or descending; several terms break ties in order | `FirstName`, `LastName`, `BirthDate` |
+
+- A field outside the matching list (for example ordering by `Gender`, or an interval on `LastName`) is rejected with the same `Error.Search.FilterNotPermitted` error and no query runs.
+- A value criterion with no values is rejected (`ArgumentException`); an interval needs both bounds.
+- When a `BirthDate` interval is combined with value criteria that use `OR`, the value criteria are grouped first: `(A OR B) AND interval`, so the interval always restricts both sides of the `OR`.
+
 ### Limitations
 
-- The filter field whitelist is fixed to `Id`, `FirstName`, `LastName`; requesting a filter on any other `Player` column (e.g. `Gender`, `BirthDate`) is rejected, not silently ignored.
-- A filter with a `null`/absent `Value` does not match any row (it compares as `= NULL`), so it cannot be used to mean "no filter on this value".
+- Over HTTP, the filter field whitelist is `Id`, `FirstName`, `LastName` with exact match only (interval, order, `OR` and `LIKE` are not reachable from the endpoint); requesting a filter on any other `Player` column (e.g. `Gender`, `BirthDate`) is rejected, not silently ignored.
+- A filter with a `null`/absent `Value` does not match any row (it compares as `IN (NULL)`), so it cannot be used to mean "no filter on this value".
 - The search endpoint does not paginate; it returns every matching player.
 
 ## See also
 
 - Technical detail and API contract: [`doc/features/technical/player-search-and-persistence.md`](./technical/player-search-and-persistence.md).
+- Facility search still uses the older single-value criteria and is unaffected by FEAT-001.
 - The search endpoint depends on a database connection being available per request; see [`doc/features/technical/database-connection-lifecycle.md`](./technical/database-connection-lifecycle.md) for what happens when the database is briefly unreachable at startup.
 - Facility search now rejects a non-permitted filter field the same way, and every non-`404` error (including this one) is logged server-side: [`error-handling.md`](./error-handling.md).

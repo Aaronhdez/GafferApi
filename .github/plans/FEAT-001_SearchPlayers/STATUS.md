@@ -2,14 +2,14 @@
 
 | Campo | Valor |
 | --- | --- |
-| Estado | APPROVED |
+| Estado | DONE |
 | Ciclo | 3 |
 | Plan | Creado como `TECHDEBT-007`; renombrado por el operador a `FEAT-001_SearchPlayers` |
 | Aprobación del plan | **Aprobado por el operador** ("apruebo el plan, ... procede"). Decisiones: Q1 b), Q3 b), Q4 b), Q5 b2); Q0, Q2, Q6-Q11 por defecto (no respondidas explícitamente). Ver `00-overview-and-open-questions.md` |
 | Rama | `FEAT-001_SearchPlayers` (`git branch --show-current`, BUILDER ciclo 1, 2026-10-14T15:50:39Z) |
 | Pasos completados | Paso 01 APPROVED (ciclo 1). Paso 02 APPROVED (ciclo 2). Paso 03 APPROVED (ciclo 3); suite completa en verde (754 antes y después) |
 | Pasos bloqueados | Ninguno |
-| Siguiente | OPTIMIZER ciclo 3; checkpoint humano (DOCUMENTER si el operador lo aprueba) |
+| Siguiente | Cerrado: documentación completada; el operador regenera el cliente y hace commit |
 | Bloqueos | Ninguno abierto. **B1** (Docker/MySQL caído) resuelto en la reanudación 2026-10-14T16:03:06Z: `Quionis_DB` arriba (`0.0.0.0:3306->3306/tcp`). Mensaje original de B1: `failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine`; `OneTimeSetUp: MySqlConnector.MySqlException : Unable to connect to any of the specified MySQL hosts.` |
 
 ## Índice resumido de ciclos APPROVED
@@ -151,4 +151,13 @@ Estado de AC (BUILDER, pendiente de REVIEWER):
 
 ## Documentación modificada al cierre
 
-Pendiente (DOCUMENTER, tras `APPROVED` y aprobación humana).
+| Tipo | Documento |
+| --- | --- |
+| Actualizado (directo) | `doc/features/player-search.md` (capacidades de criterios: valor AND/OR/LIKE, intervalo, orden; listas blancas; regla de paréntesis; HTTP sin cambios) |
+| Actualizado (directo) | `doc/features/technical/player-search-and-persistence.md` (CriteriaSet y tipos de `Shared/Criteria/`, constructor SQL con LINQ, formas SQL, listas blancas, ejemplos, tests) |
+| Actualizado (indirecto) | `doc/features/technical/player-update.md` (diagrama: `Get(CriteriaSet)`) |
+| Actualizado (indirecto) | `doc/features/technical/database-connection-lifecycle.md` (ejemplo de `SqlPlayerRepository.Get` con `CriteriaSet` y `BuildOrder`) |
+| Creado | Ninguno (se actualizó lo existente) |
+| Sin cambio | `.github/doc/common/*-stack*.md` (sin cambios de paquetes ni herramientas de test; `*.csproj` sin diff); documentación de Facility (sigue con `SearchCriteria` heredado) |
+
+DOCUMENTER: Inicio 2026-10-14T16:45:00Z, Fin 2026-10-14T17:00:00Z (aproximados).

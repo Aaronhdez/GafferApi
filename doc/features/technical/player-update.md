@@ -17,7 +17,7 @@ sequenceDiagram
 
     Client->>PlayerController: PUT /players/{id} { firstName: "X" }
     PlayerController->>UpdatePlayerCommandHandler: Handle(UpdatePlayerCommand { Id, FirstName="X", others=null })
-    UpdatePlayerCommandHandler->>IPlayerRepository: Get(PlayerSearchCriteria: Id)
+    UpdatePlayerCommandHandler->>IPlayerRepository: Get(CriteriaSet: ValueCriteria Id)
     alt no match
         IPlayerRepository-->>UpdatePlayerCommandHandler: []
         UpdatePlayerCommandHandler-->>UpdatePlayerCommandHandler: throw PlayerNotFoundException
