@@ -3,6 +3,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
@@ -300,6 +301,112 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
             result.Select(p => p.Id).Should().BeEquivalentTo([percent.Id]);
         }
+
+        [Test]
+        public async Task ReturnOnlyThePlayersBornWithinTheIntervalIncludingBothBounds() {
+            var onLowerBound = await InsertPlayerBornOn("Lower", new DateTime(1990, 1, 1));
+            var inside = await InsertPlayerBornOn("Inside", new DateTime(1995, 6, 15));
+            var onUpperBound = await InsertPlayerBornOn("Upper", new DateTime(1999, 12, 31));
+            await InsertPlayerBornOn("Before", new DateTime(1989, 12, 31));
+
+            var result = await repository.Get(
+                Criteria([], [Nineties()], []), CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([onLowerBound.Id, inside.Id, onUpperBound.Id]);
+        }
+
+        [Test]
+        public async Task ReturnTheIntersectionOfAValueCriterionAndAnInterval() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15));
+
+            var result = await repository.Get(Criteria(
+                    [Value("FirstName", ValueCriteriaType.AND, player2.FirstName, lothar.FirstName)],
+                    [Nineties()],
+                    []),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([lothar.Id]);
+        }
+
+        [Test]
+        public async Task RestrictBothSidesOfAnOrWithTheInterval() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Matthaus");
+
+            var result = await repository.Get(Criteria(
+                    [
+                        Value("FirstName", ValueCriteriaType.AND, player2.FirstName),
+                        Value("LastName", ValueCriteriaType.OR, lothar.LastName)
+                    ],
+                    [Nineties()],
+                    []),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([lothar.Id]);
+        }
+
+        [Test]
+        public async Task ReturnThePlayersInAscendingOrder() {
+            var result = await repository.Get(
+                Criteria([], [], [Order("LastName", OrderDirection.ASC)]), CancellationToken.None);
+
+            result.Select(p => p.LastName).Should().Equal("Ballack", "Gascoigne", "Martel");
+        }
+
+        [Test]
+        public async Task ReturnThePlayersInDescendingOrder() {
+            var result = await repository.Get(
+                Criteria([], [], [Order("FirstName", OrderDirection.DESC)]), CancellationToken.None);
+
+            result.Select(p => p.FirstName).Should().Equal("Paul", "Michael", "Javier");
+        }
+
+        [Test]
+        public async Task BreakTiesWithTheNextOrderCriterion() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Matthaus");
+
+            var result = await repository.Get(Criteria([], [], [
+                    Order("BirthDate", OrderDirection.DESC),
+                    Order("FirstName", OrderDirection.ASC)
+                ]),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().Equal(player1.Id, player3.Id, player2.Id, lothar.Id);
+        }
+
+        [Test]
+        public async Task ApplyValueIntervalAndOrderCriteriaTogether() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Gascoigne");
+            var andreas = await InsertPlayerBornOn("Andreas", new DateTime(1990, 1, 1), "Gascoigne");
+
+            var result = await repository.Get(Criteria(
+                    [Value("LastName", ValueCriteriaType.AND, "Gascoigne")],
+                    [Nineties()],
+                    [Order("BirthDate", OrderDirection.DESC)]),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().Equal(lothar.Id, andreas.Id);
+        }
+
+        private async Task<Player> InsertPlayerBornOn(string firstName, DateTime birthDate, string lastName = "Interval") {
+            var player = new Player(Guid.NewGuid(), firstName, lastName, string.Empty, Gender.MALE, birthDate);
+            await InsertAPlayerInDb(player);
+            return player;
+        }
+
+        private static IntervalCriteria<DateTime> Nineties() =>
+            new("BirthDate", new DateTime(1990, 1, 1), new DateTime(1999, 12, 31));
+
+        private static OrderCriteria Order(string name, OrderDirection direction) => new() {
+            Name = name,
+            Direction = direction
+        };
+
+        private static CriteriaSet Criteria(ValueCriteria[] valueCriteria, IIntervalCriteria[] intervalCriteria,
+            OrderCriteria[] orderCriteria) => new() {
+                ValueCriteria = [.. valueCriteria],
+                IntervalCriteria = [.. intervalCriteria],
+                OrderCriteria = [.. orderCriteria]
+            };
 
         private static CriteriaSet Criteria(params ValueCriteria[] valueCriteria) => new() {
             ValueCriteria = [.. valueCriteria]

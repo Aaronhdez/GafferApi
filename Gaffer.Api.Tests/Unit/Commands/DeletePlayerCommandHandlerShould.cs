@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
+using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;

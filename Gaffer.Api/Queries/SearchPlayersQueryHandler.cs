@@ -1,5 +1,6 @@
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Shared;
+using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 
 namespace Gaffer.Api.Queries;

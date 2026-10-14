@@ -4,47 +4,87 @@
 
 | Ciclo | Paso | Veredicto | ID(s) de propuesta | Ahorro esperado | Estado de aprobación |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 01 | APPROVED | P1-1, P1-2 | ~15-25 k tokens y ~10 llamadas (P1-1); ~40-60 k (P1-2) | pendiente |
+| 1 | 01 | APPROVED | P1-1, P1-2 | ~15-25 k tokens y ~10 llamadas (P1-1); ~40-60 k (P1-2) | rechazadas (operador: errores humanos) |
+| 2 | 02 | APPROVED | P2-1 | ~1-3 llamadas y ~2-4 k tokens por ciclo de REVIEWER | pendiente de decisión |
+| 3 | 03 | APPROVED | P3-1 | ~5-15 k tokens y ~3-6 llamadas por ciclo de REVIEWER cuando haya ciclos previos sin commit | pendiente de decisión |
 
-## Ciclo 1 (paso 01, APPROVED)
+## Ciclo 2 (paso 02, APPROVED)
 
 ### Uso medido
 
-`usage-slice` (`--repo gaffer-api`, ventanas `Inicio`/`Fin` de `STATUS.md`): `sin datos` en las 3 ventanas (claude-code y copilot). No se reintenta la escalera: OPT-031 aplica (ciclos previos de otros planes ya sin datos); se cita `usage/*.md` como `estimado` y los totales del ORCHESTRATOR.
+`usage-slice`: no ejecutado. OPT-031 aplica: el ciclo 1 de este plan ya devolvió `sin datos` en las 3 ventanas, y este es el 2º ciclo consecutivo sin datos. Se cita `usage/*.md` como `estimado` y los totales del ORCHESTRATOR como `medido:agent-result` (cota inferior, OPT-023). Brecha de datos declarada: no hay separación de entrada nueva frente a caché.
 
 | Rol | subagent_tokens | Usos | Duración | Origen | `usage/*.md` (estimado) |
 | --- | ---: | ---: | ---: | --- | --- |
-| BUILDER run 1 (bloqueado por Docker) | 93 835 | 51 | 425,6 s | medido:agent-result (cota inferior, OPT-023) | ~90k ent. / ~14k sal. / ~38 usos |
-| BUILDER run 2 (reanudación + LINQ) | 49 136 | 26 | 283,4 s | medido:agent-result (cota inferior) | ~45k / ~6k / ~20 usos |
-| REVIEWER | 58 867 | 19 | 218,2 s | medido:agent-result (cota inferior) | ~60k / ~8k / ~16 usos |
-| PLANNER (precycle) | 87 911 / 59 770 / 41 792 | 38 / 30 / 15 | n/a | medido:agent-result | n/a |
+| BUILDER | 90 572 | 34 | 419,1 s | medido:agent-result (cota inferior) | ~110k ent. / ~16k sal. / ~25 usos |
+| REVIEWER | 63 787 | 19 | 195,5 s | medido:agent-result (cota inferior) | ~70k / ~7k / ~17 usos |
+| OPTIMIZER (registro, rechazos ciclo 1) | 19 367 | 6 | n/a | medido:agent-result | n/a |
 
-Totales: BUILDER 142 971 (77 usos), REVIEWER 58 867, PLANNER 189 473. Entrada nueva vs caché: no separable sin `usage-slice`; `usage/*.md` indica mayoría caché. Los usos de herramientas medidos (51/26/19) superan los estimados por los agentes (~38/~20/~16): sesgo de subestimación de ~25 %.
+Total de ciclo (BUILDER+REVIEWER): 154 359 tokens, 53 usos. Frente al ciclo 1 (BUILDER 142 971 en dos arranques, REVIEWER 58 867): el BUILDER de un solo arranque cuesta 63 % del total del ciclo 1; REVIEWER +8 %.
 
 ### Picos
 
 | Pico | Valor | Origen |
 | --- | --- | --- |
-| BUILDER run 1 | 93,8 k / 51 usos, 1,9x el run 2 | `STATUS.md`: `docker ps` ya falló (B1), pero BUILDER siguió: línea base `dotnet test` con 700 fallos en `OneTimeSetUp`, filtro de 16 tests fallidos, sonda ad hoc en scratchpad para suplir evidencia de BD |
-| Trabajo de línea base duplicado | AC1.1: 700 (erróneo) en run 1, 699 en run 2 (copia `git archive`), 699 de nuevo en REVIEWER (worktree) | Línea base de HEAD obtenida 3 veces; la del run 1 no valió |
-| PLANNER mid-cycle | 41,8 k / 15 usos para una decisión LINQ añadida | Requisito del operador tras la aprobación del plan |
-| Estimado frente a medido | usos +25 % | `usage/BUILDER.md` frente a `agent-result` |
+| Sesgo de usos de herramientas | BUILDER 34 medidos frente a ~25 estimados (+36 %); REVIEWER 19 frente a ~17 (+12 %) | `usage/*.md` frente a `agent-result`; confirma el sesgo del ciclo 1 (+25 %) y lo agranda |
+| Entrada estimada BUILDER | ~110k estimado frente a 90,6 k medido (total, cota inferior) | La estimación de tokens sobrestima mientras la de usos subestima; ninguna es fiable sin `usage-slice` |
+| `git worktree remove` fallido | 2º ciclo consecutivo (REVIEWER) | `usage/REVIEWER.md` ciclos 1 y 2: ruta larga en scratchpad, resuelto con `rm -rf` + `git worktree prune` |
+| BUILDER sin bloqueo | 90,6 k / 34 usos, sin reanudación | Ausencia del patrón del ciclo 1 (Docker caído); coste razonable para el paso (rojo en dos fases: tipos y luego aserción) |
+
+No hay picos de lectura ni de salida: ningún comando con salida grande sin filtrar, lecturas por rangos (OPT de lectura mínima aplicadas).
 
 ### Propuestas
 
-**P1-1: Preflight de BD bloqueante antes de cualquier `dotnet test` (extiende el paso 5 de `builder.md`)**
-- Causa: `.claude/agents/builder.md` L27 pide registrar el bloqueo, pero no dice que se detenga: tras `docker ps` fallido, BUILDER ejecutó la suite (700 fallos), la repitió filtrada (16 fallos) y construyó una sonda sustituta.
-- Propuesta (`.claude/agents/builder.md` y `.github/agents` equivalente): si `docker ps` o la conexión al puerto 3306 fallan, BUILDER puede completar código/tests y build+format, pero no ejecuta `dotnet test` de tests con BD; marca `BLOCKED`/`READY_FOR_REVIEW` parcial con el bloqueo exacto y termina. Una sola comprobación `docker ps --format '{{.Names}}'` y `exec 3<>/dev/tcp/127.0.0.1/3306`.
-- Ahorro esperado: ~15-25 k tokens y ~10 llamadas por incidencia (2 ejecuciones inútiles de suite + sonda); evita la cifra errónea de línea base (700 frente a 699).
-- Fuente: `STATUS.md` (filas BUILDER, líneas base), `usage/BUILDER.md` ciclo 1, ORCHESTRATOR run 1.
+**P2-1: Ruta corta para el worktree de línea base/rojo (ajusta la receta de OPT-033)**
+- Causa: `git worktree remove` falla por ruta larga dos ciclos seguidos porque el worktree se crea bajo el scratchpad (ruta muy larga en Windows); cada vez cuesta 2-3 llamadas extra (`rm -rf` + `prune` + comprobación).
+- Propuesta (`.github/doc/work-guidelines.md`, la aplica el operador a mano; y recordatorio en `.claude/agents/reviewer.md`): crear el worktree en una ruta corta (p. ej. `$(git rev-parse --show-toplevel)/../wt-red` o `C:/wt/red`, fuera del repo) y, si `remove --force` falla, el fallback documentado es `rm -rf <ruta> && git worktree prune`, en una sola llamada.
+- Ahorro esperado: ~1-3 llamadas y ~2-4 k tokens por ciclo de REVIEWER (estimado, sin datos medibles); elimina un fallo recurrente.
+- Fuente: `usage/REVIEWER.md` ciclos 1 y 2; `MEMORIES.md` OPT-033.
+- Estado de aprobación: pendiente de decisión del operador.
 
-**P1-2: Preflight de BD en ORCHESTRATOR antes de lanzar BUILDER/REVIEWER**
-- Causa: el operador arrancó Docker tras el bloqueo y hubo que reanudar BUILDER (2º arranque, 49 k tokens, relectura de contexto: `STATUS.md`, plan 01, `SqlPlayerRepository.cs`).
-- Propuesta (`/harness-run`, `Bash` ya permitido solo para `git status`/`git diff --stat`; requiere ampliar a `docker ps`): comprobar el puerto 3306 al inicio del ciclo y pedir al operador que arranque Docker antes de invocar BUILDER; alternativa sin ampliar permisos: que el checkpoint de inicio de ciclo recuerde "Docker/MySQL arriba".
-- Ahorro esperado: evita un relanzamiento completo; ~40-60 k tokens (run 2 menos la parte del refactor LINQ, y el sobrecoste de la reanudación) cuando Docker esté caído. Sin efecto con Docker arriba.
-- Fuente: totales del ORCHESTRATOR; `STATUS.md` Bloqueos B1.
-
-**Observación sin propuesta nueva**: la línea base de HEAD se calcula en BUILDER y de nuevo en REVIEWER (OPT-033 ya cubre la receta de worktree); no se repite. Requisito añadido a mitad de ciclo (LINQ): coste de PLANNER 41,8 k, inevitable; OPT-017/020 (consolidar decisiones) ya aplicaba al planificar. Verificar en el ciclo 2 si P1-1 evita repetir el patrón.
+**Observación sin propuesta nueva**: el sesgo de subestimación de usos (+25 % ciclo 1, +36 % ciclo 2 en BUILDER) no se resuelve con otra regla; la causa es que los subagentes no ven su consumo. La corrección es que el ORCHESTRATOR pase los totales y que `usage/*.md` marque `estimado` (ya cumplido). No se propone.
 
 ### Efecto observado de propuestas previas
-Sin datos suficientes en este ciclo: OPT-039 (grep de usos antes de editar) se aplicó (`STATUS.md`, fila "Grep de usos OPT-039") sin fallos de compilación por tipos no localizados; OPT-005/006 aplicados (código de salida y filtro bilingüe). Medición de ahorro no posible por falta de `usage-slice`.
+- P1-1/P1-2 rechazadas (error humano): no se reevalúan. En este ciclo no hubo bloqueo de Docker, sin datos para juzgar.
+- OPT-033 (receta de worktree): REVIEWER la usó (un único worktree para rojo 1 y 2), pero reaparece el fallo de eliminación por ruta larga; detalle en P2-1. Ahorro no medible por falta de `usage-slice`.
+- OPT-005/006/039: aplicados sin incidencias visibles (suites filtradas, sin errores de tipos no localizados).
+
+## Ciclo 3 (paso 03, APPROVED, último ciclo planificado)
+
+### Uso medido
+
+`usage-slice`: no ejecutado. OPT-031 aplica (3er ciclo consecutivo sin datos). Se cita `usage/*.md` como `estimado` y los totales del ORCHESTRATOR como `medido:agent-result` (cota inferior, OPT-023). Brecha: sin separación de entrada nueva frente a caché.
+
+| Rol | subagent_tokens | Usos | Duración | Origen | `usage/*.md` (estimado) |
+| --- | ---: | ---: | ---: | --- | --- |
+| BUILDER | 62 309 | 24 | 278,9 s | medido:agent-result (cota inferior) | ~70k ent. / ~9k sal. / ~18 usos |
+| REVIEWER | 52 239 | 18 | 190,2 s | medido:agent-result (cota inferior) | ~55k / ~6k / ~12 usos |
+| OPTIMIZER (análisis ciclo 2) | 25 498 | 8 | n/a | medido:agent-result | n/a |
+
+Total BUILDER+REVIEWER: 114 548 tokens, 42 usos. Frente al ciclo 2 (154 359 / 53): -26 % tokens, -21 % usos; el menor del plan (refactor puro, 754 tests antes/después). Sesgo de usos: BUILDER 24 frente a ~18 (+33 %), REVIEWER 18 frente a ~12 (+50 %); confirma el patrón de subestimación (ciclos 1-2: +25 %/+36 %).
+
+### Picos
+
+| Pico | Valor | Origen |
+| --- | --- | --- |
+| Sesgo de usos REVIEWER | +50 % (18 medidos frente a ~12) | `usage/REVIEWER.md` frente a `agent-result`; el mayor del plan |
+| Ciclos 1-2 sin commit | Diff del ciclo 3 frente a `HEAD` mezcla los 3 ciclos; el rojo del ciclo 3 no se pudo reproducir en worktree | `usage/REVIEWER.md` ciclo 3 (nota O7); AC3.4 verificado por comparación de bloques |
+| Compactación manual de `STATUS.md` | `awk`/`sed` por BUILDER | `usage/BUILDER.md` ciclo 3; cumple OPT-029, sin incidencia |
+
+Sin picos de lectura ni de salida. Tendencia a la baja de coste por ciclo (el ciclo 3 es el más barato).
+
+### Propuestas
+
+**P3-1: Commit del operador al cerrar cada ciclo APPROVED, antes del siguiente (recordatorio en el checkpoint de `/harness-run`)**
+- Causa: con los ciclos 1-2 sin commit, `HEAD` no contiene el estado "antes" del ciclo 3. El diff mezcla ciclos, REVIEWER no puede reproducir el rojo (OPT-033 inaplicable) y debe sustituirlo por comparación manual de bloques, con menos evidencia y más lecturas.
+- Propuesta: añadir al texto del checkpoint de ORCHESTRATOR (`.claude/commands/harness-run.md`, lo aplica el operador) una línea: "Si el veredicto es APPROVED o el siguiente ciclo es un refactor, haz commit/stash del estado actual antes de aprobar el ciclo siguiente". Respeta AGENTS.md: el agente no hace commit, solo lo recuerda al operador.
+- Ahorro esperado: ~5-15 k tokens y ~3-6 llamadas por ciclo de REVIEWER (estimado) y evidencia de rojo reproducible en lugar de comparación manual. Sin efecto si el operador ya hace commit por ciclo.
+- Fuente: `usage/REVIEWER.md` ciclo 3; nota O7 del REVIEWER; `AGENTS.md` (commits manuales).
+- Estado de aprobación: pendiente de decisión del operador.
+
+**P2-1** (ruta corta del worktree): sin decisión del operador; sigue pendiente, no se repropone. En el ciclo 3 no hubo worktree, sin datos nuevos.
+
+### Efecto observado de propuestas previas
+- OPT-029 (colapso de `STATUS.md`): BUILDER compactó el ciclo 1 a `STATUS-archive.md` sin incidencias.
+- OPT-005/006/039: sin incidencias; suites filtradas.
+- Ahorro de OPT-033/OPT-031 no medible por falta de `usage-slice`.
