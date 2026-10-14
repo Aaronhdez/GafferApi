@@ -4,14 +4,26 @@ using Gaffer.Api.Domain;
 namespace Gaffer.Api.Shared.Repositories;
 
 public interface IPlayerRepository {
-    Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken);
+    Task<List<Player>> Get(CriteriaSet criteria, CancellationToken cancellationToken);
     Task Save(Player player, CancellationToken cancellationToken);
     Task Delete(Guid id, CancellationToken cancellationToken);
     Task Update(Player player, CancellationToken cancellationToken);
 }
 
-public class PlayerSearchCriteria {
-    public List<SearchCriteria> CriteriaList { get; set; } = [];
+public class CriteriaSet {
+    public List<ValueCriteria> ValueCriteria { get; set; } = [];
+}
+
+public class ValueCriteria {
+    public string Name { get; set; } = null!;
+    public List<string> Values { get; set; } = [];
+    public ValueCriteriaType Type { get; set; } = ValueCriteriaType.AND;
+}
+
+public enum ValueCriteriaType {
+    AND,
+    OR,
+    LIKE
 }
 
 public class SearchCriteria {

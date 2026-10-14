@@ -15,12 +15,13 @@ public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 
     private async Task<Player?> FindPlayer(DeletePlayerCommand command, CancellationToken cancellationToken) {
-        var criteria = new SearchCriteria {
+        var criteria = new ValueCriteria {
             Name = "Id",
-            Value = command.Id.ToString()
+            Values = [command.Id.ToString()],
+            Type = ValueCriteriaType.AND
         };
-        var searchCriteria = new PlayerSearchCriteria();
-        searchCriteria.CriteriaList.Add(criteria);
+        var searchCriteria = new CriteriaSet();
+        searchCriteria.ValueCriteria.Add(criteria);
         var queryResult = await playerRepository.Get(searchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();
         return player;

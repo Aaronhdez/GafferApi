@@ -7,9 +7,13 @@ namespace Gaffer.Api.Queries;
 public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
     : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> {
     public virtual async Task<List<SearchPlayerResult>> Handle(SearchPlayersQuery query, CancellationToken cancellationToken) {
-        var searchCriteria = new PlayerSearchCriteria();
+        var searchCriteria = new CriteriaSet();
         foreach (var queryFilter in query.Filters) {
-            searchCriteria.CriteriaList.Add(new SearchCriteria { Name = queryFilter.Name, Value = queryFilter.Value, });
+            searchCriteria.ValueCriteria.Add(new ValueCriteria {
+                Name = queryFilter.Name,
+                Values = [queryFilter.Value],
+                Type = ValueCriteriaType.AND
+            });
         }
         var players = await playerRepository.Get(searchCriteria, cancellationToken);
         return players.Select(player

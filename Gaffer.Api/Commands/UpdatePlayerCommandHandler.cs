@@ -17,10 +17,11 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
     }
 
     private async Task<Player> GetPlayer(UpdatePlayerCommand command, CancellationToken cancellationToken) {
-        var playerSearchCriteria = new PlayerSearchCriteria();
-        playerSearchCriteria.CriteriaList.Add(new SearchCriteria {
+        var playerSearchCriteria = new CriteriaSet();
+        playerSearchCriteria.ValueCriteria.Add(new ValueCriteria {
             Name = "Id",
-            Value = $"{command.Id}"
+            Values = [$"{command.Id}"],
+            Type = ValueCriteriaType.AND
         });
         var queryResult = await playerRepository.Get(playerSearchCriteria, cancellationToken);
         var player = queryResult.FirstOrDefault();

@@ -39,15 +39,17 @@ public class UpdatePlayerCommandHandlerShould {
             BirthDate = NewBirthDate,
             Gender = NewGender,
         };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
 
         await handler.Handle(command, CancellationToken.None);
 
         await repository.Received(1)
-            .Get(Arg.Is<PlayerSearchCriteria>(sc =>
-                    sc != null && sc.CriteriaList.Any(c =>
+            .Get(Arg.Is<CriteriaSet>(sc =>
+                    sc != null && sc.ValueCriteria.Count == 1 && sc.ValueCriteria.Any(c =>
                         c.Name == "Id"
-                        && c.Value == playerId.ToString())),
+                        && c.Type == ValueCriteriaType.AND
+                        && c.Values.Count == 1
+                        && c.Values[0] == playerId.ToString())),
                 Arg.Any<CancellationToken>());
         await repository.Received(1).Update(Arg.Is<Player>(p =>
                 p != null && p.Id == player.Id
@@ -63,7 +65,7 @@ public class UpdatePlayerCommandHandlerShould {
     public async Task KeepOmittedFieldsIncludingTheSecondLastNameWhenOnlyFirstNameIsSent() {
         var player = AnExistingPlayer();
         var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -81,7 +83,7 @@ public class UpdatePlayerCommandHandlerShould {
     public async Task ReplaceTheSecondLastNameOnlyWhenAValueIsSentAndKeepTheRest(string? sentSecondLastName, string? expectedSecondLastName) {
         var player = AnExistingPlayer();
         var command = new UpdatePlayerCommand { Id = playerId, SecondLastName = sentSecondLastName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -97,7 +99,7 @@ public class UpdatePlayerCommandHandlerShould {
     [Test]
     public async Task ThrowExceptionWhenPlayerNotFound() {
         var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([]);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -108,7 +110,7 @@ public class UpdatePlayerCommandHandlerShould {
     public async Task PropagateTheRepositoryFailureWhileGettingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new UpdatePlayerCommand { Id = playerId, FirstName = NewName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
@@ -129,7 +131,7 @@ public class UpdatePlayerCommandHandlerShould {
             Gender = NewGender,
         };
 
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
         repository.Update(Arg.Any<Player>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
@@ -142,7 +144,7 @@ public class UpdatePlayerCommandHandlerShould {
     [TestCase("   ")]
     public async Task RejectAnEmptySecondLastNameWithoutUpdating(string sentSecondLastName) {
         var command = new UpdatePlayerCommand { Id = playerId, SecondLastName = sentSecondLastName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -162,7 +164,7 @@ public class UpdatePlayerCommandHandlerShould {
             BirthDate = DateTime.UtcNow.Date.AddYears(-15),
             Gender = (Gender)99,
         };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([AnExistingPlayer()]);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -176,7 +178,7 @@ public class UpdatePlayerCommandHandlerShould {
     [Test]
     public async Task ReturnNotFoundBeforeValidatingTheSentFields() {
         var command = new UpdatePlayerCommand { Id = playerId, FirstName = "" };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([]);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
 
@@ -188,7 +190,7 @@ public class UpdatePlayerCommandHandlerShould {
         var legacy = new Player(playerId, new string('x', 150), TestDefaultValues.DefaultLastName, "", OriginalGender,
             DateTime.UtcNow.Date.AddYears(-10));
         var command = new UpdatePlayerCommand { Id = playerId, LastName = NewLastName };
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([legacy]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([legacy]);
 
         await handler.Handle(command, CancellationToken.None);
 

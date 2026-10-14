@@ -19,7 +19,7 @@ public class SearchPlayersQueryHandlerShould {
     public void Setup() {
         players = new List<Player>();
         repository = Substitute.For<IPlayerRepository>();
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(players);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns(players);
         handler = new SearchPlayersQueryHandler(repository);
     }
 
@@ -27,7 +27,7 @@ public class SearchPlayersQueryHandlerShould {
     public async Task ReturnEmptyInformationWhenNoPlayersFound() {
         var result = await handler.Handle(emptySearchCriteria, CancellationToken.None);
 
-        await repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
+        await repository.Received(1).Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(0);
     }
 
@@ -42,7 +42,7 @@ public class SearchPlayersQueryHandlerShould {
 
         var result = await handler.Handle(emptySearchCriteria, CancellationToken.None);
 
-        await repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
+        await repository.Received(1).Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(players.Count);
         result.Should().Contain(spr => spr.Id == player1.Id);
         result.Should().Contain(spr => spr.Id == player2.Id);
@@ -61,19 +61,19 @@ public class SearchPlayersQueryHandlerShould {
         filteredPlayers.Add(player1);
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "Id", Value = $"{player1.Id}" });
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns(filteredPlayers);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns(filteredPlayers);
 
         var result = await handler.Handle(query, CancellationToken.None);
 
 
-        await repository.Received(1).Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>());
+        await repository.Received(1).Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>());
         result.Count.Should().Be(1);
         result.Should().Contain(spr => spr.Id == player1.Id);
     }
 
     [Test]
     public async Task PropagateExceptionWhenRepositoryFails() {
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("repository unavailable"));
 
         var result = async () => await handler.Handle(emptySearchCriteria, CancellationToken.None);
@@ -88,17 +88,23 @@ public class SearchPlayersQueryHandlerShould {
         var query = new SearchPlayersQuery();
         query.Filters.Add(new QueryFilter { Name = "FirstName", Value = "Jane" });
         query.Filters.Add(new QueryFilter { Name = "Gender", Value = nameof(Gender.FEMALE) });
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
 
         var result = await handler.Handle(query, CancellationToken.None);
 
-        await repository.Received(1).Get(Arg.Is<PlayerSearchCriteria>(criteria =>
-            criteria != null && criteria.CriteriaList.Count == 2
-            && criteria.CriteriaList.Any(filter => filter.Name == "FirstName" && filter.Value == "Jane")
-            && criteria.CriteriaList.Any(filter => filter.Name == "Gender" && filter.Value == nameof(Gender.FEMALE))),
+        await repository.Received(1).Get(Arg.Is<CriteriaSet>(criteria =>
+            criteria != null && criteria.ValueCriteria.Count == 2
+            && criteria.ValueCriteria.Any(filter => IsSingleAndValue(filter, "FirstName", "Jane"))
+            && criteria.ValueCriteria.Any(filter => IsSingleAndValue(filter, "Gender", nameof(Gender.FEMALE)))),
             Arg.Any<CancellationToken>());
         result.Should().ContainSingle();
         result[0].Gender.Should().Be(Gender.FEMALE);
         result[0].BirthDate.Should().Be(player.Birthdate);
     }
+
+    private static bool IsSingleAndValue(ValueCriteria criteria, string name, string value) =>
+        criteria.Name == name
+        && criteria.Type == ValueCriteriaType.AND
+        && criteria.Values.Count == 1
+        && criteria.Values[0] == value;
 }

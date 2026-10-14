@@ -14,31 +14,79 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
             { "LastName", "LastName" }
         };
 
-    public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken) {
+    private const string WherePrefix = "WHERE ";
+
+    public async Task<List<Player>> Get(CriteriaSet criteria, CancellationToken cancellationToken) {
         var (whereClause, parameters) = BuildFilters(criteria);
         var query = $"SELECT * FROM `Players`{whereClause};";
         return await dbConnectionProvider.QueryAsync<Player>(query, parameters, cancellationToken);
     }
 
-    private static (string whereClause, DynamicParameters parameters) BuildFilters(PlayerSearchCriteria criteria) {
-        var parameters = new DynamicParameters();
-        var whereClause = string.Empty;
-        var filters = criteria.CriteriaList.Where(item => item != null).ToList();
+    private sealed record ValueCriteriaClause(
+        string Connector,
+        string Expression,
+        IReadOnlyList<KeyValuePair<string, object?>> Parameters);
 
-        for (var i = 0; i < filters.Count; i++) {
-            var item = filters[i];
-            if (item.Name == null || !AllowedFilterColumns.TryGetValue(item.Name, out var column)) {
-                throw new PlayerSearchFilterNotPermittedException(item.Name ?? string.Empty);
-            }
-
-            var paramName = $"p{i}";
-            var connector = i == 0 ? "WHERE" : item.CriteriaType.ToString();
-            whereClause += $" {connector} `{column}` = @{paramName}";
-            parameters.Add(paramName, item.Value);
+    private static (string whereClause, DynamicParameters parameters) BuildFilters(CriteriaSet criteria) {
+        // ToList() evaluates every criterion (and its validation) in order before any SQL is built.
+        var clauses = criteria.ValueCriteria
+            .Where(item => item != null)
+            .Select(ToValueCriteriaClause)
+            .ToList();
+        if (clauses.Count == 0) {
+            return (string.Empty, new DynamicParameters());
         }
 
-        return (whereClause, parameters);
+        var statement = clauses.Aggregate(WherePrefix, AddValueCriteria);
+        var parameters = new DynamicParameters(clauses
+            .SelectMany(clause => clause.Parameters)
+            .ToDictionary(parameter => parameter.Key, parameter => parameter.Value));
+        return ($" {statement}", parameters);
     }
+
+    // The action prefix (AND/OR) is omitted while the statement only holds "WHERE ".
+    private static string AddValueCriteria(string statement, ValueCriteriaClause clause) =>
+        statement.Length > WherePrefix.Length
+            ? $"{statement}{clause.Connector}{clause.Expression}"
+            : $"{statement}{clause.Expression}";
+
+    // Only whitelisted column names, fixed keywords and parameter names reach the SQL text; every caller value is a
+    // parameter.
+    private static ValueCriteriaClause ToValueCriteriaClause(ValueCriteria criteria, int index) {
+        if (criteria.Name == null || !AllowedFilterColumns.TryGetValue(criteria.Name, out var column)) {
+            throw new PlayerSearchFilterNotPermittedException(criteria.Name ?? string.Empty);
+        }
+
+        if (criteria.Values == null || criteria.Values.Count == 0) {
+            throw new ArgumentException($"Search criterion '{column}' needs at least one value.", nameof(criteria));
+        }
+
+        var isLike = criteria.Type == ValueCriteriaType.LIKE;
+        var parameters = criteria.Values
+            .Select((value, valueIndex) => new KeyValuePair<string, object?>(
+                $"v{index}_{valueIndex}",
+                isLike ? ContainsPattern(value) : value))
+            .ToList();
+        var parameterNames = parameters.Select(parameter => $"@{parameter.Key}").ToList();
+
+        return new ValueCriteriaClause(
+            criteria.Type == ValueCriteriaType.OR ? " OR " : " AND ",
+            isLike
+                ? LikeExpression(column, parameterNames)
+                : $"`{column}` IN ({string.Join(", ", parameterNames)})",
+            parameters);
+    }
+
+    private static string LikeExpression(string column, IReadOnlyList<string> parameterNames) {
+        var expression = string.Join(" OR ", parameterNames.Select(name => $"`{column}` LIKE {name}"));
+        return parameterNames.Count > 1 ? $"({expression})" : expression;
+    }
+
+    // MariaDB's default LIKE escape character is '\': escape it first, then the wildcards, so the value matches literally.
+    private static string? ContainsPattern(string? value) =>
+        value == null
+            ? null
+            : $"%{value.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_")}%";
 
     public async Task Save(Player player, CancellationToken cancellationToken) {
         const string query =
