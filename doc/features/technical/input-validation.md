@@ -87,7 +87,7 @@ Content-Type: application/json
 
 ## How to test
 
-- Domain/unit: `Gaffer.Api.Tests/Unit/` `Player`, `Facility`, `Address`, `Stand` rule matrices; `Unit/Commands/*Should` for each handler (one case per rule, no `Update` call on error); `Unit/Exceptions/ExceptionToHttpResponseConvertersShould.cs`.
+- Domain/unit: `Gaffer.Api.Tests/Unit/` `Player`, `Facility`, `Address`, `Stand` rule matrices; `Unit/Commands/{Players,Facilities,Stands}/*Should` for each handler (one case per rule, no `Update` call on error); `Unit/Exceptions/ExceptionToHttpResponseConvertersShould.cs`.
 - Acceptance: `Acceptance/PlayerFeaturesShould.cs`, `FacilityFeaturesShould.cs`, `FacilityStandsFeaturesShould.cs` (400 format, keys, model binding, old data still read); the production pipeline cases (`AddMvcCore`, where `TestFixture` differs) use `TestShared/StartupTestServer.cs`.
 - Contract: `OpenApiContractShould`, `FacilitiesControllerContractShould`; compare the served document with `Acceptance/ServedOpenApiDocumentDump.cs` ([`.github/doc/common/test-stack.md`](../../../.github/doc/common/test-stack.md)).
 - Run with `dotnet test gaffer-api.sln` against the Docker MariaDB database ([`database-configuration.md`](./database-configuration.md)).
