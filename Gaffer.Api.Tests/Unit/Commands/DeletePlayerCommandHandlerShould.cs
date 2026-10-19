@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
 using Gaffer.Api.Domain;
+using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
@@ -28,17 +29,24 @@ public class DeletePlayerCommandHandlerShould {
             TestDefaultValues.DefaultSecondLastName,
             TestDefaultValues.DefaultGender,
             TestDefaultValues.DefaultBirthDate);
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
 
         await handler.Handle(createPlayerCommand, CancellationToken.None);
 
+        await repository.Received(1).Get(Arg.Is<CriteriaSet>(sc =>
+                sc != null && sc.ValueCriteria.Count == 1 && sc.ValueCriteria.Any(c =>
+                    c.Name == "Id"
+                    && c.Type == ValueCriteriaType.AND
+                    && c.Values.Count == 1
+                    && c.Values[0] == TestDefaultValues.EmptyPlayerId.ToString())),
+            Arg.Any<CancellationToken>());
         await repository.Received(1).Delete(Arg.Is<Guid>(g => g == TestDefaultValues.EmptyPlayerId), Arg.Any<CancellationToken>());
     }
 
     [Test]
     public async Task ThrowExceptionIfPlayerNotFound() {
         var createPlayerCommand = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([]);
 
         var result = async () => await handler.Handle(createPlayerCommand, CancellationToken.None);
 
@@ -49,7 +57,7 @@ public class DeletePlayerCommandHandlerShould {
     public async Task PropagateTheRepositoryFailureWhileFindingPlayer() {
         var failure = new InvalidOperationException("database unavailable");
         var command = new DeletePlayerCommand(TestDefaultValues.EmptyPlayerId);
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>())
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
         var result = async () => await handler.Handle(command, CancellationToken.None);
@@ -69,7 +77,7 @@ public class DeletePlayerCommandHandlerShould {
             TestDefaultValues.DefaultGender,
             TestDefaultValues.DefaultBirthDate);
 
-        repository.Get(Arg.Any<PlayerSearchCriteria>(), Arg.Any<CancellationToken>()).Returns([player]);
+        repository.Get(Arg.Any<CriteriaSet>(), Arg.Any<CancellationToken>()).Returns([player]);
         repository.Delete(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 

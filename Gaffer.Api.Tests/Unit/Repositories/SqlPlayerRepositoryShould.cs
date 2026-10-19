@@ -3,6 +3,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.ConnectionProviders;
+using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
@@ -66,8 +67,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
             DateTime.UtcNow.Date.AddYears(-10));
         await InsertAPlayerInDb(legacy);
 
-        var result = await repository.Get(new PlayerSearchCriteria {
-            CriteriaList = [new SearchCriteria { Name = "Id", Value = $"{legacy.Id}" }]
+        var result = await repository.Get(new CriteriaSet {
+            ValueCriteria = [new ValueCriteria { Name = "Id", Values = [$"{legacy.Id}"] }]
         }, CancellationToken.None);
 
         var stored = result.Should().ContainSingle().Subject;
@@ -94,7 +95,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task PassItsTokenToTheProviderWhenGetting() {
-            await recordedRepository.Get(new PlayerSearchCriteria(), cancellation.Token);
+            await recordedRepository.Get(new CriteriaSet(), cancellation.Token);
 
             recorder.ShouldHaveReceivedOnly(cancellation.Token, minimumCalls: 1);
         }
@@ -128,7 +129,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
         public async Task ReturnEmptyListWhenSearchCriteriaAndDatabaseAreBothEmpty() {
             await ClearDatabase(TablesToDelete);
 
-            var result = await repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            var result = await repository.Get(new CriteriaSet(), CancellationToken.None);
 
             result.Should().BeEmpty();
         }
@@ -136,7 +137,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
         [Test]
         public async Task ReturnAllPlayersWhenSearchCriteriaAreEmptyAndDatabaseIsNot() {
 
-            var result = await repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            var result = await repository.Get(new CriteriaSet(), CancellationToken.None);
 
             result.Count.Should().Be(3);
             result.Should().Contain(p => p.Id == player1.Id);
@@ -146,10 +147,10 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task ReturnAllPlayersWhenGuidIsUsedAsSearchCriteria() {
-            var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "Id", Value = $"{player1.Id}" });
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.CriteriaList = searchCriteriaList;
+            var searchCriteriaList = new List<ValueCriteria>();
+            searchCriteriaList.Add(new ValueCriteria { Name = "Id", Values = [$"{player1.Id}"] });
+            var playerSearchCriteria = new CriteriaSet();
+            playerSearchCriteria.ValueCriteria = searchCriteriaList;
 
             var result = await repository.Get(playerSearchCriteria, CancellationToken.None);
 
@@ -159,10 +160,10 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task ReturnAPlayersWhenFirstNameIsUsedAsSearchCriteria() {
-            var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}" });
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.CriteriaList = searchCriteriaList;
+            var searchCriteriaList = new List<ValueCriteria>();
+            searchCriteriaList.Add(new ValueCriteria { Name = "FirstName", Values = [$"{player1.FirstName}"] });
+            var playerSearchCriteria = new CriteriaSet();
+            playerSearchCriteria.ValueCriteria = searchCriteriaList;
 
             var result = await repository.Get(playerSearchCriteria, CancellationToken.None);
 
@@ -173,10 +174,10 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task ReturnAPlayerWhenLastNameIsUsedAsSearchCriteria() {
-            var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player1.LastName}" });
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.CriteriaList = searchCriteriaList;
+            var searchCriteriaList = new List<ValueCriteria>();
+            searchCriteriaList.Add(new ValueCriteria { Name = "LastName", Values = [$"{player1.LastName}"] });
+            var playerSearchCriteria = new CriteriaSet();
+            playerSearchCriteria.ValueCriteria = searchCriteriaList;
 
             var result = await repository.Get(playerSearchCriteria, CancellationToken.None);
 
@@ -188,11 +189,11 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task ReturnAPlayerWhenDifferentFiltersAreUsedAsStrictSearchCriteria() {
-            var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}" });
-            searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player2.FirstName}" });
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.CriteriaList = searchCriteriaList;
+            var searchCriteriaList = new List<ValueCriteria>();
+            searchCriteriaList.Add(new ValueCriteria { Name = "LastName", Values = [$"{player2.LastName}"] });
+            searchCriteriaList.Add(new ValueCriteria { Name = "FirstName", Values = [$"{player2.FirstName}"] });
+            var playerSearchCriteria = new CriteriaSet();
+            playerSearchCriteria.ValueCriteria = searchCriteriaList;
 
             var result = await repository.Get(playerSearchCriteria, CancellationToken.None);
 
@@ -204,11 +205,11 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
         [Test]
         public async Task ReturnDifferentPlayersWhenDifferentFiltersAreUsedAsConditionalSearchCriteria() {
-            var searchCriteriaList = new List<SearchCriteria>();
-            searchCriteriaList.Add(new SearchCriteria { Name = "FirstName", Value = $"{player1.FirstName}", CriteriaType = CriteriaType.AND });
-            searchCriteriaList.Add(new SearchCriteria { Name = "LastName", Value = $"{player2.LastName}", CriteriaType = CriteriaType.OR });
-            var playerSearchCriteria = new PlayerSearchCriteria();
-            playerSearchCriteria.CriteriaList = searchCriteriaList;
+            var searchCriteriaList = new List<ValueCriteria>();
+            searchCriteriaList.Add(new ValueCriteria { Name = "FirstName", Values = [$"{player1.FirstName}"], Type = ValueCriteriaType.AND });
+            searchCriteriaList.Add(new ValueCriteria { Name = "LastName", Values = [$"{player2.LastName}"], Type = ValueCriteriaType.OR });
+            var playerSearchCriteria = new CriteriaSet();
+            playerSearchCriteria.ValueCriteria = searchCriteriaList;
 
             var result = await repository.Get(playerSearchCriteria, CancellationToken.None);
 
@@ -220,6 +221,202 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
             result.Should().Contain(p => p.FirstName == player2.FirstName);
             result.Should().Contain(p => p.LastName == player2.LastName);
         }
+
+        [Test]
+        public async Task ReturnPlayersMatchingAnyValueOfAnAndCriterion() {
+            var result = await repository.Get(
+                Criteria(Value("FirstName", ValueCriteriaType.AND, player1.FirstName, player2.FirstName)),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player1.Id, player2.Id]);
+        }
+
+        [Test]
+        public async Task ReturnTheIntersectionOfTwoAndCriteriaWithSeveralValues() {
+            var result = await repository.Get(Criteria(
+                    Value("FirstName", ValueCriteriaType.AND, player1.FirstName, player2.FirstName),
+                    Value("LastName", ValueCriteriaType.AND, player2.LastName, player3.LastName)),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player2.Id]);
+        }
+
+        [Test]
+        public async Task ReturnTheUnionOfAnAndCriterionAndAnOrCriterionWithSeveralValues() {
+            var result = await repository.Get(Criteria(
+                    Value("FirstName", ValueCriteriaType.AND, player2.FirstName),
+                    Value("LastName", ValueCriteriaType.OR, player1.LastName, player3.LastName)),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player1.Id, player2.Id, player3.Id]);
+        }
+
+        [Test]
+        public async Task ReturnPlayersWhoseFieldContainsTheLikeValue() {
+            var result = await repository.Get(Criteria(Value("FirstName", ValueCriteriaType.LIKE, "ich")),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player3.Id]);
+        }
+
+        [Test]
+        public async Task ReturnPlayersWhoseFieldContainsAnyOfTheLikeValues() {
+            var result = await repository.Get(Criteria(Value("FirstName", ValueCriteriaType.LIKE, "ich", "au")),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player2.Id, player3.Id]);
+        }
+
+        [Test]
+        public async Task RestrictWithAndALikeCriterionThatFollowsAnotherCriterion() {
+            var result = await repository.Get(Criteria(
+                    Value("LastName", ValueCriteriaType.AND, player2.LastName, player3.LastName),
+                    Value("FirstName", ValueCriteriaType.LIKE, "ae", "av")),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([player3.Id]);
+        }
+
+        [Test]
+        public async Task MatchAnUnderscoreInALikeValueLiterally() {
+            var underscored = new Player(Guid.NewGuid(), "Jo_n", "Literal", string.Empty, Gender.MALE, birthDate);
+            await InsertAPlayerInDb(underscored);
+
+            var wildcardCandidates = await repository.Get(Criteria(Value("FirstName", ValueCriteriaType.LIKE, "P_u")),
+                CancellationToken.None);
+            var literalMatches = await repository.Get(Criteria(Value("FirstName", ValueCriteriaType.LIKE, "o_n")),
+                CancellationToken.None);
+
+            wildcardCandidates.Should().BeEmpty();
+            literalMatches.Select(p => p.Id).Should().BeEquivalentTo([underscored.Id]);
+        }
+
+        [Test]
+        public async Task MatchAPercentSignInALikeValueLiterally() {
+            var percent = new Player(Guid.NewGuid(), "Max100%", "Literal", string.Empty, Gender.MALE, birthDate);
+            await InsertAPlayerInDb(percent);
+
+            var result = await repository.Get(Criteria(Value("FirstName", ValueCriteriaType.LIKE, "%")),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([percent.Id]);
+        }
+
+        [Test]
+        public async Task ReturnOnlyThePlayersBornWithinTheIntervalIncludingBothBounds() {
+            var onLowerBound = await InsertPlayerBornOn("Lower", new DateTime(1990, 1, 1));
+            var inside = await InsertPlayerBornOn("Inside", new DateTime(1995, 6, 15));
+            var onUpperBound = await InsertPlayerBornOn("Upper", new DateTime(1999, 12, 31));
+            await InsertPlayerBornOn("Before", new DateTime(1989, 12, 31));
+
+            var result = await repository.Get(
+                Criteria([], [Nineties()], []), CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([onLowerBound.Id, inside.Id, onUpperBound.Id]);
+        }
+
+        [Test]
+        public async Task ReturnTheIntersectionOfAValueCriterionAndAnInterval() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15));
+
+            var result = await repository.Get(Criteria(
+                    [Value("FirstName", ValueCriteriaType.AND, player2.FirstName, lothar.FirstName)],
+                    [Nineties()],
+                    []),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([lothar.Id]);
+        }
+
+        [Test]
+        public async Task RestrictBothSidesOfAnOrWithTheInterval() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Matthaus");
+
+            var result = await repository.Get(Criteria(
+                    [
+                        Value("FirstName", ValueCriteriaType.AND, player2.FirstName),
+                        Value("LastName", ValueCriteriaType.OR, lothar.LastName)
+                    ],
+                    [Nineties()],
+                    []),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().BeEquivalentTo([lothar.Id]);
+        }
+
+        [Test]
+        public async Task ReturnThePlayersInAscendingOrder() {
+            var result = await repository.Get(
+                Criteria([], [], [Order("LastName", OrderDirection.ASC)]), CancellationToken.None);
+
+            result.Select(p => p.LastName).Should().Equal("Ballack", "Gascoigne", "Martel");
+        }
+
+        [Test]
+        public async Task ReturnThePlayersInDescendingOrder() {
+            var result = await repository.Get(
+                Criteria([], [], [Order("FirstName", OrderDirection.DESC)]), CancellationToken.None);
+
+            result.Select(p => p.FirstName).Should().Equal("Paul", "Michael", "Javier");
+        }
+
+        [Test]
+        public async Task BreakTiesWithTheNextOrderCriterion() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Matthaus");
+
+            var result = await repository.Get(Criteria([], [], [
+                    Order("BirthDate", OrderDirection.DESC),
+                    Order("FirstName", OrderDirection.ASC)
+                ]),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().Equal(player1.Id, player3.Id, player2.Id, lothar.Id);
+        }
+
+        [Test]
+        public async Task ApplyValueIntervalAndOrderCriteriaTogether() {
+            var lothar = await InsertPlayerBornOn("Lothar", new DateTime(1995, 6, 15), "Gascoigne");
+            var andreas = await InsertPlayerBornOn("Andreas", new DateTime(1990, 1, 1), "Gascoigne");
+
+            var result = await repository.Get(Criteria(
+                    [Value("LastName", ValueCriteriaType.AND, "Gascoigne")],
+                    [Nineties()],
+                    [Order("BirthDate", OrderDirection.DESC)]),
+                CancellationToken.None);
+
+            result.Select(p => p.Id).Should().Equal(lothar.Id, andreas.Id);
+        }
+
+        private async Task<Player> InsertPlayerBornOn(string firstName, DateTime birthDate, string lastName = "Interval") {
+            var player = new Player(Guid.NewGuid(), firstName, lastName, string.Empty, Gender.MALE, birthDate);
+            await InsertAPlayerInDb(player);
+            return player;
+        }
+
+        private static IntervalCriteria<DateTime> Nineties() =>
+            new("BirthDate", new DateTime(1990, 1, 1), new DateTime(1999, 12, 31));
+
+        private static OrderCriteria Order(string name, OrderDirection direction) => new() {
+            Name = name,
+            Direction = direction
+        };
+
+        private static CriteriaSet Criteria(ValueCriteria[] valueCriteria, IIntervalCriteria[] intervalCriteria,
+            OrderCriteria[] orderCriteria) => new() {
+                ValueCriteria = [.. valueCriteria],
+                IntervalCriteria = [.. intervalCriteria],
+                OrderCriteria = [.. orderCriteria]
+            };
+
+        private static CriteriaSet Criteria(params ValueCriteria[] valueCriteria) => new() {
+            ValueCriteria = [.. valueCriteria]
+        };
+
+        private static ValueCriteria Value(string name, ValueCriteriaType type, params string[] values) => new() {
+            Name = name,
+            Type = type,
+            Values = [.. values]
+        };
     }
 
     [TestFixture]
@@ -263,8 +460,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
             result.Should().ContainSingle(p => p.Id == player.Id);
         }
 
-        private static PlayerSearchCriteria CriteriaFor(string fieldName, string value) => new() {
-            CriteriaList = [new SearchCriteria { Name = fieldName, Value = value }]
+        private static CriteriaSet CriteriaFor(string fieldName, string value) => new() {
+            ValueCriteria = [new ValueCriteria { Name = fieldName, Values = [value] }]
         };
     }
 
@@ -279,7 +476,7 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
 
             await repository.Save(player, CancellationToken.None);
 
-            var result = await repository.Get(new PlayerSearchCriteria(), CancellationToken.None);
+            var result = await repository.Get(new CriteriaSet(), CancellationToken.None);
 
             result.Count.Should().Be(1);
             result[0].Id.Should().Be(player.Id);
@@ -298,8 +495,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
         public async Task DeleteAPlayer() {
             await repository.Delete(player1.Id, CancellationToken.None);
 
-            var result = await repository.Get(new PlayerSearchCriteria {
-                CriteriaList = new List<SearchCriteria>() { new() { Name = "Id", Value = $"{player1.Id}" } }
+            var result = await repository.Get(new CriteriaSet {
+                ValueCriteria = [new ValueCriteria { Name = "Id", Values = [$"{player1.Id}"] }]
             }, CancellationToken.None);
 
             result.Count.Should().Be(0);
@@ -319,8 +516,8 @@ public class SqlPlayerRepositoryShould : BaseSqlTest {
                 new DateTime(1996, 1, 1));
             await repository.Update(updatedPlayer, CancellationToken.None);
 
-            var result = await repository.Get(new PlayerSearchCriteria {
-                CriteriaList = new List<SearchCriteria>() { new() { Name = "Id", Value = $"{player1.Id}" } }
+            var result = await repository.Get(new CriteriaSet {
+                ValueCriteria = [new ValueCriteria { Name = "Id", Values = [$"{player1.Id}"] }]
             }, CancellationToken.None);
             result[0].Id.Should().Be(updatedPlayer.Id);
             result[0].FirstName.Should().Be(updatedPlayer.FirstName);

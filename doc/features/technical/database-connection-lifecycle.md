@@ -97,10 +97,11 @@ using (var startupLoggerFactory = LoggerFactory.Create(builder => builder
 ```csharp
 public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository
 {
-    public async Task<List<Player>> Get(PlayerSearchCriteria criteria, CancellationToken cancellationToken)
+    public async Task<List<Player>> Get(CriteriaSet criteria, CancellationToken cancellationToken)
     {
         var (whereClause, parameters) = BuildFilters(criteria);
-        return await dbConnectionProvider.QueryAsync<Player>($"SELECT * FROM `Players`{whereClause};", parameters);
+        var orderClause = BuildOrder(criteria);
+        return await dbConnectionProvider.QueryAsync<Player>($"SELECT * FROM `Players`{whereClause}{orderClause};", parameters);
     }
 }
 ```
