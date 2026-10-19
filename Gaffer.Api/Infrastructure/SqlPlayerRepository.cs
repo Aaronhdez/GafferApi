@@ -97,49 +97,59 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         IReadOnlyList<KeyValuePair<string, object?>> Parameters);
 
     private static (string whereClause, DynamicParameters parameters) BuildFilters(CriteriaSet criteria) {
-        // ToList() evaluates every criterion (and its validation) in order before any SQL is built.
-        var valueClauses = criteria.ValueCriteria
-            .Where(item => item != null)
-            .Select(ToValueCriteriaClause)
-            .ToList();
-        var intervalClauses = criteria.IntervalCriteria
-            .Where(item => item != null)
-            .Select(ToIntervalCriteriaClause)
-            .ToList();
-
-        var valueStatement = valueClauses.Aggregate(WherePrefix, AddCriteria);
-        var statement = intervalClauses.Aggregate(
-            GroupValuesBeforeIntervals(valueStatement, valueClauses, intervalClauses), AddCriteria);
-        if (statement.Length == WherePrefix.Length) {
-            return (string.Empty, new DynamicParameters());
-        }
-
-        var parameters = new DynamicParameters(valueClauses
-            .Concat(intervalClauses)
-            .SelectMany(clause => clause.Parameters)
-            .ToDictionary(parameter => parameter.Key, parameter => parameter.Value));
-        return ($" {statement}", parameters);
+        var valueClauses = ToClauses(criteria.ValueCriteria, ToValueCriteriaClause);
+        var intervalClauses = ToClauses(criteria.IntervalCriteria, ToIntervalCriteriaClause);
+        var statement = ComposeWhere(valueClauses, intervalClauses);
+        return HasConditions(statement)
+            ? ($" {statement}", CollectParameters(valueClauses.Concat(intervalClauses)))
+            : (string.Empty, new DynamicParameters());
     }
 
-    // The action prefix (AND/OR) is omitted while the statement only holds "WHERE ".
+    private static List<CriteriaClause> ToClauses<TCriteria>(IEnumerable<TCriteria> criteria,
+        Func<TCriteria, int, CriteriaClause> toClause) =>
+        criteria
+            .Where(item => item != null)
+            .Select(toClause)
+            .ToList();
+
+    private static string ComposeWhere(IReadOnlyList<CriteriaClause> valueClauses,
+        IReadOnlyList<CriteriaClause> intervalClauses) {
+        var valueStatement = valueClauses.Aggregate(WherePrefix, AddCriteria);
+        return intervalClauses.Aggregate(
+            GroupValuesBeforeIntervals(valueStatement, valueClauses, intervalClauses), AddCriteria);
+    }
+
+    private static DynamicParameters CollectParameters(IEnumerable<CriteriaClause> clauses) =>
+        new(clauses
+            .SelectMany(clause => clause.Parameters)
+            .ToDictionary(parameter => parameter.Key, parameter => parameter.Value));
+
+    private static bool HasConditions(string statement) => statement.Length > WherePrefix.Length;
+
     private static string AddCriteria(string statement, CriteriaClause clause) =>
-        statement.Length > WherePrefix.Length
+        HasConditions(statement)
             ? $"{statement}{clause.Connector}{clause.Expression}"
             : $"{statement}{clause.Expression}";
 
-    // Q4 b) + Q12 a): an OR connector emitted between value criteria would bind tighter to the following AND, so the
-    // value block is parenthesized when intervals follow; without intervals the SQL is left as it was.
     private static string GroupValuesBeforeIntervals(string valueStatement,
         IReadOnlyList<CriteriaClause> valueClauses, IReadOnlyList<CriteriaClause> intervalClauses) =>
-        intervalClauses.Any() && valueClauses.Skip(1).Any(clause => clause.Connector == OrConnector)
-            ? $"{WherePrefix}({valueStatement[WherePrefix.Length..]})"
+        intervalClauses.Any() && HasOrBetweenValues(valueClauses)
+            ? Parenthesize(valueStatement)
             : valueStatement;
 
-    private static CriteriaClause ToIntervalCriteriaClause(IIntervalCriteria criteria, int index) {
-        if (criteria.Name == null || !AllowedIntervalColumns.TryGetValue(criteria.Name, out var column)) {
-            throw new PlayerSearchFilterNotPermittedException(criteria.Name ?? string.Empty);
-        }
+    private static bool HasOrBetweenValues(IEnumerable<CriteriaClause> valueClauses) =>
+        valueClauses.Skip(1).Any(clause => clause.Connector == OrConnector);
 
+    private static string Parenthesize(string statement) =>
+        $"{WherePrefix}({statement[WherePrefix.Length..]})";
+
+    private static string ResolveColumn(IReadOnlyDictionary<string, string> allowedColumns, string? name) =>
+        name != null && allowedColumns.TryGetValue(name, out var column)
+            ? column
+            : throw new PlayerSearchFilterNotPermittedException(name ?? string.Empty);
+
+    private static CriteriaClause ToIntervalCriteriaClause(IIntervalCriteria criteria, int index) {
+        var column = ResolveColumn(AllowedIntervalColumns, criteria.Name);
         return new CriteriaClause(
             AndConnector,
             $"`{column}` BETWEEN @i{index}_min AND @i{index}_max",
@@ -157,12 +167,8 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return orderTerms.Count == 0 ? string.Empty : $" ORDER BY {string.Join(", ", orderTerms)}";
     }
 
-    // The column comes from the whitelist and the direction from a fixed keyword; nothing else reaches the SQL text.
     private static string ToOrderTerm(OrderCriteria criteria) {
-        if (criteria.Name == null || !AllowedOrderColumns.TryGetValue(criteria.Name, out var column)) {
-            throw new PlayerSearchFilterNotPermittedException(criteria.Name ?? string.Empty);
-        }
-
+        var column = ResolveColumn(AllowedOrderColumns, criteria.Name);
         var direction = criteria.Direction switch {
             OrderDirection.ASC => "ASC",
             OrderDirection.DESC => "DESC",
@@ -172,13 +178,8 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return $"`{column}` {direction}";
     }
 
-    // Only whitelisted column names, fixed keywords and parameter names reach the SQL text; every caller value is a
-    // parameter.
     private static CriteriaClause ToValueCriteriaClause(ValueCriteria criteria, int index) {
-        if (criteria.Name == null || !AllowedFilterColumns.TryGetValue(criteria.Name, out var column)) {
-            throw new PlayerSearchFilterNotPermittedException(criteria.Name ?? string.Empty);
-        }
-
+        var column = ResolveColumn(AllowedFilterColumns, criteria.Name);
         if (criteria.Values == null || criteria.Values.Count == 0) {
             throw new ArgumentException($"Search criterion '{column}' needs at least one value.", nameof(criteria));
         }
@@ -204,7 +205,6 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
         return parameterNames.Count > 1 ? $"({expression})" : expression;
     }
 
-    // MariaDB's default LIKE escape character is '\': escape it first, then the wildcards, so the value matches literally.
     private static string? ContainsPattern(string? value) =>
         value == null
             ? null
