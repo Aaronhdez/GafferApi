@@ -7,27 +7,14 @@ using Gaffer.Api.Shared.Repositories;
 namespace Gaffer.Api.Infrastructure;
 
 public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvider) : IPlayerRepository {
-    private static readonly IReadOnlyDictionary<string, string> AllowedFilterColumns =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Id", "Id" },
-            { "FirstName", "FirstName" },
-            { "LastName", "LastName" }
-        };
+    private static readonly HashSet<string> AllowedFilterColumns =
+        new(["Id", "FirstName", "LastName"], StringComparer.OrdinalIgnoreCase);
 
-    private static readonly IReadOnlyDictionary<string, string> AllowedIntervalColumns =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "BirthDate", "BirthDate" }
-        };
+    private static readonly HashSet<string> AllowedIntervalColumns =
+        new(["BirthDate"], StringComparer.OrdinalIgnoreCase);
 
-    private static readonly IReadOnlyDictionary<string, string> AllowedOrderColumns =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "FirstName", "FirstName" },
-            { "LastName", "LastName" },
-            { "BirthDate", "BirthDate" }
-        };
+    private static readonly HashSet<string> AllowedOrderColumns =
+        new(["FirstName", "LastName", "BirthDate"], StringComparer.OrdinalIgnoreCase);
 
     private const string WherePrefix = "WHERE ";
     private const string AndConnector = " AND ";
@@ -143,7 +130,7 @@ public class SqlPlayerRepository(IDatabaseConnectionProvider dbConnectionProvide
     private static string Parenthesize(string statement) =>
         $"{WherePrefix}({statement[WherePrefix.Length..]})";
 
-    private static string ResolveColumn(IReadOnlyDictionary<string, string> allowedColumns, string? name) =>
+    private static string ResolveColumn(HashSet<string> allowedColumns, string? name) =>
         name != null && allowedColumns.TryGetValue(name, out var column)
             ? column
             : throw new PlayerSearchFilterNotPermittedException(name ?? string.Empty);
