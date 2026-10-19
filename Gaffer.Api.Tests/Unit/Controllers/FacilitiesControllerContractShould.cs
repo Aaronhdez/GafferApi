@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using AwesomeAssertions;
 using Gaffer.Api.Controllers;
+using Gaffer.Api.Queries.Facilities;
 using Gaffer.Api.Tests.TestShared;
 using Microsoft.AspNetCore.Mvc;
 using NSwag;

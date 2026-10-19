@@ -2,7 +2,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Queries;
+namespace Gaffer.Api.Queries.Facilities;
 
 public class SearchFacilitiesQueryHandler(IFacilityRepository facilityRepository)
     : IQueryHandler<SearchFacilitiesQuery, List<SearchFacilityResult>> {

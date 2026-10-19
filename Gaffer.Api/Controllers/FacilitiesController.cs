@@ -3,6 +3,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Facilities;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Repositories;
 using Microsoft.AspNetCore.Http;

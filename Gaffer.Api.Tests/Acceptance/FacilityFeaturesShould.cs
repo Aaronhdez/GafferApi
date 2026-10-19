@@ -1,8 +1,9 @@
-using Gaffer.Api.Commands.Facilities;
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
+using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Facilities;
 using Gaffer.Api.Tests.TestShared;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

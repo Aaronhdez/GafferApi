@@ -3,7 +3,7 @@ using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Queries;
+namespace Gaffer.Api.Queries.Players;
 
 public class SearchPlayersQueryHandler(IPlayerRepository playerRepository)
     : IQueryHandler<SearchPlayersQuery, List<SearchPlayerResult>> {
@@ -34,9 +34,4 @@ public record SearchPlayerResult(
 
 public class SearchPlayersQuery : IQuery<List<SearchPlayerResult>> {
     public List<QueryFilter> Filters { get; } = [];
-}
-
-public class QueryFilter {
-    public string Name { get; set; } = null!;
-    public string Value { get; set; } = null!;
 }

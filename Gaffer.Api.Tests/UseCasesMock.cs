@@ -1,6 +1,7 @@
 using Gaffer.Api.Commands;
 using Gaffer.Api.Commands.Players;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Players;
 using NSubstitute;
 
 namespace Gaffer.Api.Tests;

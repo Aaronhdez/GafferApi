@@ -1,8 +1,11 @@
 using Gaffer.Api.Commands;
-using Gaffer.Api.Commands.Stands;
 using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Commands.Players;
+using Gaffer.Api.Commands.Stands;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Facilities;
+using Gaffer.Api.Queries.Players;
+using Gaffer.Api.Queries.Stands;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Gaffer.Api.Startups;

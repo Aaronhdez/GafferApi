@@ -2,13 +2,14 @@ using AwesomeAssertions;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Players;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace Gaffer.Api.Tests.Unit.Queries;
+namespace Gaffer.Api.Tests.Unit.Queries.Players;
 
 public class SearchPlayersQueryHandlerShould {
     private IPlayerRepository repository;

@@ -3,6 +3,7 @@ using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Facilities;
 using NSubstitute;
 
 namespace Gaffer.Api.Tests.Unit.Controllers;

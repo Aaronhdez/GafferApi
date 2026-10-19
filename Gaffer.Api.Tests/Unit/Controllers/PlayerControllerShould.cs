@@ -3,6 +3,7 @@ using Gaffer.Api.Commands;
 using Gaffer.Api.Commands.Players;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Players;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Tests.TestShared;
 using Microsoft.AspNetCore.Http;

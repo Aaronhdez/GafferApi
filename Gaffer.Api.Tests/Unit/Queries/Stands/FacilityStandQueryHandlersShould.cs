@@ -1,12 +1,14 @@
 using AwesomeAssertions;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
+using Gaffer.Api.Queries.Facilities;
+using Gaffer.Api.Queries.Stands;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace Gaffer.Api.Tests.Unit.Queries;
+namespace Gaffer.Api.Tests.Unit.Queries.Stands;
 
 public class FacilityStandQueryHandlersShould {
     private IFacilityRepository repository;
