@@ -6,52 +6,73 @@ using Gaffer.Api.Shared.Repositories;
 namespace Gaffer.Api.Infrastructure;
 
 public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvider) : IFacilityRepository {
-    private static readonly HashSet<string> AllowedFilterColumns = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Id", "Name", "Active", "BuildDate", "Type", "Capacity"
-    };
+    private static readonly HashSet<string> AllowedFilterColumns =
+        new(["Id", "Name", "Active", "BuildDate", "Type", "Capacity"], StringComparer.OrdinalIgnoreCase);
+
+    private const string WherePrefix = "WHERE ";
 
     public async Task<List<Facility>> Get(FacilitySearchCriteria criteria, CancellationToken cancellationToken) {
         var (whereClause, parameters) = BuildFilters(criteria);
-        var query = $"SELECT * FROM `Facilities` {whereClause};";
+        var query = $"SELECT * FROM `Facilities`{whereClause};";
         var rows = await dbConnectionProvider.QueryAsync<FacilityRow>(query, parameters, cancellationToken);
 
         var facilities = new List<Facility>();
         foreach (var row in rows) {
-            var address = await GetAddress(row.Id, cancellationToken);
-            var stands = await ReadStands(row.Id, cancellationToken);
-            facilities.Add(new Facility(
-                row.Id,
-                row.Name,
-                row.Active,
-                row.BuildDate,
-                Enum.Parse<FacilityType>(row.Type),
-                row.Capacity,
-                address,
-                stands));
+            facilities.Add(await ToFacility(row, cancellationToken));
         }
 
         return facilities;
     }
 
+    private async Task<Facility> ToFacility(FacilityRow row, CancellationToken cancellationToken) =>
+        new(row.Id,
+            row.Name,
+            row.Active,
+            row.BuildDate,
+            Enum.Parse<FacilityType>(row.Type),
+            row.Capacity,
+            await GetAddress(row.Id, cancellationToken),
+            await ReadStands(row.Id, cancellationToken));
+
+    private sealed record CriteriaClause(
+        string Connector,
+        string Expression,
+        IReadOnlyList<KeyValuePair<string, object?>> Parameters);
+
     private static (string whereClause, DynamicParameters parameters) BuildFilters(FacilitySearchCriteria criteria) {
-        var parameters = new DynamicParameters();
-        if (criteria.CriteriaList.Count == 0) return (string.Empty, parameters);
+        var clauses = criteria.CriteriaList
+            .Where(item => item != null)
+            .Select(ToCriteriaClause)
+            .ToList();
+        var statement = clauses.Aggregate(WherePrefix, AddCriteria);
+        return HasConditions(statement)
+            ? ($" {statement}", CollectParameters(clauses))
+            : (string.Empty, new DynamicParameters());
+    }
 
-        var whereClause = string.Empty;
-        for (var i = 0; i < criteria.CriteriaList.Count; i++) {
-            var item = criteria.CriteriaList[i];
-            if (!AllowedFilterColumns.Contains(item.Name)) {
-                throw new FacilitySearchFilterNotPermittedException(item.Name ?? string.Empty);
-            }
+    private static DynamicParameters CollectParameters(IEnumerable<CriteriaClause> clauses) =>
+        new(clauses
+            .SelectMany(clause => clause.Parameters)
+            .ToDictionary(parameter => parameter.Key, parameter => parameter.Value));
 
-            var paramName = $"p{i}";
-            var connector = i == 0 ? "WHERE" : item.CriteriaType.ToString();
-            whereClause += $" {connector} `{item.Name}` = @{paramName}";
-            parameters.Add(paramName, item.Value);
-        }
+    private static bool HasConditions(string statement) => statement.Length > WherePrefix.Length;
 
-        return (whereClause, parameters);
+    private static string AddCriteria(string statement, CriteriaClause clause) =>
+        HasConditions(statement)
+            ? $"{statement}{clause.Connector}{clause.Expression}"
+            : $"{statement}{clause.Expression}";
+
+    private static string ResolveColumn(string? name) =>
+        name != null && AllowedFilterColumns.TryGetValue(name, out var column)
+            ? column
+            : throw new FacilitySearchFilterNotPermittedException(name ?? string.Empty);
+
+    private static CriteriaClause ToCriteriaClause(SearchCriteria criteria, int index) {
+        var column = ResolveColumn(criteria.Name);
+        return new CriteriaClause(
+            $" {criteria.CriteriaType} ",
+            $"`{column}` = @p{index}",
+            [new KeyValuePair<string, object?>($"p{index}", criteria.Value)]);
     }
 
     private async Task<Address?> GetAddress(Guid facilityId, CancellationToken cancellationToken) {
@@ -107,10 +128,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         }, cancellationToken);
     }
 
-    /// <summary>
-    /// Writes the facility, its address and its stands. Only <see cref="Update(Guid, Func{Facility, Facility}, CancellationToken)"/>
-    /// calls it, inside the transaction that holds the facility row lock, so it joins that ambient transaction.
-    /// </summary>
     private async Task WriteFacility(Facility facility, CancellationToken cancellationToken) {
         const string updateFacilityQuery =
             "UPDATE `Facilities` SET " +
@@ -135,7 +152,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         }, cancellationToken);
     }
 
-    /// <summary>Updates in place the address linked to the facility; its <c>Id</c> never changes.</summary>
     private async Task UpdateAddress(Facility facility, CancellationToken cancellationToken) {
         const string updateAddressQuery =
             "UPDATE `Addresses` SET " +
@@ -158,10 +174,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         }, cancellationToken);
     }
 
-    /// <summary>
-    /// Updates in place the stands already linked to the facility and inserts the others.
-    /// Linked stands missing from <paramref name="facility"/> are left untouched (never deleted).
-    /// </summary>
     private async Task UpdateStands(Facility facility, CancellationToken cancellationToken) {
         const string linkedStandIdsQuery = "SELECT StandId FROM `Facilities_Stands` WHERE FacilityId = @FacilityId;";
         var linkedStandIds = (await dbConnectionProvider.QueryAsync<Guid>(linkedStandIdsQuery, new { FacilityId = facility.Id }, cancellationToken))
@@ -243,7 +255,6 @@ public class SqlFacilityRepository(IDatabaseConnectionProvider dbConnectionProvi
         }, cancellationToken);
     }
 
-    /// <summary>Takes the row lock of the facility until the ambient transaction ends, serializing writers of its stands.</summary>
     private async Task LockFacility(Guid facilityId, CancellationToken cancellationToken) {
         const string lockQuery = "SELECT Id FROM `Facilities` WHERE Id = @Id FOR UPDATE;";
         var rows = await dbConnectionProvider.QueryAsync<Guid>(lockQuery, new { Id = facilityId }, cancellationToken);
