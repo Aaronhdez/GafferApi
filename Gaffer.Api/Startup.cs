@@ -38,8 +38,6 @@ public class Startup(IConfiguration configuration) {
         services.ConfigureValidationResponses();
         services.ConfigureVersioning();
         services.ConfigureSwagger(Program.ProductContext.Name);
-        // The host's logging pipeline is not resolvable while services are being registered,
-        // so a short-lived bootstrap logger reports the startup database check.
         using (var startupLoggerFactory = LoggerFactory.Create(builder => builder
                    .AddConfiguration(configuration.GetSection("Logging"))
                    .AddConsole())) {
@@ -66,7 +64,6 @@ public class Startup(IConfiguration configuration) {
             .UseRouting()
             .UseEndpoints(endpoints => {
                 endpoints.MapControllers();
-                // Plain-text status (Healthy/Degraded/Unhealthy), outside /api and the OpenAPI document.
                 endpoints.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
                 endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions {
                     Predicate = registration => registration.Tags.Contains(DatabaseStartup.ReadyTag)

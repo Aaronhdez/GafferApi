@@ -12,12 +12,9 @@ public class DatabaseConfig {
     public string? ConnectionString { get; set; }
 }
 
-/// <summary>Why <see cref="DatabaseStartup.ConfigureDatabase"/> chose the registered connection provider.</summary>
 public enum DatabaseProviderReason {
     Sql,
-    /// <summary>Database disabled or without a connection string: the dummy provider is intended.</summary>
     DummyByConfiguration,
-    /// <summary>Database enabled but unreachable at startup: the dummy provider stays until the API restarts.</summary>
     DummyByFallback
 }
 
@@ -69,8 +66,6 @@ public static class DatabaseStartup {
             failureStatus: null,
             tags: [ReadyTag]));
 
-    // ConfigureServices is synchronous. The async probe runs on the thread pool so no caller
-    // synchronization context can deadlock it, and GetResult() rethrows without AggregateException.
     private static bool ConnectionIsUp(string connectionString) {
         using var probe = new SqlConnectionProvider(connectionString);
         return Task.Run(probe.TestConnection).GetAwaiter().GetResult();

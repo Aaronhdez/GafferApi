@@ -18,7 +18,6 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
         }
     }
 
-    // The client closed the request: nobody reads a body, so only the nginx-style 499 status is set.
     private void HandleAbortedRequest(HttpContext context, OperationCanceledException exception) {
         logger.LogInformation("Request {Path} aborted by the client: {Message}", context.Request.Path.Value, exception.Message);
         if (!context.Response.HasStarted) {

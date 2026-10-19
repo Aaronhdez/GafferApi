@@ -135,10 +135,6 @@ public static class ExceptionToHttpResponseConverters {
             },
         };
 
-    /// <summary>
-    /// The only builder of the validation 400 (domain rules and model binding): the operation's translation key
-    /// plus <c>Errors</c> (field → messages).
-    /// </summary>
     public static ProblemDetails BuildValidationProblemDetails(string title, string errorTranslationKey,
         IReadOnlyDictionary<string, string[]> errors) {
         var problemDetails = BuildBadRequestProblemDetailsWithExtension(title, ValidationFailedException.InvalidFieldsDetail,
@@ -147,12 +143,6 @@ public static class ExceptionToHttpResponseConverters {
         return problemDetails;
     }
 
-    /// <summary>
-    /// The JSON body of every error response (exception middleware and model binding), RFC 7807 style: the standard
-    /// members in camelCase (kept as <c>null</c> when empty), each extension flattened at the root with a camelCase
-    /// name (<c>errorTranslationKey</c>, <c>errors</c>) and the <c>errors</c> keys in camelCase per segment
-    /// (<c>Stands[1].StandName</c> → <c>stands[1].standName</c>). The <see cref="ProblemDetails"/> is not modified.
-    /// </summary>
     public static string Serialize(ProblemDetails problemDetails) {
         var body = new JObject {
             ["type"] = problemDetails.Type,
@@ -178,7 +168,6 @@ public static class ExceptionToHttpResponseConverters {
     private static string CamelCase(string segment) =>
         segment.Length == 0 ? segment : char.ToLowerInvariant(segment[0]) + segment[1..];
 
-    // Helper methods to build ProblemDetails
     private static ProblemDetails BuildSearchFilterNotPermittedProblemDetails() {
         return BuildBadRequestProblemDetailsWithExtension(
             SearchFilterNotPermittedKey,

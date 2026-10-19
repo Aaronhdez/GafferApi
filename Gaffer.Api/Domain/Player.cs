@@ -3,11 +3,6 @@ using Gaffer.Api.Shared;
 
 namespace Gaffer.Api.Domain;
 
-/// <summary>
-/// A player. The primary constructor rehydrates stored rows (Dapper) and does not validate, so players saved
-/// before the current rules can still be read. New players go through <see cref="Create"/> and changes through
-/// the <c>Set*</c> methods, which enforce the rules and throw <see cref="DomainValidationException"/>.
-/// </summary>
 public class Player(
     Guid id,
     string firstName,
@@ -32,10 +27,6 @@ public class Player(
     public DateTime Birthdate { get; set; } = birthdate;
     public Gender Gender { get; set; } = gender;
 
-    /// <summary>
-    /// Creates a new player after checking every field, and reports all the invalid ones at once.
-    /// <paramref name="todayUtc"/> is the reference date for the age rules (defaults to the current UTC date).
-    /// </summary>
     public static Player Create(Guid id, string? firstName, string? lastName, string? secondLastName, Gender gender,
         DateTime birthdate, DateTime? todayUtc = null) {
         var errors = new DomainValidationErrors();
@@ -64,7 +55,6 @@ public class Player(
 
     public string GetSecondLastName() => SecondLastName ?? string.Empty;
 
-    /// <summary>Replaces the second last name. It is optional on creation, but once sent it must be a valid name.</summary>
     public void SetSecondLastName(string newSecondLastName) {
         Validate(errors => CheckName(errors, SecondLastNameField, newSecondLastName));
         SecondLastName = newSecondLastName;
@@ -97,7 +87,6 @@ public class Player(
     private static void CheckName(DomainValidationErrors errors, string field, string? value) =>
         errors.RequireText(field, value, MaxNameLength);
 
-    // The age rule: the player turns MinimumAge on BirthDate.AddYears(MinimumAge) (29 February -> 28 February).
     private static void CheckBirthDate(DomainValidationErrors errors, DateTime birthDate, DateTime todayUtc) {
         var date = birthDate.Date;
         var today = todayUtc.Date;

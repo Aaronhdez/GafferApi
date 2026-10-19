@@ -1,25 +1,15 @@
 namespace Gaffer.Api.Domain;
 
-/// <summary>
-/// Thrown by a domain entity when the values used to create or change it break its rules.
-/// <see cref="Errors"/> maps each invalid field (named as in the request) to its messages;
-/// the messages never repeat the rejected value.
-/// </summary>
 public class DomainValidationException(IReadOnlyDictionary<string, string[]> errors)
     : Exception("One or more fields are not valid.") {
     public IReadOnlyDictionary<string, string[]> Errors { get; } = errors;
 }
 
-/// <summary>
-/// Collects field errors so that every invalid field is reported at once, either from explicit checks
-/// (<see cref="Add"/>) or from domain operations that already validate (<see cref="Collect"/>).
-/// </summary>
 public sealed class DomainValidationErrors {
     private readonly Dictionary<string, List<string>> errors = new(StringComparer.Ordinal);
 
     public bool HasErrors => errors.Count > 0;
 
-    /// <summary>Adds a message to the field; the same message is kept once even if several checks report it.</summary>
     public void Add(string field, string message) {
         if (!errors.TryGetValue(field, out var messages)) {
             messages = [];
@@ -31,10 +21,6 @@ public sealed class DomainValidationErrors {
         }
     }
 
-    /// <summary>
-    /// Shared text rule: the value is required, must not be empty or only whitespace, and is at most
-    /// <paramref name="maxLength"/> characters long. The messages never repeat the value.
-    /// </summary>
     public void RequireText(string field, string? value, int maxLength) {
         if (value is null) {
             Add(field, $"{field} is required.");
@@ -45,7 +31,6 @@ public sealed class DomainValidationErrors {
         }
     }
 
-    /// <summary>Runs <paramref name="operation"/> and keeps its validation errors instead of failing at once.</summary>
     public void Collect(Action operation) {
         try {
             operation();

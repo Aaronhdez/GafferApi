@@ -42,7 +42,6 @@ public static class SwaggerStartUp {
         });
     }
 
-    /// <summary>Gaffer.Api.Client package version, stamped by Directory.Build.props as assembly metadata.</summary>
     private static string ClientPackageVersion() =>
         typeof(SwaggerStartUp).Assembly
             .GetCustomAttributes<AssemblyMetadataAttribute>()

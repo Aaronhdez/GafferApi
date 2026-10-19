@@ -48,7 +48,6 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
 
         Facility? facility = null;
         try {
-            // Every invalid field is reported at once: the sent stands (by index) and the facility and its address.
             var errors = new DomainValidationErrors();
             Facility.CheckRequestedStands(errors, command.Stands?.Select(ToRequestedStand).ToList() ?? []);
             errors.Collect(() => facility = Facility.Create(
@@ -69,7 +68,6 @@ public class CreateFacilityCommandHandler(IFacilityRepository facilityRepository
         return new CreateFacilityResponse(facility!.Id);
     }
 
-    // A null stand stays null so the domain reports it by its index; it is never turned into a Stand.
     private static (string? StandName, int StandCapacity)? ToRequestedStand(CreateFacilityStandCommand? stand)
         => stand is null ? null : (stand.StandName, stand.StandCapacity);
 }

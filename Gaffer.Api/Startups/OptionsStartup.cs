@@ -18,7 +18,6 @@ public static class OptionsStartup {
             var root = (IConfigurationRoot)configuration;
             File.WriteAllText(fileName, root.GetDebugView());
         } catch {
-            /*Assure not to fail in logging tasks */
         }
     }
 }

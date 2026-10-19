@@ -12,7 +12,6 @@ public record UpdateFacilityAddressCommand(
     string Region,
     string Country);
 
-/// <param name="Id">Id of an existing stand of the facility to update in place; otherwise the stand is new.</param>
 public record UpdateFacilityStandCommand(string StandName, int StandCapacity, Guid? Id = null);
 
 public class UpdateFacilityCommand : ICommand {
@@ -39,8 +38,6 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
 
     public const string CannotUpdateFacilityTitle = "Cannot update facility";
 
-    // Runs inside the repository lock: an unknown id is a 404 before the body is validated (Q21 a)), and a
-    // validation error thrown here rolls back the transaction.
     private static Facility BuildUpdatedFacility(Facility existing, UpdateFacilityCommand command) {
         var address = command.Address is null
             ? null
@@ -53,12 +50,9 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
                 command.Address.Region,
                 command.Address.Country);
 
-        // Only the stands sent are checked (by their index in the request); stored stands kept by the merge are not
-        // revalidated (Q16). Every invalid field is reported at once.
         var requested = command.Stands ?? [];
         var errors = new DomainValidationErrors();
         Facility.CheckRequestedStands(errors, requested.Select(ToRequestedStand).ToList());
-        // A null stand is only reported (by its index); the merge works on the stands actually sent.
         var stands = MergeStands(existing, requested.OfType<UpdateFacilityStandCommand>().ToList());
 
         Facility? updated = null;
@@ -78,14 +72,6 @@ public class UpdateFacilityCommandHandler(IFacilityRepository facilityRepository
     private static (string? StandName, int StandCapacity)? ToRequestedStand(UpdateFacilityStandCommand? stand)
         => stand is null ? null : (stand.StandName, stand.StandCapacity);
 
-    /// <summary>
-    /// Merges the requested stands into the existing ones: a stand sent with the <c>Id</c> of an existing stand
-    /// updates it in place; existing stands not sent are kept unchanged; any other stand (no <c>Id</c>, unknown
-    /// <c>Id</c> or the <c>Id</c> of another facility's stand) is created with a new generated <c>Id</c> when the
-    /// facility has fewer than <see cref="Facility.MaxStands"/> stands and silently discarded otherwise. The resulting total
-    /// is validated by <see cref="Facility"/>.
-    /// </summary>
-    /// <exception cref="CannotUpdateFacilityDuplicatedStandException">The <c>Id</c> of an existing stand is repeated.</exception>
     private static List<Stand> MergeStands(Facility existing, List<UpdateFacilityStandCommand> requested) {
         var existingIds = existing.Stands.Select(stand => stand.Id).ToHashSet();
         bool IsMatched(UpdateFacilityStandCommand stand) => stand.Id is { } id && existingIds.Contains(id);

@@ -10,12 +10,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Gaffer.Api.Startups;
 
-/// <summary>
-/// Model binding failures (malformed JSON, unknown enum text, wrong types) never reach the domain. For the
-/// operations listed in <see cref="Operations"/> they are answered with the same validation 400 as the domain
-/// rules (operation key and <c>Errors</c>), with generic messages that never echo the received value.
-/// Other actions keep the default ASP.NET response.
-/// </summary>
 public static class ValidationStartup {
     public const string InvalidValueMessage = "The value is not valid.";
     public const string BodyField = "Body";
@@ -60,7 +54,6 @@ public static class ValidationStartup {
         };
     }
 
-    // "request.firstName" / "firstName" -> "FirstName"; the body parameter itself -> "Body".
     private static string FieldName(string key, string? bodyParameter) {
         var path = key;
         if (bodyParameter is not null) {

@@ -29,8 +29,6 @@ public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : IC
         return player ?? throw new PlayerNotFoundException($"Player with id {command.Id} not found", command.Id);
     }
 
-    // Partial update: an absent or null field is left unchanged (SecondLastName included); every sent field goes
-    // through its validating setter, and all the invalid ones are reported together before anything is saved.
     private static void UpdatePlayer(Player player, UpdatePlayerCommand command) {
         var errors = new DomainValidationErrors();
         if (command.FirstName is not null) errors.Collect(() => player.SetFirstName(command.FirstName));
