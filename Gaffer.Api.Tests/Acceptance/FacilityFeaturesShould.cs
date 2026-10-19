@@ -1,3 +1,4 @@
+using Gaffer.Api.Commands.Facilities;
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
@@ -836,7 +837,7 @@ public class FacilityValidationInTheProductionPipelineShould {
         var response = await Send(HttpMethod.Post, FacilitiesPath, """{"name":"Arena",""");
 
         var problem = await FacilityValidationCases.ShouldBeAValidationProblem(response, FacilityValidationCases.CreateValidationKey);
-        problem["title"]!.Value<string>().Should().Be(Gaffer.Api.Commands.CreateFacilityCommandHandler.CannotCreateFacilityTitle);
+        problem["title"]!.Value<string>().Should().Be(Gaffer.Api.Commands.Facilities.CreateFacilityCommandHandler.CannotCreateFacilityTitle);
         problem["status"]!.Value<int>().Should().Be(400);
         problem["instance"]!.Value<string>().Should().Be(FacilitiesPath);
         ProblemJson.ErrorsOf(problem).Properties().Should().NotBeEmpty();

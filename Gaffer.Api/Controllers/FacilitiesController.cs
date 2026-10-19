@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;

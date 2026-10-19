@@ -1,12 +1,13 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 
-namespace Gaffer.Api.Tests.Unit.Commands;
+namespace Gaffer.Api.Tests.Unit.Commands.Facilities;
 
 public class CreateFacilityCommandHandlerShould {
     private IFacilityRepository repository;

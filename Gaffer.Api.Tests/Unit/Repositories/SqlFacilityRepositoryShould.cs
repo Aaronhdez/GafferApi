@@ -1,6 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Infrastructure;
 using Gaffer.Api.Shared.ConnectionProviders;

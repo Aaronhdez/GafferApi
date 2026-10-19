@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Players;
 using Gaffer.Api.Controllers;
 using Gaffer.Api.Queries;
 using Gaffer.Api.Shared;

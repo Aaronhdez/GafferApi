@@ -2,7 +2,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Commands;
+namespace Gaffer.Api.Commands.Players;
 
 public class DeletePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<DeletePlayerCommand> {
     public async Task Handle(DeletePlayerCommand command, CancellationToken cancellationToken) {

@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Players;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Repositories;
@@ -7,7 +8,7 @@ using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace Gaffer.Api.Tests.Unit.Commands;
+namespace Gaffer.Api.Tests.Unit.Commands.Players;
 
 public class DeletePlayerCommandHandlerShould {
     private IPlayerRepository repository;

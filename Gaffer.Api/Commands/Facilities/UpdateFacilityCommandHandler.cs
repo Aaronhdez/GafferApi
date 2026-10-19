@@ -2,7 +2,7 @@ using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Commands;
+namespace Gaffer.Api.Commands.Facilities;
 
 public record UpdateFacilityAddressCommand(
     string Street,

@@ -1,11 +1,12 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Facilities;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared.Repositories;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace Gaffer.Api.Tests.Unit.Commands;
+namespace Gaffer.Api.Tests.Unit.Commands.Facilities;
 
 public class DeleteFacilityCommandHandlerShould {
     private IFacilityRepository repository;

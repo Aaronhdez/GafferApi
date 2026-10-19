@@ -4,7 +4,7 @@ using Gaffer.Api.Shared.Criteria;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Commands;
+namespace Gaffer.Api.Commands.Players;
 
 public class UpdatePlayerCommandHandler(IPlayerRepository playerRepository) : ICommandHandler<UpdatePlayerCommand> {
     public async Task Handle(UpdatePlayerCommand command, CancellationToken cancellationToken) {

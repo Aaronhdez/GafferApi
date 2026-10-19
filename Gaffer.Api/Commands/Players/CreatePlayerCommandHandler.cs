@@ -3,7 +3,7 @@ using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Exceptions;
 using Gaffer.Api.Shared.Repositories;
 
-namespace Gaffer.Api.Commands;
+namespace Gaffer.Api.Commands.Players;
 
 public record CreatePlayerResponse(Guid Id);
 

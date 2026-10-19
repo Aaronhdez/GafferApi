@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Gaffer.Api.Commands;
+using Gaffer.Api.Commands.Players;
 using Gaffer.Api.Domain;
 using Gaffer.Api.Shared;
 using Gaffer.Api.Shared.Exceptions;
@@ -7,7 +8,7 @@ using Gaffer.Api.Shared.Repositories;
 using Gaffer.Api.Tests.TestShared;
 using NSubstitute;
 
-namespace Gaffer.Api.Tests.Unit.Commands;
+namespace Gaffer.Api.Tests.Unit.Commands.Players;
 
 public class CreatePlayerCommandHandlerShould {
     private IPlayerRepository repository;
