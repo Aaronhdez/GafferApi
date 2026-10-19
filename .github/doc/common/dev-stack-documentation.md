@@ -18,6 +18,7 @@
 | FluentMigrator.Abstractions | 8.0.1 | https://fluentmigrator.github.io/ | Referenced |
 | FluentMigrator.Console | 8.0.1 | https://fluentmigrator.github.io/ | Referenced |
 | FluentMigrator.Runner | 8.0.1 | https://fluentmigrator.github.io/ | Referenced |
+| System.Security.Cryptography.Pkcs | 10.0.13 | https://learn.microsoft.com/dotnet/api/system.security.cryptography.pkcs | Referenced (Gaffer.Api.Migrations; pins the transitive dependency of `FluentMigrator.Runner` → `Microsoft.Data.SqlClient` to the version patched for GHSA-846f-f764-76mx and GHSA-2fmv-rv2c-59x7) |
 
 `MySql.Data` (26.7.0) was replaced by `MySqlConnector` in `Gaffer.Api` in TECHDEBT-004 (step 03).
 
